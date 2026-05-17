@@ -9,6 +9,8 @@ Each phase should:
 - produce a working artifact;
 - reduce ambiguity;
 - be independently testable;
+- include operational acceptance criteria for startup, configuration, and
+  failure behavior;
 - avoid large refactors.
 
 Do NOT skip phases.
@@ -37,13 +39,17 @@ Create a stable engineering foundation before writing AI logic.
 - Makefile;
 - Docker skeleton;
 - README skeleton.
+- basic environment mapping;
+- initial health and startup strategy.
 
 ## Success Criteria
 
 - repository runs locally;
 - linting works;
 - tests execute;
-- Docker builds successfully.
+- Docker builds successfully;
+- environment expectations are documented;
+- container startup behavior is defined.
 
 ---
 
@@ -57,6 +63,8 @@ Create typed configuration and shared contracts.
 
 - Pydantic settings;
 - environment validation;
+- deployment mode flags;
+- startup validation seam;
 - shared schemas;
 - retrieval contracts;
 - tool contracts;
@@ -67,6 +75,7 @@ Create typed configuration and shared contracts.
 
 - app loads config safely;
 - invalid environment values fail loudly;
+- hosted and local startup expectations are explicit;
 - contracts are reusable across modules.
 
 ---
@@ -81,6 +90,7 @@ Convert PDFs into clean Markdown.
 
 - Docling integration;
 - PDF ingestion pipeline;
+- ingestion execution model;
 - Markdown export;
 - cleaning pipeline;
 - metadata extraction.
@@ -89,7 +99,9 @@ Convert PDFs into clean Markdown.
 
 - PDFs convert reliably;
 - Markdown preserves useful structure;
-- processed documents are stored consistently.
+- processed documents are stored consistently;
+- container/runtime dependencies for Docling are validated;
+- raw and processed document storage is reproducible.
 
 ---
 
@@ -104,13 +116,16 @@ Create retrieval-ready chunks.
 - chunking module;
 - configurable chunk size/overlap;
 - metadata propagation;
+- deterministic chunk identifiers;
+- chunk schema versioning;
 - chunk persistence.
 
 ## Success Criteria
 
 - chunks preserve semantic meaning;
 - clauses are not arbitrarily split;
-- metadata remains traceable.
+- metadata remains traceable;
+- re-chunking behavior is predictable across deployments.
 
 ---
 
@@ -126,13 +141,17 @@ Index chunks into Qdrant Cloud.
 - Qdrant integration;
 - collection setup;
 - indexing workflow;
+- idempotent indexing behavior;
+- retry/backoff behavior;
 - retrieval smoke tests.
 
 ## Success Criteria
 
 - chunks are searchable;
 - metadata filters work;
-- retrieval returns meaningful results.
+- retrieval returns meaningful results;
+- collection bootstrap is repeatable;
+- indexing can be rerun safely.
 
 ---
 
@@ -147,17 +166,45 @@ Create the first grounded QA system.
 - retrieval pipeline;
 - grounded answer generation;
 - citations;
-- simple Gradio query interface.
+- simple Gradio query interface;
+- deployable hosted app package;
+- startup and request smoke tests.
 
 ## Success Criteria
 
 - advisor can ask questions;
 - system returns grounded answers;
-- citations appear consistently.
+- citations appear consistently;
+- hosted app starts reliably;
+- user-visible failure states exist.
 
 ---
 
-# Phase 6 — Core Tooling
+# Phase 6 — Baseline Observability
+
+## Goal
+
+Make system behavior diagnosable before tools and multi-agent orchestration
+increase complexity.
+
+## Deliverables
+
+- request and correlation identifiers;
+- startup diagnostics;
+- retrieval traces;
+- latency tracking;
+- structured error events;
+- basic hosted health/readiness checks.
+
+## Success Criteria
+
+- traces and diagnostics are visible during local and hosted runs;
+- startup failures are actionable;
+- performance bottlenecks can be localized.
+
+---
+
+# Phase 7 — Core Tooling
 
 ## Goal
 
@@ -169,17 +216,20 @@ Implement reusable tools.
 - clause_extraction_tool;
 - policy_comparison_tool;
 - citation_verifier_tool;
-- response_draft_tool.
+- response_draft_tool;
+- tool error contracts;
+- tool latency expectations.
 
 ## Success Criteria
 
 - tools are independently callable;
 - contracts are typed;
-- outputs are structured.
+- outputs are structured;
+- tool failures are observable.
 
 ---
 
-# Phase 7 — LangGraph Workflow
+# Phase 8 — LangGraph Workflow
 
 ## Goal
 
@@ -193,7 +243,8 @@ Replace basic RAG with controlled multi-agent orchestration.
 - Retriever Agent;
 - Policy Analyst Agent;
 - Citation Verifier;
-- Response Formatter Agent.
+- Response Formatter Agent;
+- state transition tracing.
 
 ## Success Criteria
 
@@ -203,7 +254,7 @@ Replace basic RAG with controlled multi-agent orchestration.
 
 ---
 
-# Phase 8 — Guardrails
+# Phase 9 — Guardrails
 
 ## Goal
 
@@ -215,37 +266,15 @@ Add safety and scope protections.
 - scope validation;
 - refusal behavior;
 - confidence scoring;
-- mandatory citation enforcement.
+- mandatory citation enforcement;
+- abuse-case test scenarios;
+- refusal telemetry.
 
 ## Success Criteria
 
 - unsupported queries are rejected safely;
-- hallucinated answers decrease;
+- unsafe behavior is measurable against abuse cases;
 - confidence signals appear consistently.
-
----
-
-# Phase 9 — Observability
-
-## Goal
-
-Instrument the system with Phoenix.
-
-## Deliverables
-
-- Phoenix setup;
-- trace instrumentation;
-- retrieval traces;
-- tool traces;
-- latency tracking;
-- token usage tracking;
-- cost estimation.
-
-## Success Criteria
-
-- traces are visible;
-- workflow debugging improves;
-- performance bottlenecks are measurable.
 
 ---
 
@@ -260,13 +289,15 @@ Create a repeatable evaluation baseline.
 - 30 curated evaluation questions;
 - evaluation schemas;
 - golden dataset;
-- evaluation runner.
+- evaluation runner;
+- hosted-like regression scenarios.
 
 ## Success Criteria
 
 - evaluation can run automatically;
 - results are reproducible;
-- retrieval quality can be measured.
+- retrieval quality can be measured;
+- startup, latency, and citation regressions are detectable.
 
 ---
 
@@ -287,12 +318,14 @@ Optimize one targeted component programmatically.
 
 - DSPy module;
 - optimization dataset subset;
-- before/after comparison.
+- before/after comparison;
+- latency and cost comparison.
 
 ## Success Criteria
 
 - measurable improvement exists;
-- optimization process is documented.
+- optimization process is documented;
+- hosted latency remains within budget.
 
 ---
 
@@ -307,12 +340,14 @@ Expose tools through MCP.
 - MCP server;
 - MCP client;
 - tool exposure;
-- MCP tests.
+- MCP tests;
+- interface versioning plan.
 
 ## Success Criteria
 
 - tools are callable through MCP;
-- contracts remain stable.
+- contracts remain stable;
+- MCP boundaries are operationally explicit.
 
 ---
 
@@ -329,34 +364,42 @@ Improve public demo usability.
 - confidence display;
 - trace summary display;
 - loading states;
-- error states.
+- error states;
+- degraded-service messaging.
 
 ## Success Criteria
 
 - demo is understandable;
 - outputs are easy to review;
-- failures are visible.
+- failures are visible;
+- support/debug context is exposed safely.
 
 ---
 
-# Phase 14 — Docker and Deployment
+# Phase 14 — Docker and Deployment Hardening
 
 ## Goal
 
-Deploy the MVP publicly.
+Harden the MVP deployment path for a safe public demo while preserving a clean
+bridge to future internal production deployment.
 
 ## Deliverables
 
 - production-ready Dockerfile;
 - Hugging Face Spaces deployment;
 - environment setup;
-- deployment documentation.
+- deployment documentation;
+- hosted smoke tests;
+- deployment rollback notes;
+- explicit demo-mode operating constraints.
 
 ## Success Criteria
 
 - app deploys successfully;
 - public demo is accessible;
-- startup is stable.
+- startup is stable;
+- public demo guardrails are documented;
+- deployment steps are reproducible.
 
 ---
 
@@ -373,12 +416,14 @@ Stabilize the project for final delivery.
 - evaluation report;
 - deployment guide;
 - cleanup of dead code;
-- final tests.
+- final tests;
+- roadmap and operational documentation review.
 
 ## Success Criteria
 
 - repository is understandable;
 - demo is stable;
+- deployment and evaluation artifacts are consistent.
 
 ---
 
@@ -392,7 +437,8 @@ Do NOT:
 - build agents before tools exist;
 - build tools before retrieval exists;
 - optimize prompts before baseline evaluation exists;
-- add deployment complexity before local execution works.
+- add deployment complexity before local execution works;
+- introduce complex orchestration before baseline observability exists.
 
 ---
 
@@ -418,6 +464,9 @@ The MVP is complete when:
 - grounded answers are returned;
 - citations work;
 - LangGraph orchestration works;
+- observability is usable;
+- public demo deployment is stable and documented;
+- the internal-production path remains architecturally viable.
 - Phoenix traces work;
 - MCP is demonstrable;
 - DSPy optimization exists;

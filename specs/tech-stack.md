@@ -34,7 +34,8 @@ The goal is a clean, reliable, extensible AI Engineering system.
 | Testing | Pytest |
 | Linting | Ruff |
 | Containerization | Docker |
-| Deployment | Hugging Face Spaces |
+| MVP Deployment | Hugging Face Spaces |
+| Production Deployment | Internal environment, defined later |
 | Config Management | python-dotenv + Pydantic Settings |
 | Logging | Structured logging |
 
@@ -229,6 +230,26 @@ Therefore:
 
 Local models remain future-compatible through provider abstraction.
 
+## Dual Deployment Modes
+
+The project must distinguish between:
+
+- public MVP demo deployment;
+- internal production deployment.
+
+For the MVP:
+
+- optimize for safe public demonstration;
+- deploy on Hugging Face Spaces;
+- use sanitized, approved documents only;
+- prefer managed services and simple operations.
+
+For future production:
+
+- support internal access controls;
+- preserve auditability and observability;
+- keep deployment targets replaceable behind explicit contracts.
+
 ---
 
 ## Evaluation-Driven Development
@@ -245,6 +266,20 @@ Important metrics:
 - tool success rate.
 
 Avoid subjective-only evaluation.
+
+## Deployment Spine
+
+Deployment readiness must be built incrementally rather than deferred to the
+final deployment phase.
+
+Required early operational capabilities:
+
+- startup validation;
+- structured logs with request correlation when applicable;
+- health/readiness checks for hosted environments;
+- explicit environment variable mapping;
+- reproducible offline jobs for ingestion and indexing;
+- hosted smoke tests before full public deployment.
 
 ---
 
