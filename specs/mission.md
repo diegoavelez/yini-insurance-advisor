@@ -20,6 +20,26 @@ It is NOT:
 - a policy approval engine;
 - an autonomous insurance advisor.
 
+## Deployment Posture
+
+The long-term production target is an internal-only assistant for authorized
+insurance advisory workflows.
+
+However, the MVP may be deployed publicly as a controlled demo for portfolio and
+evaluation purposes.
+
+This creates two explicit operating modes:
+
+- internal production mode;
+- public MVP demo mode.
+
+The architecture must support both without confusing the product intent:
+
+- internal production mode prioritizes controlled access, auditability, and
+  enterprise hardening;
+- public MVP demo mode prioritizes safe demonstration, restricted document
+  scope, strong guardrails, and low-friction deployment.
+
 ---
 
 ## Core Product Principles
@@ -89,6 +109,10 @@ The system should be:
 - containerized;
 - extensible.
 
+The MVP must not defer all deployment concerns until the end of the roadmap.
+Each implementation phase should account for its deployment and operational
+impact early.
+
 ---
 
 ### 5. Small, Verifiable Iterations
@@ -150,6 +174,9 @@ The system must expose:
 - errors;
 - costs;
 - confidence scores.
+
+Baseline observability should exist before complex orchestration is introduced.
+Tracing and diagnostics are not final polish items.
 
 ---
 

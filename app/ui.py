@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import logging
 
-from core.config import get_settings
+from core.config import get_settings, validate_startup_settings
 from core.logging import configure_logging
 
 
 def main() -> int:
     """Validate core runtime bootstrap and print a placeholder message."""
 
-    settings = get_settings()
+    settings = validate_startup_settings(get_settings())
     configure_logging(settings.log_level)
 
     logger = logging.getLogger("yini.app")
