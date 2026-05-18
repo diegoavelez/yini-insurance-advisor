@@ -17,11 +17,14 @@ from pathlib import Path
 from contracts import (
     ChunkBundle,
     ChunkRecord,
+    DocumentRetrievalResult,
     EmbeddingBundle,
     EmbeddingGenerationRecord,
     EmbeddingIndexingRecord,
     EmbeddingRecord,
     ProcessedDocument,
+    RetrievalQuery,
+    RetrievedChunk,
     VectorPayload,
 )
 from core.config import Settings, get_settings, validate_startup_settings
@@ -124,6 +127,14 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS,
     )
+
+    retrieval_parser = subparsers.add_parser("retrieve-chunks")
+    retrieval_parser.add_argument("--query", required=True)
+    retrieval_parser.add_argument("--top-k", type=parse_positive_int, default=None)
+    retrieval_parser.add_argument("--document-type", default=None)
+    retrieval_parser.add_argument("--product", default=None)
+    retrieval_parser.add_argument("--document-name", default=None)
+    retrieval_parser.add_argument("--version", default=None)
     return parser
 
 
@@ -783,6 +794,41 @@ def build_qdrant_point_payload(embedding_record: EmbeddingRecord) -> dict[str, o
     }
 
 
+def build_qdrant_query_filter(filters: object) -> object | None:
+    """Map typed retrieval filters into a Qdrant filter object."""
+
+    filter_mappings = {
+        "document_type": "document_type",
+        "product": "product",
+        "document_name": "document_name",
+        "version": "document_version",
+    }
+    filter_values = {
+        field_name: getattr(filters, field_name, None) for field_name in filter_mappings
+    }
+    if all(value is None for value in filter_values.values()):
+        return None
+
+    conditions: list[object] = []
+    qdrant_models = get_qdrant_models()
+
+    for field_name, payload_key in filter_mappings.items():
+        value = filter_values[field_name]
+        if value is None:
+            continue
+        conditions.append(
+            qdrant_models.FieldCondition(
+                key=payload_key,
+                match=qdrant_models.MatchValue(value=value),
+            )
+        )
+
+    if not conditions:
+        return None
+
+    return qdrant_models.Filter(must=conditions)
+
+
 def build_qdrant_points(embedding_bundle: EmbeddingBundle) -> list[object]:
     """Map one embedding bundle into deterministic Qdrant points."""
 
@@ -795,6 +841,114 @@ def build_qdrant_points(embedding_bundle: EmbeddingBundle) -> list[object]:
         )
         for embedding_record in embedding_bundle.embeddings
     ]
+
+
+def map_search_hit_to_retrieved_chunk(hit: object) -> RetrievedChunk:
+    """Map one Qdrant search hit into a typed retrieval result."""
+
+    payload = getattr(hit, "payload", None)
+    if not isinstance(payload, dict):
+        raise RuntimeError("Qdrant search hit payload is missing or invalid.")
+
+    chunk_id = payload.get("chunk_id")
+    text = payload.get("text")
+    document_name = payload.get("document_name")
+    if (
+        not isinstance(chunk_id, str)
+        or not isinstance(text, str)
+        or not isinstance(document_name, str)
+    ):
+        raise RuntimeError("Qdrant search hit payload is missing required retrieval fields.")
+
+    score = getattr(hit, "score", None)
+    if score is None:
+        score = 0.0
+
+    source_pdf_id = payload.get("source_pdf_id")
+    if not isinstance(source_pdf_id, str):
+        source_pdf_id = None
+    chunk_schema_version = payload.get("chunk_schema_version")
+    if not isinstance(chunk_schema_version, str):
+        chunk_schema_version = None
+    chunk_index = payload.get("chunk_index")
+    if not isinstance(chunk_index, int):
+        chunk_index = None
+    document_version = payload.get("document_version")
+    if not isinstance(document_version, str):
+        document_version = None
+    page = payload.get("page")
+    if not isinstance(page, int):
+        page = None
+    section = payload.get("section")
+    if not isinstance(section, str):
+        section = None
+    section_path = payload.get("section_path")
+    if not isinstance(section_path, list) or not all(
+        isinstance(value, str) for value in section_path
+    ):
+        section_path = []
+    clause_id = payload.get("clause_id")
+    if not isinstance(clause_id, str):
+        clause_id = None
+
+    return RetrievedChunk(
+        chunk_id=chunk_id,
+        source_pdf_id=source_pdf_id,
+        chunk_schema_version=chunk_schema_version,
+        chunk_index=chunk_index,
+        text=text,
+        document_name=document_name,
+        document_version=document_version,
+        page=page,
+        section=section,
+        section_path=section_path,
+        clause_id=clause_id,
+        score=float(score),
+    )
+
+
+def search_qdrant_chunks(
+    *,
+    client: object,
+    settings: Settings,
+    retrieval_query: RetrievalQuery,
+    query_vector: list[float],
+) -> list[object]:
+    """Execute one Qdrant search for retrieval."""
+
+    query_filter = build_qdrant_query_filter(retrieval_query.filters)
+    return client.search(
+        collection_name=settings.qdrant_collection,
+        query_vector=query_vector,
+        query_filter=query_filter,
+        limit=retrieval_query.top_k,
+        with_payload=True,
+    )
+
+
+def retrieve_ranked_chunks(
+    retrieval_query: RetrievalQuery,
+    *,
+    settings: Settings | None = None,
+    client: object | None = None,
+) -> DocumentRetrievalResult:
+    """Retrieve ranked chunks from Qdrant using typed query contracts."""
+
+    resolved_settings = validate_embedding_settings(
+        validate_startup_settings(settings or get_settings(), require_qdrant=True)
+    )
+    ensure_qdrant_backend_available()
+    resolved_client = client or create_qdrant_client(resolved_settings)
+    query_vector = generate_embedding_vector(retrieval_query.query, resolved_settings)
+    hits = search_qdrant_chunks(
+        client=resolved_client,
+        settings=resolved_settings,
+        retrieval_query=retrieval_query,
+        query_vector=query_vector,
+    )
+    return DocumentRetrievalResult(
+        chunks=[map_search_hit_to_retrieved_chunk(hit) for hit in hits]
+    )
 
 
 def get_collection_vector_size(collection_info: object) -> int | None:
@@ -1259,6 +1413,24 @@ def run_qdrant_indexing(args: argparse.Namespace) -> int:
     return 0 if not (encountered_failures and args.fail_fast) else 1
 
 
+def run_retrieval(args: argparse.Namespace) -> int:
+    """Execute the first retrieval pipeline over indexed Qdrant data."""
+
+    retrieval_query = RetrievalQuery(
+        query=args.query,
+        top_k=args.top_k if args.top_k is not None else get_settings().top_k,
+        filters={
+            "document_type": args.document_type,
+            "product": args.product,
+            "document_name": args.document_name,
+            "version": args.version,
+        },
+    )
+    result = retrieve_ranked_chunks(retrieval_query)
+    print(result.model_dump_json(indent=2))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint for the current offline ingestion, embedding, and indexing pipeline."""
 
@@ -1272,6 +1444,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return run_embedding_generation(args)
         if args.command == "index-embeddings":
             return run_qdrant_indexing(args)
+        if args.command == "retrieve-chunks":
+            return run_retrieval(args)
         parser.error(f"Unsupported command: {args.command}")
     except (RuntimeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)

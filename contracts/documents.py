@@ -22,10 +22,15 @@ class RetrievedChunk(BaseModel):
     """A retrieval result item with traceable source metadata."""
 
     chunk_id: str = Field(min_length=1)
+    source_pdf_id: str | None = None
+    chunk_schema_version: str | None = None
+    chunk_index: int | None = Field(default=None, ge=0)
     text: str = Field(min_length=1)
     document_name: str = Field(min_length=1)
+    document_version: str | None = None
     page: int | None = Field(default=None, ge=1)
     section: str | None = None
+    section_path: list[str] = Field(default_factory=list)
     clause_id: str | None = None
     score: float
 

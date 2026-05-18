@@ -250,6 +250,25 @@ Clarification:
 - This phase is the first usable grounded QA slice, not the full
   portfolio-complete MVP defined later in this roadmap.
 
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `retrieval-pipeline-and-ranked-results` should cover:
+  - query embedding generation through the configured embedding path;
+  - Qdrant search against the indexed collection;
+  - mapping search hits into typed `RetrievedChunk` results;
+  - deterministic metadata and citation traceability in retrieval outputs;
+  - retrieval smoke checks and failure behavior before answer generation.
+- `grounded-answer-generation-and-citations` should cover:
+  - prompt construction from retrieved evidence;
+  - Groq-backed grounded answer generation;
+  - citation formatting and response contracts;
+  - basic failure handling for empty or insufficient retrieval results;
+  - initial end-to-end grounded QA flow before UI work expands further.
+
 ---
 
 # Phase 6 — Baseline Observability

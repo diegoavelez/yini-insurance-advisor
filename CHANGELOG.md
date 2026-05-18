@@ -30,6 +30,10 @@
   embedding artifacts, idempotent upserts, retry/backoff behavior, and explicit
   indexing manifest coverage for permanent failures and multi-artifact
   continuation.
+- Add the first `Phase 5` slice for retrieval, including query embedding reuse,
+  Qdrant search, typed `RetrievedChunk` mapping, preserved traceability
+  metadata from indexed payloads, explicit empty-result behavior, and retrieval
+  failure coverage for malformed payloads.
 
 ## 2026-05-17
 
