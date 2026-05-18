@@ -263,6 +263,57 @@ def test_overwrite_true_regenerates_outputs(monkeypatch: pytest.MonkeyPatch, tmp
     assert manifest_record.ingestion_status == "succeeded"
 
 
+def test_manifest_is_append_only_across_reruns(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    input_dir.mkdir()
+    source_pdf = input_dir / "policy-a.pdf"
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown", lambda _: "# First markdown")
+
+    first_exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    second_exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    manifest_records = [
+        ProcessedDocument.model_validate_json(line)
+        for line in manifest_path.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert first_exit_code == 0
+    assert second_exit_code == 0
+    assert len(manifest_records) == 2
+    assert [record.ingestion_status for record in manifest_records] == ["succeeded", "skipped"]
+
+
 def test_fail_fast_false_records_failures_and_continues(
     monkeypatch: pytest.MonkeyPatch, tmp_path, capsys
 ) -> None:
@@ -353,6 +404,21 @@ def test_processed_document_requires_error_message_for_failed_status() -> None:
             document_name="policy-a",
             document_version=None,
             ingestion_status="failed",
+            error_message=None,
+            ingested_at="2026-05-18T00:00:00Z",
+        )
+
+
+def test_processed_document_rejects_invalid_ingestion_status() -> None:
+    with pytest.raises(ValueError):
+        ProcessedDocument(
+            source_pdf_id="policy-a",
+            source_pdf_path="data/raw/policy-a.pdf",
+            markdown_output_path="data/markdown/policy-a.md",
+            processed_output_path="data/processed/policy-a.json",
+            document_name="policy-a",
+            document_version=None,
+            ingestion_status="completed",
             error_message=None,
             ingested_at="2026-05-18T00:00:00Z",
         )

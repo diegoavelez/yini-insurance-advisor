@@ -52,6 +52,50 @@ make test
 make app
 ```
 
+## Ingestion CLI
+
+The first implemented `Phase 2` slice is an admin-only offline ingestion job.
+
+Canonical command:
+
+```bash
+python -m rag.ingestion ingest-pdfs \
+  --input-dir data/raw \
+  --markdown-dir data/markdown \
+  --processed-dir data/processed \
+  --manifest-path data/processed/ingestion-manifest.jsonl \
+  --glob "*.pdf" \
+  --overwrite false \
+  --fail-fast false
+```
+
+Required flags:
+
+- `--input-dir`
+- `--markdown-dir`
+- `--processed-dir`
+- `--manifest-path`
+
+Optional flags:
+
+- `--glob` defaults to `*.pdf`
+- `--overwrite` defaults to `false`
+- `--fail-fast` defaults to `false`
+
+The command exits non-zero when:
+
+- Docling is not importable in the local runtime
+- the input directory does not exist
+- no matching PDF files are found
+- a conversion fails while `--fail-fast=true`
+
+Current metadata behavior for this slice:
+
+- `document_name` currently mirrors `source_pdf_id`
+- `document_version` is intentionally left unset
+- this slice records metadata fields and deterministic artifact paths, but does
+  not yet implement richer metadata extraction or Markdown cleaning
+
 ## Repository Layout
 
 ```text
