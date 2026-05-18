@@ -34,6 +34,10 @@
   Qdrant search, typed `RetrievedChunk` mapping, preserved traceability
   metadata from indexed payloads, explicit empty-result behavior, and retrieval
   failure coverage for malformed payloads.
+- Add the second `Phase 5` slice for grounded answer generation, including
+  deterministic prompt construction from retrieved evidence, Groq-backed draft
+  answers, citation mapping with stable `chunk_id` traceability, and explicit
+  low-confidence handling for empty or weak retrieval evidence.
 
 ## 2026-05-17
 

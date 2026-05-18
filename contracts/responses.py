@@ -13,6 +13,7 @@ class Citation(BaseModel):
     """A citation that traces an answer back to source material."""
 
     document_name: str = Field(min_length=1)
+    chunk_id: str | None = None
     page: int | None = Field(default=None, ge=1)
     section: str | None = None
     clause_id: str | None = None
@@ -47,3 +48,11 @@ class AdvisorDraftResponse(BaseModel):
     confidence: ConfidenceLevel
     limitations: list[str] = Field(default_factory=list)
     advisor_review_notice: str = Field(min_length=1)
+
+
+class GroundedAnswerResult(BaseModel):
+    """Typed grounded-QA output for the first answer-generation slice."""
+
+    query: str = Field(min_length=1)
+    response: AdvisorDraftResponse
+    verification: GroundingVerification

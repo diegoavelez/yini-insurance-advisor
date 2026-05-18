@@ -15,13 +15,18 @@ from functools import lru_cache
 from pathlib import Path
 
 from contracts import (
+    AdvisorDraftResponse,
     ChunkBundle,
     ChunkRecord,
+    Citation,
+    DocumentaryBasisItem,
     DocumentRetrievalResult,
     EmbeddingBundle,
     EmbeddingGenerationRecord,
     EmbeddingIndexingRecord,
     EmbeddingRecord,
+    GroundedAnswerResult,
+    GroundingVerification,
     ProcessedDocument,
     RetrievalQuery,
     RetrievedChunk,
@@ -42,6 +47,8 @@ DEFAULT_EMBEDDING_DIR = "data/processed/embeddings"
 DEFAULT_QDRANT_INDEXING_MANIFEST = "data/processed/qdrant-indexing-manifest.jsonl"
 DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
+MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
+ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
 
 
 @dataclass(frozen=True)
@@ -135,6 +142,14 @@ def build_parser() -> argparse.ArgumentParser:
     retrieval_parser.add_argument("--product", default=None)
     retrieval_parser.add_argument("--document-name", default=None)
     retrieval_parser.add_argument("--version", default=None)
+
+    answer_parser = subparsers.add_parser("answer-query")
+    answer_parser.add_argument("--query", required=True)
+    answer_parser.add_argument("--top-k", type=parse_positive_int, default=None)
+    answer_parser.add_argument("--document-type", default=None)
+    answer_parser.add_argument("--product", default=None)
+    answer_parser.add_argument("--document-name", default=None)
+    answer_parser.add_argument("--version", default=None)
     return parser
 
 
@@ -200,6 +215,29 @@ def ensure_qdrant_backend_available() -> None:
         )
 
 
+def groq_backend_is_available() -> bool:
+    """Return whether the Groq client is importable."""
+
+    return importlib.util.find_spec("groq") is not None
+
+
+def ensure_groq_backend_available() -> None:
+    """Fail loudly when the Groq client is unavailable."""
+
+    if not groq_backend_is_available():
+        raise RuntimeError(
+            "groq is not installed. Install project dependencies before running "
+            "grounded answer generation."
+        )
+
+
+def create_groq_client(settings: Settings):
+    """Create a configured Groq client from validated settings."""
+
+    groq_module = importlib.import_module("groq")
+    return groq_module.Groq(api_key=settings.groq_api_key.get_secret_value())
+
+
 def get_qdrant_models():
     """Return qdrant-client models lazily to keep import costs scoped."""
 
@@ -234,6 +272,31 @@ def generate_embedding_vector(text: str, settings: Settings) -> list[float]:
     model = load_sentence_transformer(settings.embedding_model)
     vector = model.encode([text], normalize_embeddings=True)[0]
     return [float(value) for value in vector]
+
+
+def generate_grounded_completion(prompt: str, settings: Settings) -> str:
+    """Generate grounded completion text through Groq."""
+
+    client = create_groq_client(settings)
+    response = client.chat.completions.create(
+        model=settings.groq_model,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an internal insurance assistant. Answer only from the "
+                    "provided evidence. If evidence is insufficient, say so explicitly."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0,
+    )
+    message = response.choices[0].message
+    content = getattr(message, "content", None)
+    if not isinstance(content, str) or not content.strip():
+        raise RuntimeError("Groq did not return grounded answer content.")
+    return content.strip()
 
 
 def convert_pdf_to_markdown(source_pdf_path: Path) -> str:
@@ -951,6 +1014,191 @@ def retrieve_ranked_chunks(
     )
 
 
+def build_grounded_prompt(
+    *,
+    query: str,
+    retrieved_chunks: list[RetrievedChunk],
+) -> str:
+    """Build a deterministic grounded-answer prompt from retrieved evidence."""
+
+    evidence_sections: list[str] = []
+    for chunk in retrieved_chunks:
+        evidence_sections.append(
+            "\n".join(
+                [
+                    f"Chunk ID: {chunk.chunk_id}",
+                    f"Document: {chunk.document_name}",
+                    f"Section: {chunk.section or 'Unknown'}",
+                    f"Text: {chunk.text}",
+                ]
+            )
+        )
+
+    evidence_block = "\n\n---\n\n".join(evidence_sections)
+    return (
+        "Answer the advisor's question using only the evidence below.\n"
+        "If the evidence is insufficient, say that explicitly and do not invent details.\n\n"
+        f"Question: {query}\n\n"
+        f"Evidence:\n{evidence_block}"
+    )
+
+
+def build_citations_from_chunks(retrieved_chunks: list[RetrievedChunk]) -> list[Citation]:
+    """Derive explicit citations from retrieved evidence."""
+
+    citations: list[Citation] = []
+    for chunk in retrieved_chunks:
+        citations.append(
+            Citation(
+                document_name=chunk.document_name,
+                chunk_id=chunk.chunk_id,
+                page=chunk.page,
+                section=chunk.section,
+                clause_id=chunk.clause_id,
+                quote=chunk.text[:280],
+            )
+        )
+    return citations
+
+
+def build_documentary_basis(retrieved_chunks: list[RetrievedChunk]) -> list[DocumentaryBasisItem]:
+    """Map retrieved evidence into documentary basis items."""
+
+    return [
+        DocumentaryBasisItem(
+            document_name=chunk.document_name,
+            page=chunk.page,
+            section=chunk.section,
+            clause_id=chunk.clause_id,
+            note=f"Derived from chunk {chunk.chunk_id}",
+        )
+        for chunk in retrieved_chunks
+    ]
+
+
+def assess_grounding(
+    *,
+    retrieved_chunks: list[RetrievedChunk],
+    citations: list[Citation],
+) -> GroundingVerification:
+    """Build a simple typed grounding assessment from evidence availability."""
+
+    if not retrieved_chunks:
+        return GroundingVerification(
+            supported=False,
+            confidence="low",
+            unsupported_claims=["No retrieval evidence was available."],
+            missing_citations=["No citations available because retrieval returned no chunks."],
+        )
+
+    if len(retrieved_chunks) >= MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE and citations:
+        return GroundingVerification(supported=True, confidence="high")
+
+    return GroundingVerification(
+        supported=True,
+        confidence="medium",
+        missing_citations=(
+            [] if citations else ["No citations were derived from retrieved evidence."]
+        ),
+    )
+
+
+def build_insufficient_evidence_response(
+    *,
+    query: str,
+    retrieved_chunks: list[RetrievedChunk],
+    limitation_note: str | None = None,
+) -> GroundedAnswerResult:
+    """Return a typed limited grounded response for insufficient evidence."""
+
+    citations = build_citations_from_chunks(retrieved_chunks)
+    verification = assess_grounding(retrieved_chunks=retrieved_chunks, citations=citations)
+    limitations = [
+        limitation_note or "Retrieved evidence is insufficient for a strong grounded answer."
+    ]
+    return GroundedAnswerResult(
+        query=query,
+        response=AdvisorDraftResponse(
+            suggested_answer=(
+                "I do not have enough grounded evidence in the retrieved documents to answer "
+                "this confidently."
+            ),
+            documentary_basis=build_documentary_basis(retrieved_chunks),
+            citations=citations,
+            confidence="low",
+            limitations=limitations,
+            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+        ),
+        verification=verification,
+    )
+
+
+def generate_grounded_answer(
+    retrieval_query: RetrievalQuery,
+    *,
+    settings: Settings | None = None,
+    retrieval_result: DocumentRetrievalResult | None = None,
+    completion_generator: callable | None = None,
+) -> GroundedAnswerResult:
+    """Generate the first typed grounded draft answer from retrieved evidence."""
+
+    resolved_settings = validate_startup_settings(
+        settings or get_settings(),
+        require_groq=True,
+        require_qdrant=True,
+    )
+    validate_embedding_settings(resolved_settings)
+    ensure_groq_backend_available()
+
+    resolved_retrieval_result = retrieval_result or retrieve_ranked_chunks(
+        retrieval_query,
+        settings=resolved_settings,
+    )
+    retrieved_chunks = resolved_retrieval_result.chunks
+    if not retrieved_chunks:
+        return build_insufficient_evidence_response(
+            query=retrieval_query.query,
+            retrieved_chunks=retrieved_chunks,
+        )
+    if len(retrieved_chunks) < MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE:
+        return build_insufficient_evidence_response(
+            query=retrieval_query.query,
+            retrieved_chunks=retrieved_chunks,
+            limitation_note=(
+                "Retrieved evidence is too limited to support a strong grounded answer."
+            ),
+        )
+
+    citations = build_citations_from_chunks(retrieved_chunks)
+    prompt = build_grounded_prompt(
+        query=retrieval_query.query,
+        retrieved_chunks=retrieved_chunks,
+    )
+    completion_fn = completion_generator or generate_grounded_completion
+    suggested_answer = completion_fn(prompt, resolved_settings)
+    verification = assess_grounding(retrieved_chunks=retrieved_chunks, citations=citations)
+
+    limitations: list[str] = []
+    confidence = verification.confidence
+    if confidence != "high":
+        limitations.append(
+            "Evidence is partial; advisor review is required before relying on this draft."
+        )
+
+    return GroundedAnswerResult(
+        query=retrieval_query.query,
+        response=AdvisorDraftResponse(
+            suggested_answer=suggested_answer,
+            documentary_basis=build_documentary_basis(retrieved_chunks),
+            citations=citations,
+            confidence=confidence,
+            limitations=limitations,
+            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+        ),
+        verification=verification,
+    )
+
+
 def get_collection_vector_size(collection_info: object) -> int | None:
     """Extract collection vector size from a Qdrant collection descriptor."""
 
@@ -1431,6 +1679,24 @@ def run_retrieval(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_grounded_answer_generation(args: argparse.Namespace) -> int:
+    """Execute the first grounded answer-generation workflow."""
+
+    retrieval_query = RetrievalQuery(
+        query=args.query,
+        top_k=args.top_k if args.top_k is not None else get_settings().top_k,
+        filters={
+            "document_type": args.document_type,
+            "product": args.product,
+            "document_name": args.document_name,
+            "version": args.version,
+        },
+    )
+    result = generate_grounded_answer(retrieval_query)
+    print(result.model_dump_json(indent=2))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint for the current offline ingestion, embedding, and indexing pipeline."""
 
@@ -1446,6 +1712,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return run_qdrant_indexing(args)
         if args.command == "retrieve-chunks":
             return run_retrieval(args)
+        if args.command == "answer-query":
+            return run_grounded_answer_generation(args)
         parser.error(f"Unsupported command: {args.command}")
     except (RuntimeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)

@@ -23,6 +23,7 @@ from contracts.responses import (
     Citation,
     ConfidenceLevel,
     DocumentaryBasisItem,
+    GroundedAnswerResult,
     GroundingVerification,
 )
 from contracts.state import AgentState
@@ -55,6 +56,7 @@ __all__ = [
     "EmbeddingIndexingRecord",
     "EmbeddingIndexingStatus",
     "EmbeddingRecord",
+    "GroundedAnswerResult",
     "GroundingVerification",
     "GroundingVerificationResult",
     "IngestionStatus",
