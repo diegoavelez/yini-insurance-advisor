@@ -78,6 +78,18 @@ Create typed configuration and shared contracts.
 - hosted and local startup expectations are explicit;
 - contracts are reusable across modules.
 
+Implementation note:
+
+- This phase is intentionally delivered through three narrow slices:
+  - `settings-env-validation`
+  - `shared-contracts-foundation`
+  - `deployment-mode-flags`
+- Provider credential activation follows this sequence unless a later spec
+  explicitly changes it:
+  - Qdrant credentials activate in `Phase 4`;
+  - Groq credentials activate in `Phase 5`;
+  - Phoenix endpoint activates in `Phase 6` when hosted tracing is enabled.
+
 ---
 
 # Phase 2 — PDF Processing Pipeline
@@ -102,6 +114,12 @@ Convert PDFs into clean Markdown.
 - processed documents are stored consistently;
 - container/runtime dependencies for Docling are validated;
 - raw and processed document storage is reproducible.
+
+Initial narrow slice:
+
+- `docling-ingestion-skeleton` covers Docling setup, admin CLI ingestion flow,
+  reproducible storage layout, failure reporting, and typed processed-document
+  contracts before later cleaning and chunking slices.
 
 ---
 
@@ -177,6 +195,11 @@ Create the first grounded QA system.
 - citations appear consistently;
 - hosted app starts reliably;
 - user-visible failure states exist.
+
+Clarification:
+
+- This phase is the first usable grounded QA slice, not the full
+  portfolio-complete MVP defined later in this roadmap.
 
 ---
 
@@ -456,7 +479,7 @@ small working pipeline
 Avoid:
 building the entire architecture first
 ```
-# MVP Completion Definition
+# Portfolio-Complete MVP Definition
 
 The MVP is complete when:
 

@@ -26,12 +26,13 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     phoenix_project_name: str = "yini-local"
     phoenix_endpoint: str | None = None
+    deployment_mode: Literal["public_mvp_demo", "internal_production"] = "public_mvp_demo"
     app_env: Literal["development", "test", "staging", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     max_input_chars: int = Field(default=4000, ge=1, le=20000)
     top_k: int = Field(default=5, ge=1, le=20)
 
-    @field_validator("app_env", "log_level", mode="before")
+    @field_validator("deployment_mode", "app_env", "log_level", mode="before")
     @classmethod
     def strip_enum_strings(cls, value: str | None) -> str | None:
         if isinstance(value, str):
@@ -76,6 +77,11 @@ class Settings(BaseSettings):
     ) -> "Settings":
         """Validate boot-time requirements for the currently enabled features."""
 
+        if self.deployment_mode == "internal_production" and self.app_env == "development":
+            raise ValueError(
+                "APP_ENV must be test, staging, or production when DEPLOYMENT_MODE "
+                "is internal_production."
+            )
         if require_groq and self.groq_api_key is None:
             raise ValueError("GROQ_API_KEY is required when Groq usage is enabled.")
         if require_qdrant:
