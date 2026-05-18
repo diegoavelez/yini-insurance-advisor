@@ -7,6 +7,7 @@ import importlib.util
 import re
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -14,9 +15,21 @@ from contracts import ChunkBundle, ChunkRecord, ProcessedDocument
 
 VERSION_PATTERN = re.compile(r"(?i)\b(?:version|versión)\b[:\s-]*([A-Za-z0-9][A-Za-z0-9._/-]*)")
 EMPTY_BOILERPLATE_LINES = {"[]", "[ ]", "[]()", "![]()", "<!-- image -->"}
-CHUNK_SCHEMA_VERSION = "v1"
+CHUNK_SCHEMA_VERSION = "v2"
 DEFAULT_CHUNK_SIZE = 1200
 DEFAULT_CHUNK_OVERLAP = 200
+CLAUSE_LIKE_PATTERN = re.compile(r"^(?:\d+[.)]|[A-Z][.)]|[IVXLCDM]+[.)])(?:\s+\S.*)?$")
+MAX_STRUCTURAL_BLOCK_LENGTH = 120
+
+
+@dataclass(frozen=True)
+class MarkdownBlock:
+    """One deterministic cleaned-markdown block with structural context."""
+
+    text: str
+    section: str | None
+    section_path: tuple[str, ...]
+    kind: str
 
 
 def parse_bool(value: str) -> bool:
@@ -217,11 +230,22 @@ def remove_artifact_if_exists(path: Path) -> None:
         path.unlink()
 
 
-def split_markdown_blocks(cleaned_markdown_text: str) -> list[tuple[str, str | None]]:
-    """Split cleaned markdown into deterministic text blocks with section context."""
+def detect_block_kind(block_text: str) -> str:
+    """Classify a cleaned-markdown block using deterministic local rules."""
 
-    section: str | None = None
-    blocks: list[tuple[str, str | None]] = []
+    first_line = block_text.splitlines()[0].strip()
+    if first_line.startswith("#"):
+        return "heading"
+    if "\n" not in block_text and CLAUSE_LIKE_PATTERN.match(first_line):
+        return "clause_marker"
+    return "paragraph"
+
+
+def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
+    """Split cleaned markdown into deterministic text blocks with structural context."""
+
+    heading_stack: list[str] = []
+    blocks: list[MarkdownBlock] = []
 
     for raw_block in cleaned_markdown_text.strip().split("\n\n"):
         block = raw_block.strip()
@@ -229,31 +253,98 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[tuple[str, str | N
             continue
         first_line = block.splitlines()[0].strip()
         if first_line.startswith("#"):
-            section = first_line.lstrip("#").strip() or section
-        blocks.append((block, section))
+            level = len(first_line) - len(first_line.lstrip("#"))
+            heading_text = first_line.lstrip("#").strip()
+            if heading_text:
+                while len(heading_stack) >= level:
+                    heading_stack.pop()
+                heading_stack.append(heading_text)
+        section = heading_stack[-1] if heading_stack else None
+        blocks.append(
+            MarkdownBlock(
+                text=block,
+                section=section,
+                section_path=tuple(heading_stack),
+                kind=detect_block_kind(block),
+            )
+        )
 
     return blocks
 
 
 def expand_large_blocks(
-    blocks: list[tuple[str, str | None]],
+    blocks: list[MarkdownBlock],
     chunk_size: int,
-) -> list[tuple[str, str | None]]:
+) -> list[MarkdownBlock]:
     """Split oversized blocks deterministically to respect chunk size."""
 
-    expanded_blocks: list[tuple[str, str | None]] = []
+    expanded_blocks: list[MarkdownBlock] = []
 
-    for block_text, section in blocks:
-        if len(block_text) <= chunk_size:
-            expanded_blocks.append((block_text, section))
+    for block in blocks:
+        if len(block.text) <= chunk_size:
+            expanded_blocks.append(block)
             continue
 
         start = 0
-        while start < len(block_text):
-            expanded_blocks.append((block_text[start : start + chunk_size], section))
+        while start < len(block.text):
+            expanded_blocks.append(
+                MarkdownBlock(
+                    text=block.text[start : start + chunk_size],
+                    section=block.section,
+                    section_path=block.section_path,
+                    kind=block.kind,
+                )
+            )
             start += chunk_size
 
     return expanded_blocks
+
+
+def can_merge_structural_pair(
+    current_block: MarkdownBlock,
+    next_block: MarkdownBlock,
+    chunk_size: int,
+) -> bool:
+    """Return whether two neighboring blocks should be kept together."""
+
+    combined_length = len(current_block.text) + 2 + len(next_block.text)
+    if combined_length > chunk_size:
+        return False
+    if current_block.kind == "heading":
+        return True
+    if current_block.kind == "clause_marker":
+        return True
+    return (
+        len(current_block.text) <= MAX_STRUCTURAL_BLOCK_LENGTH
+        and next_block.section_path == current_block.section_path
+    )
+
+
+def group_semantic_blocks(blocks: list[MarkdownBlock], chunk_size: int) -> list[MarkdownBlock]:
+    """Group related structural blocks before chunk assembly."""
+
+    grouped_blocks: list[MarkdownBlock] = []
+    index = 0
+
+    while index < len(blocks):
+        current_block = blocks[index]
+        if index + 1 < len(blocks):
+            next_block = blocks[index + 1]
+            if can_merge_structural_pair(current_block, next_block, chunk_size):
+                grouped_blocks.append(
+                    MarkdownBlock(
+                        text=f"{current_block.text}\n\n{next_block.text}",
+                        section=next_block.section or current_block.section,
+                        section_path=next_block.section_path or current_block.section_path,
+                        kind="grouped",
+                    )
+                )
+                index += 2
+                continue
+        grouped_blocks.append(current_block)
+        index += 1
+
+    return grouped_blocks
 
 
 def build_chunk_records(
@@ -270,7 +361,7 @@ def build_chunk_records(
     """Build deterministic chunk records from cleaned markdown text."""
 
     blocks = expand_large_blocks(
-        split_markdown_blocks(cleaned_markdown_text),
+        group_semantic_blocks(split_markdown_blocks(cleaned_markdown_text), chunk_size),
         chunk_size,
     )
     if not blocks:
@@ -281,24 +372,28 @@ def build_chunk_records(
     chunk_index = 0
 
     while start_index < len(blocks):
-        current_entries: list[tuple[str, str | None]] = []
+        current_entries: list[MarkdownBlock] = []
         current_length = 0
         end_index = start_index
 
         while end_index < len(blocks):
-            block_text, section = blocks[end_index]
+            block = blocks[end_index]
             separator_length = 2 if current_entries else 0
-            next_length = current_length + separator_length + len(block_text)
+            next_length = current_length + separator_length + len(block.text)
             if current_entries and next_length > chunk_size:
                 break
-            current_entries.append((block_text, section))
+            current_entries.append(block)
             current_length = next_length
             end_index += 1
 
-        chunk_text = "\n\n".join(entry[0] for entry in current_entries)
+        chunk_text = "\n\n".join(entry.text for entry in current_entries)
         chunk_section = next(
-            (entry[1] for entry in reversed(current_entries) if entry[1]),
+            (entry.section for entry in reversed(current_entries) if entry.section),
             None,
+        )
+        chunk_section_path = next(
+            (list(entry.section_path) for entry in reversed(current_entries) if entry.section_path),
+            [],
         )
         chunk_records.append(
             ChunkRecord(
@@ -312,6 +407,7 @@ def build_chunk_records(
                 chunk_index=chunk_index,
                 chunk_schema_version=CHUNK_SCHEMA_VERSION,
                 section=chunk_section,
+                section_path=chunk_section_path,
             )
         )
         chunk_index += 1
@@ -323,7 +419,7 @@ def build_chunk_records(
         overlap_length = 0
         cursor = len(current_entries) - 1
         while cursor >= 0 and overlap_length < chunk_overlap:
-            overlap_length += len(current_entries[cursor][0])
+            overlap_length += len(current_entries[cursor].text)
             overlap_block_count += 1
             cursor -= 1
 
@@ -504,7 +600,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entrypoint for the current Phase 2 and early Phase 3 pipeline."""
+    """CLI entrypoint for the current Phase 2 and Phase 3 chunking pipeline."""
 
     parser = build_parser()
     args = parser.parse_args(argv)

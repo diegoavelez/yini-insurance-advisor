@@ -41,8 +41,9 @@ class ChunkRecord(BaseModel):
     cleaned_markdown_output_path: str = Field(min_length=1)
     text: str = Field(min_length=1)
     chunk_index: int = Field(ge=0)
-    chunk_schema_version: str = Field(default="v1", min_length=1)
+    chunk_schema_version: str = Field(default="v2", min_length=1)
     section: str | None = None
+    section_path: list[str] = Field(default_factory=list)
 
 
 class ChunkBundle(BaseModel):
@@ -56,7 +57,7 @@ class ChunkBundle(BaseModel):
     chunk_artifact_path: str = Field(min_length=1)
     chunk_size: int = Field(ge=1)
     chunk_overlap: int = Field(ge=0)
-    chunk_schema_version: str = Field(default="v1", min_length=1)
+    chunk_schema_version: str = Field(default="v2", min_length=1)
     chunks: list[ChunkRecord] = Field(default_factory=list)
 
 

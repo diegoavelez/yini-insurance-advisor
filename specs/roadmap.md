@@ -154,7 +154,13 @@ Create retrieval-ready chunks.
 - metadata remains traceable;
 - re-chunking behavior is predictable across deployments.
 
-Initial narrow slice:
+Implementation note:
+
+- This phase is intentionally delivered through multiple narrow slices:
+  - `deterministic-chunk-contracts-and-persistence`
+  - `semantic-boundary-aware-chunk-refinement`
+
+Initial narrow slices:
 
 - `deterministic-chunk-contracts-and-persistence` should cover:
   - the first chunk contract for cleaned Markdown outputs;
@@ -162,6 +168,12 @@ Initial narrow slice:
   - deterministic chunk identifiers;
   - metadata propagation from processed documents into chunks;
   - chunk persistence to local reproducible artifacts before Qdrant indexing.
+- `semantic-boundary-aware-chunk-refinement` should cover:
+  - heading-aware and clause-safe chunk boundary refinement;
+  - stricter prevention of arbitrary clause splitting;
+  - improved section metadata propagation into chunk records;
+  - stable chunk schema version advancement when boundary logic changes;
+  - rerun behavior that preserves determinism while improving chunk quality.
 
 ---
 

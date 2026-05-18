@@ -17,6 +17,10 @@
 - Add the first `Phase 3` slice for deterministic chunk contracts and local
   chunk persistence, including explicit chunk configuration, stable chunk ids,
   propagated traceability metadata, and persisted per-document chunk bundles.
+- Add the `semantic-boundary-aware-chunk-refinement` Phase 3 slice with
+  heading-aware and clause-safe chunk boundaries, explicit `v2` chunk schema
+  versioning, richer `section_path` metadata, and failure-path validation for
+  refined chunk generation.
 
 ## 2026-05-17
 
