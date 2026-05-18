@@ -9,6 +9,8 @@
   Python `3.11` to align the actual environment with the documented tech stack.
 - Update `README.md` to reflect completed `Phase 0`, completed `Phase 1`, and
   the first implemented `Phase 2` ingestion slice.
+- Tighten spec alignment with explicit CLI usage docs and added tests for
+  append-only manifest reruns and invalid ingestion status values.
 
 ## 2026-05-17
 
