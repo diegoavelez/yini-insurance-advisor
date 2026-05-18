@@ -1,15 +1,19 @@
-"""Offline PDF ingestion CLI for the first Phase 2 slice."""
+"""Offline PDF ingestion CLI for the current Phase 2 processing slices."""
 
 from __future__ import annotations
 
 import argparse
 import importlib.util
+import re
 import sys
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
 from contracts import ProcessedDocument
+
+VERSION_PATTERN = re.compile(r"(?i)\b(?:version|versión)\b[:\s-]*([A-Za-z0-9][A-Za-z0-9._/-]*)")
+EMPTY_BOILERPLATE_LINES = {"[]", "[ ]", "[]()", "![]()", "<!-- image -->"}
 
 
 def parse_bool(value: str) -> bool:
@@ -75,12 +79,69 @@ def convert_pdf_to_markdown(source_pdf_path: Path) -> str:
     raise RuntimeError("Docling conversion result did not expose markdown output.")
 
 
+def clean_markdown(markdown_text: str) -> str:
+    """Apply conservative, deterministic cleaning to Docling markdown."""
+
+    normalized_text = markdown_text.replace("\r\n", "\n").replace("\r", "\n")
+    cleaned_lines: list[str] = []
+    previous_line_blank = False
+
+    for raw_line in normalized_text.split("\n"):
+        line = raw_line.rstrip()
+        stripped_line = line.strip()
+
+        if stripped_line in EMPTY_BOILERPLATE_LINES:
+            continue
+
+        if not stripped_line:
+            if previous_line_blank:
+                continue
+            cleaned_lines.append("")
+            previous_line_blank = True
+            continue
+
+        cleaned_lines.append(line)
+        previous_line_blank = False
+
+    cleaned_text = "\n".join(cleaned_lines).strip()
+    if not cleaned_text:
+        raise RuntimeError("Cleaned markdown is empty after conservative processing.")
+    return f"{cleaned_text}\n"
+
+
+def extract_document_metadata(
+    source_pdf_path: Path,
+    cleaned_markdown_text: str,
+) -> tuple[str, str | None]:
+    """Extract low-risk document metadata or return deterministic fallbacks."""
+
+    document_name = source_pdf_path.stem
+    document_version = None
+
+    for line in cleaned_markdown_text.splitlines()[:20]:
+        stripped_line = line.strip()
+        if stripped_line.startswith("#"):
+            heading_text = stripped_line.lstrip("#").strip()
+            if heading_text:
+                document_name = heading_text
+                break
+
+    version_match = VERSION_PATTERN.search("\n".join(cleaned_markdown_text.splitlines()[:40]))
+    if version_match:
+        document_version = version_match.group(1)
+
+    return document_name, document_version
+
+
 def build_processed_document(
     *,
     source_pdf_path: Path,
     markdown_output_path: Path,
+    cleaned_markdown_output_path: Path,
     processed_output_path: Path,
     ingestion_status: str,
+    document_name: str | None = None,
+    document_version: str | None = None,
     error_message: str | None = None,
 ) -> ProcessedDocument:
     """Build one deterministic processed-document record."""
@@ -90,9 +151,10 @@ def build_processed_document(
         source_pdf_id=source_pdf_id,
         source_pdf_path=str(source_pdf_path),
         markdown_output_path=str(markdown_output_path),
+        cleaned_markdown_output_path=str(cleaned_markdown_output_path),
         processed_output_path=str(processed_output_path),
-        document_name=source_pdf_id,
-        document_version=None,
+        document_name=document_name or source_pdf_id,
+        document_version=document_version,
         ingestion_status=ingestion_status,
         error_message=error_message,
         ingested_at=datetime.now(UTC),
@@ -121,6 +183,13 @@ def iter_source_pdfs(input_dir: Path, glob_pattern: str) -> list[Path]:
     return sorted(path for path in input_dir.glob(glob_pattern) if path.is_file())
 
 
+def remove_artifact_if_exists(path: Path) -> None:
+    """Delete an artifact path when it already exists."""
+
+    if path.exists():
+        path.unlink()
+
+
 def ingest_one_pdf(
     *,
     source_pdf_path: Path,
@@ -131,25 +200,44 @@ def ingest_one_pdf(
     """Ingest one source PDF according to the deterministic storage rules."""
 
     markdown_output_path = markdown_dir / f"{source_pdf_path.stem}.md"
+    cleaned_markdown_output_path = processed_dir / f"{source_pdf_path.stem}.cleaned.md"
     processed_output_path = processed_dir / f"{source_pdf_path.stem}.json"
 
-    if not overwrite and markdown_output_path.exists() and processed_output_path.exists():
+    if (
+        not overwrite
+        and markdown_output_path.exists()
+        and cleaned_markdown_output_path.exists()
+        and processed_output_path.exists()
+    ):
         return build_processed_document(
             source_pdf_path=source_pdf_path,
             markdown_output_path=markdown_output_path,
+            cleaned_markdown_output_path=cleaned_markdown_output_path,
             processed_output_path=processed_output_path,
             ingestion_status="skipped",
         )
 
-    markdown_text = convert_pdf_to_markdown(source_pdf_path)
+    raw_markdown_text = convert_pdf_to_markdown(source_pdf_path)
     markdown_output_path.parent.mkdir(parents=True, exist_ok=True)
-    markdown_output_path.write_text(markdown_text, encoding="utf-8")
+    markdown_output_path.write_text(raw_markdown_text, encoding="utf-8")
+
+    cleaned_markdown_text = clean_markdown(raw_markdown_text)
+    document_name, document_version = extract_document_metadata(
+        source_pdf_path,
+        cleaned_markdown_text,
+    )
+
+    cleaned_markdown_output_path.parent.mkdir(parents=True, exist_ok=True)
+    cleaned_markdown_output_path.write_text(cleaned_markdown_text, encoding="utf-8")
 
     record = build_processed_document(
         source_pdf_path=source_pdf_path,
         markdown_output_path=markdown_output_path,
+        cleaned_markdown_output_path=cleaned_markdown_output_path,
         processed_output_path=processed_output_path,
         ingestion_status="succeeded",
+        document_name=document_name,
+        document_version=document_version,
     )
     write_processed_metadata(record, processed_output_path)
     return record
@@ -189,10 +277,15 @@ def run_ingestion(args: argparse.Namespace) -> int:
             )
         except Exception as exc:
             encountered_failures = True
+            cleaned_markdown_output_path = processed_dir / f"{source_pdf_path.stem}.cleaned.md"
+            processed_output_path = processed_dir / f"{source_pdf_path.stem}.json"
+            remove_artifact_if_exists(cleaned_markdown_output_path)
+            remove_artifact_if_exists(processed_output_path)
             record = build_processed_document(
                 source_pdf_path=source_pdf_path,
                 markdown_output_path=markdown_dir / f"{source_pdf_path.stem}.md",
-                processed_output_path=processed_dir / f"{source_pdf_path.stem}.json",
+                cleaned_markdown_output_path=cleaned_markdown_output_path,
+                processed_output_path=processed_output_path,
                 ingestion_status="failed",
                 error_message=str(exc),
             )
