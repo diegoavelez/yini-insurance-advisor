@@ -22,6 +22,7 @@ def reset_settings_cache() -> None:
 def test_settings_defaults() -> None:
     settings = Settings(_env_file=None)
 
+    assert settings.deployment_mode == "public_mvp_demo"
     assert settings.app_env == "development"
     assert settings.log_level == "INFO"
     assert settings.top_k == 5
@@ -30,9 +31,11 @@ def test_settings_defaults() -> None:
 def test_settings_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TOP_K", "7")
     monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("DEPLOYMENT_MODE", "internal_production")
 
     settings = Settings(_env_file=None)
 
+    assert settings.deployment_mode == "internal_production"
     assert settings.top_k == 7
     assert settings.app_env == "test"
 
@@ -40,6 +43,11 @@ def test_settings_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_invalid_app_env_fails() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, app_env="invalid")
+
+
+def test_invalid_deployment_mode_fails() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, deployment_mode="public")
 
 
 def test_invalid_log_level_fails() -> None:
@@ -79,6 +87,25 @@ def test_blank_required_strings_fail() -> None:
 
 def test_startup_validation_accepts_phase_one_defaults() -> None:
     settings = Settings(_env_file=None)
+
+    validated = validate_startup_settings(settings)
+
+    assert validated is settings
+
+
+def test_internal_production_mode_requires_non_development_env() -> None:
+    settings = Settings(
+        _env_file=None,
+        deployment_mode="internal_production",
+        app_env="development",
+    )
+
+    with pytest.raises(ValueError, match="DEPLOYMENT_MODE"):
+        validate_startup_settings(settings)
+
+
+def test_internal_production_mode_allows_non_development_env() -> None:
+    settings = Settings(_env_file=None, deployment_mode="internal_production", app_env="staging")
 
     validated = validate_startup_settings(settings)
 

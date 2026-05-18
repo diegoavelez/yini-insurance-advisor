@@ -97,6 +97,19 @@ For Phase 1 startup, only generic app configuration must be valid by default.
 Provider-specific secrets become required only when the corresponding subsystem
 or provider is explicitly enabled by future features.
 
+### Credential Activation Timeline
+
+Provider-specific settings remain optional in this slice, but later phases
+should activate them on this schedule unless a future spec explicitly revises
+it:
+
+- `QDRANT_URL` and `QDRANT_API_KEY` become required in `Phase 4 — Embeddings and Vector Store`;
+- `GROQ_API_KEY` becomes required in `Phase 5 — Basic RAG MVP`;
+- `PHOENIX_ENDPOINT` becomes required in `Phase 6 — Baseline Observability`
+  when hosted tracing is enabled.
+
+Before those phases, startup validation should not require those values.
+
 ### Startup Validation Seam
 
 Add one explicit startup validation seam centralized in `core.config`, either:

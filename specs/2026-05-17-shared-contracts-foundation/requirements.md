@@ -101,6 +101,20 @@ The state model must align with the PRD recommended `AgentState` and keep the
 fields explicit and typed. The model should include the core shared state fields
 but avoid embedding runtime-only objects.
 
+### Contract Stability Expectation
+
+These contracts should be treated as the stable shared vocabulary for later
+Phase 2-8 slices.
+
+Allowed future changes should prefer:
+
+- additive fields;
+- new wrapper models;
+- backward-compatible refinements.
+
+Avoid casual renames or structural rewrites once later retrieval, tool, and
+workflow slices start importing these contracts.
+
 ## Acceptance Criteria
 
 - Contracts are implemented as Pydantic models.
