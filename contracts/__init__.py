@@ -1,6 +1,7 @@
 """Shared contract exports for Yini."""
 
 from contracts.documents import Clause, ClauseCategory, ComparisonItem, RetrievedChunk
+from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.responses import (
     AdvisorDraftResponse,
     Citation,
@@ -32,7 +33,9 @@ __all__ = [
     "DocumentaryBasisItem",
     "GroundingVerification",
     "GroundingVerificationResult",
+    "IngestionStatus",
     "PolicyComparisonResult",
+    "ProcessedDocument",
     "RetrievalQuery",
     "RetrievedChunk",
 ]

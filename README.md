@@ -4,9 +4,9 @@ Yini is an internal assistant designed to help senior insurance advisors
 retrieve, analyze, compare, and summarize information from official Sura
 insurance policy and procedure documents.
 
-This repository currently contains the Phase 0 foundation described in
-`PRD.md`: constitution docs, project structure, local tooling, configuration
-bootstrap, logging bootstrap, tests, and deployment skeletons.
+This repository now contains the completed `Phase 0` foundation, the full
+`Phase 1` configuration and shared-contract slices, and the first narrow
+implementation slice of `Phase 2` for Docling-based PDF ingestion.
 
 ## Source Documents
 
@@ -17,9 +17,16 @@ bootstrap, logging bootstrap, tests, and deployment skeletons.
 
 ## Current Status
 
-- Phase 0 repository foundation is scaffolded.
-- Product logic is not implemented yet.
-- The app entry point is a placeholder that validates configuration and logging.
+- `Phase 0` foundation is complete.
+- `Phase 1` is complete through settings validation, deployment mode flags, and
+  shared typed contracts.
+- The first narrow `Phase 2` slice is implemented:
+  - admin-only Docling ingestion CLI
+  - deterministic raw/markdown/processed storage conventions
+  - typed processed-document contracts
+  - manifest-based ingestion reporting
+- The app UI remains a placeholder entry point while ingestion and retrieval are
+  built incrementally.
 
 ## Local Setup
 
@@ -50,19 +57,20 @@ make app
 ```text
 app/        Placeholder application entry point
 agents/     Future LangGraph agents
-contracts/  Shared typed contracts
+contracts/  Shared typed contracts and ingestion metadata
 core/       Settings and logging bootstrap
 data/       Raw, markdown, processed, and eval data
 deploy/     Container and startup files
 docs/       Supporting durable documentation
 mcp/        Future MCP server/client modules
 ops/        Guardrails and observability modules
-rag/        Future ingestion and retrieval pipeline
+rag/        Ingestion and future retrieval pipeline
 specs/      Constitution and implementation specs
 tests/      Smoke tests and future test coverage
 ```
 
 ## Next Milestones
 
-The next implementation milestone is Phase 1 from `specs/roadmap.md`:
-typed configuration and shared contracts.
+The next implementation work continues `Phase 2` from `specs/roadmap.md`:
+clean Markdown normalization, metadata extraction, and the remaining PDF
+processing pipeline slices after the `docling-ingestion-skeleton` foundation.

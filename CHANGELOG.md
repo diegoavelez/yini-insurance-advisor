@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-05-18
+
+- Implement the `docling-ingestion-skeleton` Phase 2 slice with an admin-only
+  CLI entrypoint, deterministic output paths, append-only manifest logging, and
+  typed processed-document contracts.
+- Add Docling as a project dependency and rebuild the repo’s local `.venv` on
+  Python `3.11` to align the actual environment with the documented tech stack.
+- Update `README.md` to reflect completed `Phase 0`, completed `Phase 1`, and
+  the first implemented `Phase 2` ingestion slice.
+
 ## 2026-05-17
 
 - `chore: phase 0 foundation scaffold`
