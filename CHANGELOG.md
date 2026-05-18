@@ -25,6 +25,11 @@
   typed embedding artifacts, config-driven `sentence-transformers` usage,
   canonical local persistence under `data/processed/embeddings`, and explicit
   failed-manifest behavior for malformed chunk artifacts.
+- Add the second `Phase 4` slice for Qdrant indexing, including collection
+  bootstrap and compatibility checks, deterministic point mapping from local
+  embedding artifacts, idempotent upserts, retry/backoff behavior, and explicit
+  indexing manifest coverage for permanent failures and multi-artifact
+  continuation.
 
 ## 2026-05-17
 

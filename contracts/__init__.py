@@ -12,6 +12,8 @@ from contracts.embeddings import (
     EmbeddingBundle,
     EmbeddingGenerationRecord,
     EmbeddingGenerationStatus,
+    EmbeddingIndexingRecord,
+    EmbeddingIndexingStatus,
     EmbeddingRecord,
     VectorPayload,
 )
@@ -50,6 +52,8 @@ __all__ = [
     "EmbeddingBundle",
     "EmbeddingGenerationRecord",
     "EmbeddingGenerationStatus",
+    "EmbeddingIndexingRecord",
+    "EmbeddingIndexingStatus",
     "EmbeddingRecord",
     "GroundingVerification",
     "GroundingVerificationResult",

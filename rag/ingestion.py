@@ -7,6 +7,7 @@ import importlib
 import importlib.util
 import re
 import sys
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -18,11 +19,12 @@ from contracts import (
     ChunkRecord,
     EmbeddingBundle,
     EmbeddingGenerationRecord,
+    EmbeddingIndexingRecord,
     EmbeddingRecord,
     ProcessedDocument,
     VectorPayload,
 )
-from core.config import Settings, get_settings
+from core.config import Settings, get_settings, validate_startup_settings
 
 VERSION_PATTERN = re.compile(r"(?i)\b(?:version|versión)\b[:\s-]*([A-Za-z0-9][A-Za-z0-9._/-]*)")
 EMPTY_BOILERPLATE_LINES = {"[]", "[ ]", "[]()", "![]()", "<!-- image -->"}
@@ -34,6 +36,9 @@ MAX_STRUCTURAL_BLOCK_LENGTH = 120
 EMBEDDING_SCHEMA_VERSION = "v1"
 SUPPORTED_EMBEDDING_PROVIDER = "sentence-transformers"
 DEFAULT_EMBEDDING_DIR = "data/processed/embeddings"
+DEFAULT_QDRANT_INDEXING_MANIFEST = "data/processed/qdrant-indexing-manifest.jsonl"
+DEFAULT_QDRANT_MAX_RETRIES = 3
+DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
 
 
 @dataclass(frozen=True)
@@ -103,6 +108,22 @@ def build_parser() -> argparse.ArgumentParser:
     embedding_parser.add_argument("--glob", default="*.chunks.json")
     embedding_parser.add_argument("--overwrite", type=parse_bool, default=False)
     embedding_parser.add_argument("--fail-fast", type=parse_bool, default=False)
+
+    qdrant_parser = subparsers.add_parser("index-embeddings")
+    qdrant_parser.add_argument("--embedding-dir", default=DEFAULT_EMBEDDING_DIR)
+    qdrant_parser.add_argument("--manifest-path", default=DEFAULT_QDRANT_INDEXING_MANIFEST)
+    qdrant_parser.add_argument("--glob", default="*.embeddings.json")
+    qdrant_parser.add_argument("--fail-fast", type=parse_bool, default=False)
+    qdrant_parser.add_argument(
+        "--max-retries",
+        type=parse_non_negative_int,
+        default=DEFAULT_QDRANT_MAX_RETRIES,
+    )
+    qdrant_parser.add_argument(
+        "--retry-backoff-seconds",
+        type=float,
+        default=DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS,
+    )
     return parser
 
 
@@ -150,6 +171,39 @@ def ensure_embedding_backend_available(settings: Settings) -> None:
             "Sentence Transformers is not installed. Install project dependencies "
             "before running embedding generation."
         )
+
+
+def qdrant_backend_is_available() -> bool:
+    """Return whether the Qdrant client is importable."""
+
+    return importlib.util.find_spec("qdrant_client") is not None
+
+
+def ensure_qdrant_backend_available() -> None:
+    """Fail loudly when the Qdrant client is unavailable."""
+
+    if not qdrant_backend_is_available():
+        raise RuntimeError(
+            "qdrant-client is not installed. Install project dependencies before "
+            "running Qdrant indexing."
+        )
+
+
+def get_qdrant_models():
+    """Return qdrant-client models lazily to keep import costs scoped."""
+
+    qdrant_http = importlib.import_module("qdrant_client.http.models")
+    return qdrant_http
+
+
+def create_qdrant_client(settings: Settings):
+    """Create a configured Qdrant client from validated settings."""
+
+    qdrant_client = importlib.import_module("qdrant_client")
+    return qdrant_client.QdrantClient(
+        url=settings.qdrant_url,
+        api_key=settings.qdrant_api_key.get_secret_value() if settings.qdrant_api_key else None,
+    )
 
 
 @lru_cache(maxsize=4)
@@ -669,6 +723,18 @@ def append_embedding_manifest_record(
         manifest_file.write("\n")
 
 
+def append_indexing_manifest_record(
+    manifest_path: Path,
+    record: EmbeddingIndexingRecord,
+) -> None:
+    """Append one JSONL indexing manifest record."""
+
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    with manifest_path.open("a", encoding="utf-8") as manifest_file:
+        manifest_file.write(record.model_dump_json())
+        manifest_file.write("\n")
+
+
 def iter_chunk_artifacts(chunk_dir: Path, glob_pattern: str) -> list[Path]:
     """Return sorted matching chunk artifacts under the configured directory."""
 
@@ -679,6 +745,216 @@ def load_chunk_bundle(chunk_artifact_path: Path) -> ChunkBundle:
     """Load one persisted chunk bundle."""
 
     return ChunkBundle.model_validate_json(chunk_artifact_path.read_text(encoding="utf-8"))
+
+
+def load_embedding_bundle(embedding_artifact_path: Path) -> EmbeddingBundle:
+    """Load one persisted embedding bundle."""
+
+    return EmbeddingBundle.model_validate_json(embedding_artifact_path.read_text(encoding="utf-8"))
+
+
+def iter_embedding_artifacts(embedding_dir: Path, glob_pattern: str) -> list[Path]:
+    """Return sorted matching embedding artifacts under the configured directory."""
+
+    return sorted(path for path in embedding_dir.glob(glob_pattern) if path.is_file())
+
+
+def build_qdrant_point_id(embedding_record: EmbeddingRecord) -> str:
+    """Return the deterministic Qdrant point id for one embedding record."""
+
+    return embedding_record.chunk_id
+
+
+def build_qdrant_point_payload(embedding_record: EmbeddingRecord) -> dict[str, object]:
+    """Map a typed embedding record into a Qdrant payload."""
+
+    return {
+        "chunk_id": embedding_record.chunk_id,
+        "source_pdf_id": embedding_record.source_pdf_id,
+        "chunk_schema_version": embedding_record.chunk_schema_version,
+        "embedding_provider": embedding_record.embedding_provider,
+        "embedding_model": embedding_record.embedding_model,
+        "document_name": embedding_record.payload.document_name,
+        "document_version": embedding_record.payload.document_version,
+        "chunk_index": embedding_record.payload.chunk_index,
+        "section": embedding_record.payload.section,
+        "section_path": embedding_record.payload.section_path,
+        "text": embedding_record.payload.text,
+    }
+
+
+def build_qdrant_points(embedding_bundle: EmbeddingBundle) -> list[object]:
+    """Map one embedding bundle into deterministic Qdrant points."""
+
+    qdrant_models = get_qdrant_models()
+    return [
+        qdrant_models.PointStruct(
+            id=build_qdrant_point_id(embedding_record),
+            vector=embedding_record.vector,
+            payload=build_qdrant_point_payload(embedding_record),
+        )
+        for embedding_record in embedding_bundle.embeddings
+    ]
+
+
+def get_collection_vector_size(collection_info: object) -> int | None:
+    """Extract collection vector size from a Qdrant collection descriptor."""
+
+    config = getattr(collection_info, "config", None)
+    params = getattr(config, "params", None)
+    vectors = getattr(params, "vectors", None)
+    if vectors is None:
+        return None
+    size = getattr(vectors, "size", None)
+    if isinstance(size, int):
+        return size
+    if isinstance(vectors, dict):
+        first_vector = next(iter(vectors.values()), None)
+        nested_size = getattr(first_vector, "size", None)
+        if isinstance(nested_size, int):
+            return nested_size
+    return None
+
+
+def ensure_qdrant_collection(client: object, settings: Settings, vector_size: int) -> None:
+    """Create or validate the target Qdrant collection."""
+
+    qdrant_models = get_qdrant_models()
+
+    try:
+        collection_info = client.get_collection(settings.qdrant_collection)
+    except Exception:
+        client.create_collection(
+            collection_name=settings.qdrant_collection,
+            vectors_config=qdrant_models.VectorParams(
+                size=vector_size,
+                distance=qdrant_models.Distance.COSINE,
+            ),
+        )
+        collection_info = client.get_collection(settings.qdrant_collection)
+
+    configured_size = get_collection_vector_size(collection_info)
+    if configured_size != vector_size:
+        raise RuntimeError(
+            "Configured Qdrant collection is incompatible with the embedding vector dimension."
+        )
+
+
+def build_indexing_record(
+    *,
+    embedding_bundle: EmbeddingBundle,
+    settings: Settings,
+    indexing_status: str,
+    indexed_point_count: int,
+    error_message: str | None = None,
+) -> EmbeddingIndexingRecord:
+    """Build one indexing manifest record."""
+
+    return EmbeddingIndexingRecord(
+        source_pdf_id=embedding_bundle.source_pdf_id,
+        embedding_artifact_path=embedding_bundle.embedding_artifact_path,
+        qdrant_collection=settings.qdrant_collection,
+        indexed_point_count=indexed_point_count,
+        indexing_status=indexing_status,
+        error_message=error_message,
+        indexed_at=datetime.now(UTC),
+    )
+
+
+def build_failed_indexing_record_from_artifact_path(
+    *,
+    embedding_artifact_path: Path,
+    settings: Settings,
+    error_message: str,
+) -> EmbeddingIndexingRecord:
+    """Build a failed indexing record without a valid embedding bundle."""
+
+    source_pdf_id = embedding_artifact_path.name.removesuffix(".embeddings.json")
+    return EmbeddingIndexingRecord(
+        source_pdf_id=source_pdf_id,
+        embedding_artifact_path=str(embedding_artifact_path),
+        qdrant_collection=settings.qdrant_collection,
+        indexed_point_count=0,
+        indexing_status="failed",
+        error_message=error_message,
+        indexed_at=datetime.now(UTC),
+    )
+
+
+def is_transient_qdrant_error(exc: Exception) -> bool:
+    """Return whether an indexing exception is retryable."""
+
+    return bool(
+        getattr(exc, "transient", False)
+        or isinstance(exc, TimeoutError)
+        or isinstance(exc, ConnectionError)
+    )
+
+
+def sleep_with_backoff(delay_seconds: float) -> None:
+    """Sleep for the configured retry backoff duration."""
+
+    time.sleep(delay_seconds)
+
+
+def upsert_points_with_retry(
+    *,
+    client: object,
+    settings: Settings,
+    points: list[object],
+    max_retries: int,
+    retry_backoff_seconds: float,
+) -> None:
+    """Upsert Qdrant points with deterministic retry behavior."""
+
+    attempt = 0
+    while True:
+        try:
+            client.upsert(collection_name=settings.qdrant_collection, points=points, wait=True)
+            return
+        except Exception as exc:
+            if attempt >= max_retries or not is_transient_qdrant_error(exc):
+                raise
+            sleep_with_backoff(retry_backoff_seconds * (2**attempt))
+            attempt += 1
+
+
+def smoke_validate_indexing(client: object, settings: Settings, expected_points: int) -> None:
+    """Run a narrow operational smoke check after indexing."""
+
+    count_response = client.count(collection_name=settings.qdrant_collection, exact=True)
+    count_value = getattr(count_response, "count", None)
+    if not isinstance(count_value, int) or count_value < min(expected_points, 1):
+        raise RuntimeError("Qdrant smoke validation did not confirm indexed points.")
+
+
+def index_embedding_bundle(
+    *,
+    embedding_artifact_path: Path,
+    client: object,
+    settings: Settings,
+    max_retries: int,
+    retry_backoff_seconds: float,
+) -> EmbeddingIndexingRecord:
+    """Index one embedding bundle into Qdrant."""
+
+    embedding_bundle = load_embedding_bundle(embedding_artifact_path)
+    ensure_qdrant_collection(client, settings, embedding_bundle.vector_dimension)
+    points = build_qdrant_points(embedding_bundle)
+    upsert_points_with_retry(
+        client=client,
+        settings=settings,
+        points=points,
+        max_retries=max_retries,
+        retry_backoff_seconds=retry_backoff_seconds,
+    )
+    smoke_validate_indexing(client, settings, len(points))
+    return build_indexing_record(
+        embedding_bundle=embedding_bundle,
+        settings=settings,
+        indexing_status="succeeded",
+        indexed_point_count=len(points),
+    )
 
 
 def generate_embeddings_for_chunk_bundle(
@@ -917,8 +1193,74 @@ def run_embedding_generation(args: argparse.Namespace) -> int:
     return 0 if not (encountered_failures and args.fail_fast) else 1
 
 
+def run_qdrant_indexing(args: argparse.Namespace) -> int:
+    """Execute the offline Qdrant indexing flow."""
+
+    embedding_dir = Path(args.embedding_dir)
+    manifest_path = Path(args.manifest_path)
+
+    if not embedding_dir.exists() or not embedding_dir.is_dir():
+        print(f"Embedding directory does not exist: {embedding_dir}", file=sys.stderr)
+        return 2
+
+    settings = validate_startup_settings(get_settings(), require_qdrant=True)
+    ensure_qdrant_backend_available()
+
+    embedding_artifacts = iter_embedding_artifacts(embedding_dir, args.glob)
+    if not embedding_artifacts:
+        print(
+            f"No embedding artifacts matched glob '{args.glob}' in embedding directory: "
+            f"{embedding_dir}",
+            file=sys.stderr,
+        )
+        return 2
+
+    client = create_qdrant_client(settings)
+    encountered_failures = False
+
+    for embedding_artifact_path in embedding_artifacts:
+        try:
+            record = index_embedding_bundle(
+                embedding_artifact_path=embedding_artifact_path,
+                client=client,
+                settings=settings,
+                max_retries=args.max_retries,
+                retry_backoff_seconds=args.retry_backoff_seconds,
+            )
+        except Exception as exc:
+            encountered_failures = True
+            try:
+                embedding_bundle = load_embedding_bundle(embedding_artifact_path)
+                record = build_indexing_record(
+                    embedding_bundle=embedding_bundle,
+                    settings=settings,
+                    indexing_status="failed",
+                    indexed_point_count=0,
+                    error_message=str(exc),
+                )
+            except Exception as load_exc:
+                record = build_failed_indexing_record_from_artifact_path(
+                    embedding_artifact_path=embedding_artifact_path,
+                    settings=settings,
+                    error_message=f"{exc}; embedding artifact load failed: {load_exc}",
+                )
+
+        append_indexing_manifest_record(manifest_path, record)
+
+        if record.indexing_status == "failed":
+            print(
+                f"Failed to index embeddings for {embedding_artifact_path.name}: "
+                f"{record.error_message}",
+                file=sys.stderr,
+            )
+            if args.fail_fast:
+                return 1
+
+    return 0 if not (encountered_failures and args.fail_fast) else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entrypoint for the current offline ingestion and embedding pipeline."""
+    """CLI entrypoint for the current offline ingestion, embedding, and indexing pipeline."""
 
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -928,8 +1270,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             return run_ingestion(args)
         if args.command == "generate-embeddings":
             return run_embedding_generation(args)
+        if args.command == "index-embeddings":
+            return run_qdrant_indexing(args)
         parser.error(f"Unsupported command: {args.command}")
-    except RuntimeError as exc:
+    except (RuntimeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 

@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 EmbeddingGenerationStatus = Literal["succeeded", "failed", "skipped"]
+EmbeddingIndexingStatus = Literal["succeeded", "failed"]
 
 
 class VectorPayload(BaseModel):
@@ -75,4 +76,22 @@ class EmbeddingGenerationRecord(BaseModel):
     def validate_failed_records(self) -> EmbeddingGenerationRecord:
         if self.generation_status == "failed" and not self.error_message:
             raise ValueError("failed embedding records must include error_message")
+        return self
+
+
+class EmbeddingIndexingRecord(BaseModel):
+    """Manifest record for one Qdrant indexing attempt."""
+
+    source_pdf_id: str = Field(min_length=1)
+    embedding_artifact_path: str = Field(min_length=1)
+    qdrant_collection: str = Field(min_length=1)
+    indexed_point_count: int = Field(ge=0)
+    indexing_status: EmbeddingIndexingStatus
+    error_message: str | None = None
+    indexed_at: datetime
+
+    @model_validator(mode="after")
+    def validate_failed_records(self) -> EmbeddingIndexingRecord:
+        if self.indexing_status == "failed" and not self.error_message:
+            raise ValueError("failed indexing records must include error_message")
         return self
