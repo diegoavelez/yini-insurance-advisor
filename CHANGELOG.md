@@ -21,6 +21,10 @@
   heading-aware and clause-safe chunk boundaries, explicit `v2` chunk schema
   versioning, richer `section_path` metadata, and failure-path validation for
   refined chunk generation.
+- Add the first `Phase 4` slice for local embedding generation, including
+  typed embedding artifacts, config-driven `sentence-transformers` usage,
+  canonical local persistence under `data/processed/embeddings`, and explicit
+  failed-manifest behavior for malformed chunk artifacts.
 
 ## 2026-05-17
 

@@ -3,15 +3,26 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import importlib.util
 import re
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 
-from contracts import ChunkBundle, ChunkRecord, ProcessedDocument
+from contracts import (
+    ChunkBundle,
+    ChunkRecord,
+    EmbeddingBundle,
+    EmbeddingGenerationRecord,
+    EmbeddingRecord,
+    ProcessedDocument,
+    VectorPayload,
+)
+from core.config import Settings, get_settings
 
 VERSION_PATTERN = re.compile(r"(?i)\b(?:version|versión)\b[:\s-]*([A-Za-z0-9][A-Za-z0-9._/-]*)")
 EMPTY_BOILERPLATE_LINES = {"[]", "[ ]", "[]()", "![]()", "<!-- image -->"}
@@ -20,6 +31,9 @@ DEFAULT_CHUNK_SIZE = 1200
 DEFAULT_CHUNK_OVERLAP = 200
 CLAUSE_LIKE_PATTERN = re.compile(r"^(?:\d+[.)]|[A-Z][.)]|[IVXLCDM]+[.)])(?:\s+\S.*)?$")
 MAX_STRUCTURAL_BLOCK_LENGTH = 120
+EMBEDDING_SCHEMA_VERSION = "v1"
+SUPPORTED_EMBEDDING_PROVIDER = "sentence-transformers"
+DEFAULT_EMBEDDING_DIR = "data/processed/embeddings"
 
 
 @dataclass(frozen=True)
@@ -81,6 +95,14 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_non_negative_int,
         default=DEFAULT_CHUNK_OVERLAP,
     )
+
+    embedding_parser = subparsers.add_parser("generate-embeddings")
+    embedding_parser.add_argument("--chunk-dir", required=True)
+    embedding_parser.add_argument("--embedding-dir", default=DEFAULT_EMBEDDING_DIR)
+    embedding_parser.add_argument("--manifest-path", required=True)
+    embedding_parser.add_argument("--glob", default="*.chunks.json")
+    embedding_parser.add_argument("--overwrite", type=parse_bool, default=False)
+    embedding_parser.add_argument("--fail-fast", type=parse_bool, default=False)
     return parser
 
 
@@ -98,6 +120,55 @@ def ensure_docling_available() -> None:
             "Docling is not installed. Install project dependencies before running "
             "the ingestion CLI."
         )
+
+
+def validate_embedding_settings(settings: Settings) -> Settings:
+    """Validate embedding configuration for offline artifact generation."""
+
+    if settings.embedding_provider != SUPPORTED_EMBEDDING_PROVIDER:
+        raise RuntimeError(
+            "EMBEDDING_PROVIDER must be sentence-transformers for offline embedding generation."
+        )
+    if not settings.embedding_model.strip():
+        raise RuntimeError("EMBEDDING_MODEL must not be blank for embedding generation.")
+    return settings
+
+
+def embedding_backend_is_available(settings: Settings) -> bool:
+    """Return whether the configured embedding backend is importable."""
+
+    if settings.embedding_provider != SUPPORTED_EMBEDDING_PROVIDER:
+        return False
+    return importlib.util.find_spec("sentence_transformers") is not None
+
+
+def ensure_embedding_backend_available(settings: Settings) -> None:
+    """Fail loudly when the configured embedding backend is unavailable."""
+
+    if not embedding_backend_is_available(settings):
+        raise RuntimeError(
+            "Sentence Transformers is not installed. Install project dependencies "
+            "before running embedding generation."
+        )
+
+
+@lru_cache(maxsize=4)
+def load_sentence_transformer(model_name: str):
+    """Return a cached SentenceTransformer instance for deterministic reuse."""
+
+    sentence_transformers = importlib.import_module("sentence_transformers")
+    return sentence_transformers.SentenceTransformer(model_name)
+
+
+def generate_embedding_vector(text: str, settings: Settings) -> list[float]:
+    """Generate one embedding vector for chunk text."""
+
+    if settings.embedding_provider != SUPPORTED_EMBEDDING_PROVIDER:
+        raise RuntimeError("Unsupported embedding provider for local embedding generation.")
+
+    model = load_sentence_transformer(settings.embedding_model)
+    vector = model.encode([text], normalize_embeddings=True)[0]
+    return [float(value) for value in vector]
 
 
 def convert_pdf_to_markdown(source_pdf_path: Path) -> str:
@@ -470,6 +541,180 @@ def write_chunk_bundle(chunk_bundle: ChunkBundle, chunk_artifact_path: Path) -> 
     chunk_artifact_path.write_text(chunk_bundle.model_dump_json(indent=2), encoding="utf-8")
 
 
+def build_embedding_payload(chunk_record: ChunkRecord) -> VectorPayload:
+    """Build the explicit later-indexing payload from one chunk record."""
+
+    return VectorPayload(
+        chunk_id=chunk_record.chunk_id,
+        source_pdf_id=chunk_record.source_pdf_id,
+        chunk_schema_version=chunk_record.chunk_schema_version,
+        chunk_index=chunk_record.chunk_index,
+        document_name=chunk_record.document_name,
+        document_version=chunk_record.document_version,
+        section=chunk_record.section,
+        section_path=chunk_record.section_path,
+        text=chunk_record.text,
+    )
+
+
+def build_embedding_bundle(
+    *,
+    chunk_bundle: ChunkBundle,
+    embedding_artifact_path: Path,
+    settings: Settings,
+) -> EmbeddingBundle:
+    """Build a deterministic embedding bundle from one chunk bundle."""
+
+    embedding_records: list[EmbeddingRecord] = []
+
+    for chunk_record in chunk_bundle.chunks:
+        vector = generate_embedding_vector(chunk_record.text, settings)
+        embedding_records.append(
+            EmbeddingRecord(
+                chunk_id=chunk_record.chunk_id,
+                source_pdf_id=chunk_record.source_pdf_id,
+                chunk_schema_version=chunk_record.chunk_schema_version,
+                embedding_provider=settings.embedding_provider,
+                embedding_model=settings.embedding_model,
+                vector_dimension=len(vector),
+                vector=vector,
+                payload=build_embedding_payload(chunk_record),
+            )
+        )
+
+    if not embedding_records:
+        raise RuntimeError("No chunk records were available for embedding generation.")
+
+    return EmbeddingBundle(
+        source_pdf_id=chunk_bundle.source_pdf_id,
+        document_name=chunk_bundle.document_name,
+        document_version=chunk_bundle.document_version,
+        source_chunk_artifact_path=chunk_bundle.chunk_artifact_path,
+        embedding_artifact_path=str(embedding_artifact_path),
+        embedding_schema_version=EMBEDDING_SCHEMA_VERSION,
+        chunk_schema_version=chunk_bundle.chunk_schema_version,
+        embedding_provider=settings.embedding_provider,
+        embedding_model=settings.embedding_model,
+        vector_dimension=embedding_records[0].vector_dimension,
+        embeddings=embedding_records,
+    )
+
+
+def write_embedding_bundle(
+    embedding_bundle: EmbeddingBundle,
+    embedding_artifact_path: Path,
+) -> None:
+    """Persist a deterministic embedding bundle to JSON."""
+
+    embedding_artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    embedding_artifact_path.write_text(
+        embedding_bundle.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+
+def build_embedding_generation_record(
+    *,
+    chunk_bundle: ChunkBundle,
+    embedding_artifact_path: Path,
+    settings: Settings,
+    generation_status: str,
+    error_message: str | None = None,
+) -> EmbeddingGenerationRecord:
+    """Build one manifest record for embedding generation."""
+
+    return EmbeddingGenerationRecord(
+        source_pdf_id=chunk_bundle.source_pdf_id,
+        source_chunk_artifact_path=chunk_bundle.chunk_artifact_path,
+        embedding_artifact_path=str(embedding_artifact_path),
+        embedding_provider=settings.embedding_provider,
+        embedding_model=settings.embedding_model,
+        generation_status=generation_status,
+        error_message=error_message,
+        generated_at=datetime.now(UTC),
+    )
+
+
+def build_failed_embedding_record_from_artifact_path(
+    *,
+    chunk_artifact_path: Path,
+    embedding_artifact_path: Path,
+    settings: Settings,
+    error_message: str,
+) -> EmbeddingGenerationRecord:
+    """Build a failed embedding manifest record without a valid chunk bundle."""
+
+    source_pdf_id = chunk_artifact_path.name.removesuffix(".chunks.json")
+    return EmbeddingGenerationRecord(
+        source_pdf_id=source_pdf_id,
+        source_chunk_artifact_path=str(chunk_artifact_path),
+        embedding_artifact_path=str(embedding_artifact_path),
+        embedding_provider=settings.embedding_provider,
+        embedding_model=settings.embedding_model,
+        generation_status="failed",
+        error_message=error_message,
+        generated_at=datetime.now(UTC),
+    )
+
+
+def append_embedding_manifest_record(
+    manifest_path: Path,
+    record: EmbeddingGenerationRecord,
+) -> None:
+    """Append one JSONL embedding manifest record."""
+
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    with manifest_path.open("a", encoding="utf-8") as manifest_file:
+        manifest_file.write(record.model_dump_json())
+        manifest_file.write("\n")
+
+
+def iter_chunk_artifacts(chunk_dir: Path, glob_pattern: str) -> list[Path]:
+    """Return sorted matching chunk artifacts under the configured directory."""
+
+    return sorted(path for path in chunk_dir.glob(glob_pattern) if path.is_file())
+
+
+def load_chunk_bundle(chunk_artifact_path: Path) -> ChunkBundle:
+    """Load one persisted chunk bundle."""
+
+    return ChunkBundle.model_validate_json(chunk_artifact_path.read_text(encoding="utf-8"))
+
+
+def generate_embeddings_for_chunk_bundle(
+    *,
+    chunk_artifact_path: Path,
+    embedding_dir: Path,
+    settings: Settings,
+    overwrite: bool,
+) -> EmbeddingGenerationRecord:
+    """Generate and persist embeddings for one chunk bundle artifact."""
+
+    chunk_bundle = load_chunk_bundle(chunk_artifact_path)
+    embedding_artifact_path = embedding_dir / f"{chunk_bundle.source_pdf_id}.embeddings.json"
+
+    if not overwrite and embedding_artifact_path.exists():
+        return build_embedding_generation_record(
+            chunk_bundle=chunk_bundle,
+            embedding_artifact_path=embedding_artifact_path,
+            settings=settings,
+            generation_status="skipped",
+        )
+
+    embedding_bundle = build_embedding_bundle(
+        chunk_bundle=chunk_bundle,
+        embedding_artifact_path=embedding_artifact_path,
+        settings=settings,
+    )
+    write_embedding_bundle(embedding_bundle, embedding_artifact_path)
+    return build_embedding_generation_record(
+        chunk_bundle=chunk_bundle,
+        embedding_artifact_path=embedding_artifact_path,
+        settings=settings,
+        generation_status="succeeded",
+    )
+
+
 def ingest_one_pdf(
     *,
     source_pdf_path: Path,
@@ -599,16 +844,91 @@ def run_ingestion(args: argparse.Namespace) -> int:
     return 0 if not (encountered_failures and args.fail_fast) else 1
 
 
+def run_embedding_generation(args: argparse.Namespace) -> int:
+    """Execute the offline embedding generation flow."""
+
+    chunk_dir = Path(args.chunk_dir)
+    embedding_dir = Path(args.embedding_dir)
+    manifest_path = Path(args.manifest_path)
+
+    if not chunk_dir.exists() or not chunk_dir.is_dir():
+        print(f"Chunk directory does not exist: {chunk_dir}", file=sys.stderr)
+        return 2
+
+    settings = validate_embedding_settings(get_settings())
+    ensure_embedding_backend_available(settings)
+
+    chunk_artifacts = iter_chunk_artifacts(chunk_dir, args.glob)
+    if not chunk_artifacts:
+        print(
+            f"No chunk artifacts matched glob '{args.glob}' in chunk directory: {chunk_dir}",
+            file=sys.stderr,
+        )
+        return 2
+
+    encountered_failures = False
+
+    for chunk_artifact_path in chunk_artifacts:
+        embedding_artifact_path = embedding_dir / (
+            f"{chunk_artifact_path.name.removesuffix('.chunks.json')}.embeddings.json"
+        )
+        try:
+            record = generate_embeddings_for_chunk_bundle(
+                chunk_artifact_path=chunk_artifact_path,
+                embedding_dir=embedding_dir,
+                settings=settings,
+                overwrite=args.overwrite,
+            )
+        except Exception as exc:
+            encountered_failures = True
+            try:
+                chunk_bundle = load_chunk_bundle(chunk_artifact_path)
+                embedding_artifact_path = (
+                    embedding_dir / f"{chunk_bundle.source_pdf_id}.embeddings.json"
+                )
+                remove_artifact_if_exists(embedding_artifact_path)
+                record = build_embedding_generation_record(
+                    chunk_bundle=chunk_bundle,
+                    embedding_artifact_path=embedding_artifact_path,
+                    settings=settings,
+                    generation_status="failed",
+                    error_message=str(exc),
+                )
+            except Exception as load_exc:
+                remove_artifact_if_exists(embedding_artifact_path)
+                record = build_failed_embedding_record_from_artifact_path(
+                    chunk_artifact_path=chunk_artifact_path,
+                    embedding_artifact_path=embedding_artifact_path,
+                    settings=settings,
+                    error_message=f"{exc}; chunk artifact load failed: {load_exc}",
+                )
+
+        append_embedding_manifest_record(manifest_path, record)
+
+        if record.generation_status == "failed":
+            print(
+                f"Failed to generate embeddings for {chunk_artifact_path.name}: "
+                f"{record.error_message}",
+                file=sys.stderr,
+            )
+            if args.fail_fast:
+                return 1
+
+    return 0 if not (encountered_failures and args.fail_fast) else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entrypoint for the current Phase 2 and Phase 3 chunking pipeline."""
+    """CLI entrypoint for the current offline ingestion and embedding pipeline."""
 
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.command != "ingest-pdfs":
-        parser.error(f"Unsupported command: {args.command}")
     try:
-        return run_ingestion(args)
+        if args.command == "ingest-pdfs":
+            return run_ingestion(args)
+        if args.command == "generate-embeddings":
+            return run_embedding_generation(args)
+        parser.error(f"Unsupported command: {args.command}")
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 1

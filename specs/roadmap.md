@@ -201,6 +201,25 @@ Index chunks into Qdrant Cloud.
 - collection bootstrap is repeatable;
 - indexing can be rerun safely.
 
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `embedding-generation-and-local-artifacts` should cover:
+  - deterministic embedding inputs derived from persisted chunk bundles;
+  - provider/model-aware embedding configuration usage from `core.config`;
+  - typed local embedding artifact persistence before Qdrant writes;
+  - explicit vector payload shape for later indexing;
+  - failure handling and rerun determinism for offline embedding generation.
+- `qdrant-collection-bootstrap-and-idempotent-indexing` should cover:
+  - Qdrant client wiring and collection bootstrap;
+  - idempotent upsert behavior from local embedding artifacts;
+  - metadata filter payload mapping;
+  - retry/backoff behavior;
+  - indexing smoke checks against the configured collection.
+
 ---
 
 # Phase 5 — Basic RAG MVP

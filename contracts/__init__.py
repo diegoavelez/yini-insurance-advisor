@@ -8,6 +8,13 @@ from contracts.documents import (
     ComparisonItem,
     RetrievedChunk,
 )
+from contracts.embeddings import (
+    EmbeddingBundle,
+    EmbeddingGenerationRecord,
+    EmbeddingGenerationStatus,
+    EmbeddingRecord,
+    VectorPayload,
+)
 from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.responses import (
     AdvisorDraftResponse,
@@ -40,6 +47,10 @@ __all__ = [
     "DocumentFilters",
     "DocumentRetrievalResult",
     "DocumentaryBasisItem",
+    "EmbeddingBundle",
+    "EmbeddingGenerationRecord",
+    "EmbeddingGenerationStatus",
+    "EmbeddingRecord",
     "GroundingVerification",
     "GroundingVerificationResult",
     "IngestionStatus",
@@ -47,4 +58,5 @@ __all__ = [
     "ProcessedDocument",
     "RetrievalQuery",
     "RetrievedChunk",
+    "VectorPayload",
 ]
