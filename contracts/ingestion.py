@@ -16,6 +16,7 @@ class ProcessedDocument(BaseModel):
     source_pdf_id: str = Field(min_length=1)
     source_pdf_path: str = Field(min_length=1)
     markdown_output_path: str = Field(min_length=1)
+    cleaned_markdown_output_path: str = Field(min_length=1)
     processed_output_path: str = Field(min_length=1)
     document_name: str = Field(min_length=1)
     document_version: str | None = None

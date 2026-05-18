@@ -11,6 +11,9 @@
   the first implemented `Phase 2` ingestion slice.
 - Tighten spec alignment with explicit CLI usage docs and added tests for
   append-only manifest reruns and invalid ingestion status values.
+- Add the `markdown-cleaning-and-metadata-extraction` Phase 2 slice with
+  conservative Markdown cleaning, deterministic cleaned artifacts, minimal
+  metadata extraction, and failure handling for post-conversion processing.
 
 ## 2026-05-17
 
