@@ -115,11 +115,20 @@ Convert PDFs into clean Markdown.
 - container/runtime dependencies for Docling are validated;
 - raw and processed document storage is reproducible.
 
-Initial narrow slice:
+Implementation note:
+
+- This phase is intentionally delivered through two narrow slices:
+  - `docling-ingestion-skeleton`
+  - `markdown-cleaning-and-metadata-extraction`
+
+Initial narrow slices:
 
 - `docling-ingestion-skeleton` covers Docling setup, admin CLI ingestion flow,
   reproducible storage layout, failure reporting, and typed processed-document
   contracts before later cleaning and chunking slices.
+- `markdown-cleaning-and-metadata-extraction` extends the ingestion pipeline
+  with conservative Markdown cleaning, deterministic cleaned artifacts, minimal
+  metadata extraction, and explicit post-conversion failure behavior.
 
 ---
 
@@ -144,6 +153,15 @@ Create retrieval-ready chunks.
 - clauses are not arbitrarily split;
 - metadata remains traceable;
 - re-chunking behavior is predictable across deployments.
+
+Initial narrow slice:
+
+- `deterministic-chunk-contracts-and-persistence` should cover:
+  - the first chunk contract for cleaned Markdown outputs;
+  - configurable chunk size and overlap settings;
+  - deterministic chunk identifiers;
+  - metadata propagation from processed documents into chunks;
+  - chunk persistence to local reproducible artifacts before Qdrant indexing.
 
 ---
 

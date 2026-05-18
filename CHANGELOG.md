@@ -14,6 +14,9 @@
 - Add the `markdown-cleaning-and-metadata-extraction` Phase 2 slice with
   conservative Markdown cleaning, deterministic cleaned artifacts, minimal
   metadata extraction, and failure handling for post-conversion processing.
+- Add the first `Phase 3` slice for deterministic chunk contracts and local
+  chunk persistence, including explicit chunk configuration, stable chunk ids,
+  propagated traceability metadata, and persisted per-document chunk bundles.
 
 ## 2026-05-17
 

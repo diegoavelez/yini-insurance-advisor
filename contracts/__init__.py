@@ -1,6 +1,13 @@
 """Shared contract exports for Yini."""
 
-from contracts.documents import Clause, ClauseCategory, ComparisonItem, RetrievedChunk
+from contracts.documents import (
+    ChunkBundle,
+    ChunkRecord,
+    Clause,
+    ClauseCategory,
+    ComparisonItem,
+    RetrievedChunk,
+)
 from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.responses import (
     AdvisorDraftResponse,
@@ -23,6 +30,8 @@ __all__ = [
     "AdvisorDraftResponse",
     "AgentState",
     "Citation",
+    "ChunkBundle",
+    "ChunkRecord",
     "Clause",
     "ClauseCategory",
     "ClauseExtractionResult",

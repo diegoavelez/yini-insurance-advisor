@@ -1,4 +1,4 @@
-"""Offline PDF ingestion CLI for the current Phase 2 processing slices."""
+"""Offline PDF ingestion CLI for the current Phase 2 and early Phase 3 slices."""
 
 from __future__ import annotations
 
@@ -10,10 +10,13 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-from contracts import ProcessedDocument
+from contracts import ChunkBundle, ChunkRecord, ProcessedDocument
 
 VERSION_PATTERN = re.compile(r"(?i)\b(?:version|versión)\b[:\s-]*([A-Za-z0-9][A-Za-z0-9._/-]*)")
 EMPTY_BOILERPLATE_LINES = {"[]", "[ ]", "[]()", "![]()", "<!-- image -->"}
+CHUNK_SCHEMA_VERSION = "v1"
+DEFAULT_CHUNK_SIZE = 1200
+DEFAULT_CHUNK_OVERLAP = 200
 
 
 def parse_bool(value: str) -> bool:
@@ -25,6 +28,24 @@ def parse_bool(value: str) -> bool:
     if normalized_value == "false":
         return False
     raise argparse.ArgumentTypeError("expected 'true' or 'false'")
+
+
+def parse_positive_int(value: str) -> int:
+    """Parse a strictly positive integer CLI value."""
+
+    parsed_value = int(value)
+    if parsed_value < 1:
+        raise argparse.ArgumentTypeError("expected an integer >= 1")
+    return parsed_value
+
+
+def parse_non_negative_int(value: str) -> int:
+    """Parse a non-negative integer CLI value."""
+
+    parsed_value = int(value)
+    if parsed_value < 0:
+        raise argparse.ArgumentTypeError("expected an integer >= 0")
+    return parsed_value
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,6 +62,12 @@ def build_parser() -> argparse.ArgumentParser:
     ingest_parser.add_argument("--glob", default="*.pdf")
     ingest_parser.add_argument("--overwrite", type=parse_bool, default=False)
     ingest_parser.add_argument("--fail-fast", type=parse_bool, default=False)
+    ingest_parser.add_argument("--chunk-size", type=parse_positive_int, default=DEFAULT_CHUNK_SIZE)
+    ingest_parser.add_argument(
+        "--chunk-overlap",
+        type=parse_non_negative_int,
+        default=DEFAULT_CHUNK_OVERLAP,
+    )
     return parser
 
 
@@ -190,24 +217,185 @@ def remove_artifact_if_exists(path: Path) -> None:
         path.unlink()
 
 
+def split_markdown_blocks(cleaned_markdown_text: str) -> list[tuple[str, str | None]]:
+    """Split cleaned markdown into deterministic text blocks with section context."""
+
+    section: str | None = None
+    blocks: list[tuple[str, str | None]] = []
+
+    for raw_block in cleaned_markdown_text.strip().split("\n\n"):
+        block = raw_block.strip()
+        if not block:
+            continue
+        first_line = block.splitlines()[0].strip()
+        if first_line.startswith("#"):
+            section = first_line.lstrip("#").strip() or section
+        blocks.append((block, section))
+
+    return blocks
+
+
+def expand_large_blocks(
+    blocks: list[tuple[str, str | None]],
+    chunk_size: int,
+) -> list[tuple[str, str | None]]:
+    """Split oversized blocks deterministically to respect chunk size."""
+
+    expanded_blocks: list[tuple[str, str | None]] = []
+
+    for block_text, section in blocks:
+        if len(block_text) <= chunk_size:
+            expanded_blocks.append((block_text, section))
+            continue
+
+        start = 0
+        while start < len(block_text):
+            expanded_blocks.append((block_text[start : start + chunk_size], section))
+            start += chunk_size
+
+    return expanded_blocks
+
+
+def build_chunk_records(
+    *,
+    source_pdf_id: str,
+    document_name: str,
+    document_version: str | None,
+    source_pdf_path: Path,
+    cleaned_markdown_output_path: Path,
+    cleaned_markdown_text: str,
+    chunk_size: int,
+    chunk_overlap: int,
+) -> list[ChunkRecord]:
+    """Build deterministic chunk records from cleaned markdown text."""
+
+    blocks = expand_large_blocks(
+        split_markdown_blocks(cleaned_markdown_text),
+        chunk_size,
+    )
+    if not blocks:
+        raise RuntimeError("No cleaned markdown blocks were available for chunk generation.")
+
+    chunk_records: list[ChunkRecord] = []
+    start_index = 0
+    chunk_index = 0
+
+    while start_index < len(blocks):
+        current_entries: list[tuple[str, str | None]] = []
+        current_length = 0
+        end_index = start_index
+
+        while end_index < len(blocks):
+            block_text, section = blocks[end_index]
+            separator_length = 2 if current_entries else 0
+            next_length = current_length + separator_length + len(block_text)
+            if current_entries and next_length > chunk_size:
+                break
+            current_entries.append((block_text, section))
+            current_length = next_length
+            end_index += 1
+
+        chunk_text = "\n\n".join(entry[0] for entry in current_entries)
+        chunk_section = next(
+            (entry[1] for entry in reversed(current_entries) if entry[1]),
+            None,
+        )
+        chunk_records.append(
+            ChunkRecord(
+                chunk_id=f"{source_pdf_id}:{CHUNK_SCHEMA_VERSION}:{chunk_index:04d}",
+                source_pdf_id=source_pdf_id,
+                document_name=document_name,
+                document_version=document_version,
+                source_pdf_path=str(source_pdf_path),
+                cleaned_markdown_output_path=str(cleaned_markdown_output_path),
+                text=chunk_text,
+                chunk_index=chunk_index,
+                chunk_schema_version=CHUNK_SCHEMA_VERSION,
+                section=chunk_section,
+            )
+        )
+        chunk_index += 1
+
+        if end_index >= len(blocks):
+            break
+
+        overlap_block_count = 0
+        overlap_length = 0
+        cursor = len(current_entries) - 1
+        while cursor >= 0 and overlap_length < chunk_overlap:
+            overlap_length += len(current_entries[cursor][0])
+            overlap_block_count += 1
+            cursor -= 1
+
+        next_start_index = end_index - overlap_block_count
+        start_index = max(next_start_index, start_index + 1)
+
+    return chunk_records
+
+
+def build_chunk_bundle(
+    *,
+    processed_document: ProcessedDocument,
+    chunk_artifact_path: Path,
+    cleaned_markdown_text: str,
+    chunk_size: int,
+    chunk_overlap: int,
+) -> ChunkBundle:
+    """Build a deterministic chunk bundle for one processed document."""
+
+    chunk_records = build_chunk_records(
+        source_pdf_id=processed_document.source_pdf_id,
+        document_name=processed_document.document_name,
+        document_version=processed_document.document_version,
+        source_pdf_path=Path(processed_document.source_pdf_path),
+        cleaned_markdown_output_path=Path(processed_document.cleaned_markdown_output_path),
+        cleaned_markdown_text=cleaned_markdown_text,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )
+    return ChunkBundle(
+        source_pdf_id=processed_document.source_pdf_id,
+        document_name=processed_document.document_name,
+        document_version=processed_document.document_version,
+        source_pdf_path=processed_document.source_pdf_path,
+        cleaned_markdown_output_path=processed_document.cleaned_markdown_output_path,
+        chunk_artifact_path=str(chunk_artifact_path),
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        chunk_schema_version=CHUNK_SCHEMA_VERSION,
+        chunks=chunk_records,
+    )
+
+
+def write_chunk_bundle(chunk_bundle: ChunkBundle, chunk_artifact_path: Path) -> None:
+    """Persist a deterministic chunk bundle to JSON."""
+
+    chunk_artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    chunk_artifact_path.write_text(chunk_bundle.model_dump_json(indent=2), encoding="utf-8")
+
+
 def ingest_one_pdf(
     *,
     source_pdf_path: Path,
     markdown_dir: Path,
     processed_dir: Path,
     overwrite: bool,
+    chunk_size: int,
+    chunk_overlap: int,
 ) -> ProcessedDocument:
     """Ingest one source PDF according to the deterministic storage rules."""
 
     markdown_output_path = markdown_dir / f"{source_pdf_path.stem}.md"
     cleaned_markdown_output_path = processed_dir / f"{source_pdf_path.stem}.cleaned.md"
     processed_output_path = processed_dir / f"{source_pdf_path.stem}.json"
+    chunk_artifact_path = processed_dir / "chunks" / f"{source_pdf_path.stem}.chunks.json"
 
     if (
         not overwrite
         and markdown_output_path.exists()
         and cleaned_markdown_output_path.exists()
         and processed_output_path.exists()
+        and chunk_artifact_path.exists()
     ):
         return build_processed_document(
             source_pdf_path=source_pdf_path,
@@ -240,6 +428,14 @@ def ingest_one_pdf(
         document_version=document_version,
     )
     write_processed_metadata(record, processed_output_path)
+    chunk_bundle = build_chunk_bundle(
+        processed_document=record,
+        chunk_artifact_path=chunk_artifact_path,
+        cleaned_markdown_text=cleaned_markdown_text,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )
+    write_chunk_bundle(chunk_bundle, chunk_artifact_path)
     return record
 
 
@@ -274,13 +470,17 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 markdown_dir=markdown_dir,
                 processed_dir=processed_dir,
                 overwrite=args.overwrite,
+                chunk_size=args.chunk_size,
+                chunk_overlap=args.chunk_overlap,
             )
         except Exception as exc:
             encountered_failures = True
             cleaned_markdown_output_path = processed_dir / f"{source_pdf_path.stem}.cleaned.md"
             processed_output_path = processed_dir / f"{source_pdf_path.stem}.json"
+            chunk_artifact_path = processed_dir / "chunks" / f"{source_pdf_path.stem}.chunks.json"
             remove_artifact_if_exists(cleaned_markdown_output_path)
             remove_artifact_if_exists(processed_output_path)
+            remove_artifact_if_exists(chunk_artifact_path)
             record = build_processed_document(
                 source_pdf_path=source_pdf_path,
                 markdown_output_path=markdown_dir / f"{source_pdf_path.stem}.md",
@@ -304,7 +504,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entrypoint for Phase 2 ingestion."""
+    """CLI entrypoint for the current Phase 2 and early Phase 3 pipeline."""
 
     parser = build_parser()
     args = parser.parse_args(argv)

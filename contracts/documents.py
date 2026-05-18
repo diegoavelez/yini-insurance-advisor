@@ -30,6 +30,36 @@ class RetrievedChunk(BaseModel):
     score: float
 
 
+class ChunkRecord(BaseModel):
+    """A deterministic persisted chunk record for cleaned document text."""
+
+    chunk_id: str = Field(min_length=1)
+    source_pdf_id: str = Field(min_length=1)
+    document_name: str = Field(min_length=1)
+    document_version: str | None = None
+    source_pdf_path: str = Field(min_length=1)
+    cleaned_markdown_output_path: str = Field(min_length=1)
+    text: str = Field(min_length=1)
+    chunk_index: int = Field(ge=0)
+    chunk_schema_version: str = Field(default="v1", min_length=1)
+    section: str | None = None
+
+
+class ChunkBundle(BaseModel):
+    """A deterministic persisted bundle of chunk records for one document."""
+
+    source_pdf_id: str = Field(min_length=1)
+    document_name: str = Field(min_length=1)
+    document_version: str | None = None
+    source_pdf_path: str = Field(min_length=1)
+    cleaned_markdown_output_path: str = Field(min_length=1)
+    chunk_artifact_path: str = Field(min_length=1)
+    chunk_size: int = Field(ge=1)
+    chunk_overlap: int = Field(ge=0)
+    chunk_schema_version: str = Field(default="v1", min_length=1)
+    chunks: list[ChunkRecord] = Field(default_factory=list)
+
+
 class Clause(BaseModel):
     """A structured clause extracted from retrieved evidence."""
 
