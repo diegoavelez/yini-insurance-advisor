@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-19
+
+- Add the next `Phase 7` tooling slice with an independently callable
+  `citation_verifier_tool`, conservative verification over drafted output and
+  cited evidence only, explicit weak/unsupported non-error outcomes, and typed
+  success/failure observability coverage.
+
 ## 2026-05-18
 
 - Implement the `docling-ingestion-skeleton` Phase 2 slice with an admin-only

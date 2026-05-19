@@ -28,6 +28,7 @@ from contracts.responses import (
 )
 from contracts.state import AgentState
 from contracts.tools import (
+    CitationVerifierToolResult,
     ClauseExtractionResult,
     ClauseExtractionToolResult,
     DocumentFilters,
@@ -46,6 +47,7 @@ __all__ = [
     "Citation",
     "ChunkBundle",
     "ChunkRecord",
+    "CitationVerifierToolResult",
     "Clause",
     "ClauseCategory",
     "ClauseExtractionResult",

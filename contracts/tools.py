@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from contracts.documents import Clause, ComparisonItem, RetrievedChunk
-from contracts.responses import GroundingVerification
+from contracts.responses import Citation, GroundingVerification
 
 
 class DocumentFilters(BaseModel):
@@ -40,6 +40,7 @@ ToolErrorKind = Literal[
     "input_validation_failure",
     "extraction_failure",
     "comparison_failure",
+    "verification_failure",
 ]
 
 
@@ -92,3 +93,13 @@ class GroundingVerificationResult(BaseModel):
     """Output contract for grounding verification."""
 
     verification: GroundingVerification
+    reviewed_citations: list[Citation] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class CitationVerifierToolResult(BaseModel):
+    """Typed success or failure result for the citation verifier tool wrapper."""
+
+    ok: bool
+    result: GroundingVerificationResult | None = None
+    error: ToolError | None = None

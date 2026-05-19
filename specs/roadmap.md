@@ -389,8 +389,8 @@ Current implementation status:
   - `document-retrieval-tool-and-error-contracts`
   - `clause-extraction-tool-from-retrieved-evidence`
   - `policy-comparison-tool-from-typed-evidence`
-- remaining in `Phase 7`:
   - `citation-verifier-tool`
+- remaining in `Phase 7`:
   - `response-draft-tool`
 
 ---
