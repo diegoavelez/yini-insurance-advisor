@@ -39,6 +39,7 @@ ToolErrorKind = Literal[
     "backend_failure",
     "input_validation_failure",
     "extraction_failure",
+    "comparison_failure",
 ]
 
 
@@ -77,6 +78,14 @@ class PolicyComparisonResult(BaseModel):
     comparison_points: list[ComparisonItem] = Field(default_factory=list)
     sufficient_information: bool = True
     notes: list[str] = Field(default_factory=list)
+
+
+class PolicyComparisonToolResult(BaseModel):
+    """Typed success or failure result for the policy comparison tool wrapper."""
+
+    ok: bool
+    result: PolicyComparisonResult | None = None
+    error: ToolError | None = None
 
 
 class GroundingVerificationResult(BaseModel):

@@ -370,10 +370,14 @@ Initial narrow slices:
   - clause extraction over retrieved chunks only;
   - typed clause categorization and failure behavior;
   - no policy comparison or answer drafting yet.
-- `policy-comparison-and-citation-verifier-tools` should cover:
-  - policy comparison over typed evidence and clauses;
-  - citation verification over drafted outputs;
-  - observable failure handling for both tool paths.
+- `policy-comparison-tool-from-typed-evidence` should cover:
+  - policy comparison over typed evidence and extracted clauses;
+  - structured comparison points and insufficient-information behavior;
+  - observable failure handling for the comparison path only.
+- `citation-verifier-tool` should cover:
+  - citation verification over drafted outputs and cited evidence;
+  - explicit verification success/failure contracts;
+  - observable failure handling for the verification path only.
 - `response-draft-tool` should cover:
   - a reusable drafting seam over the grounded QA backend;
   - typed response-draft behavior for later workflow reuse;
@@ -384,8 +388,9 @@ Current implementation status:
 - completed:
   - `document-retrieval-tool-and-error-contracts`
   - `clause-extraction-tool-from-retrieved-evidence`
+  - `policy-comparison-tool-from-typed-evidence`
 - remaining in `Phase 7`:
-  - `policy-comparison-and-citation-verifier-tools`
+  - `citation-verifier-tool`
   - `response-draft-tool`
 
 ---

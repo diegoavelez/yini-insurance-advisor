@@ -57,6 +57,10 @@
   `clause_extraction_tool`, conservative typed clause categorization over
   retrieved evidence only, traceable supporting chunk ids, and explicit
   success/failure observability coverage.
+- Add the next `Phase 7` tooling slice with an independently callable
+  `policy_comparison_tool`, conservative structured comparison points over
+  typed evidence only, explicit insufficient-information handling, and typed
+  success/failure observability coverage.
 
 ## 2026-05-17
 
