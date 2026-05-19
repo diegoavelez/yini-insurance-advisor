@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 9` guardrail slice with explicit confidence-consistency
+  enforcement, conservative typed downgrade behavior for overstated confidence,
+  and correlated guardrail observability without drifting into prompt-injection
+  or abuse-case work.
 - Add the next `Phase 9` guardrail slice with mandatory citation presence for
   answerable responses, conservative typed downgrade behavior when citations
   are missing, and correlated guardrail observability without drifting into

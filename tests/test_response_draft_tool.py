@@ -82,6 +82,21 @@ def make_comparison_result() -> PolicyComparisonResult:
     )
 
 
+def make_comparison_result_with_notes() -> PolicyComparisonResult:
+    return PolicyComparisonResult(
+        comparison_points=[
+            ComparisonItem(
+                criterion="coverage_comparison",
+                finding="Coverage language differs across the compared documents.",
+                source_documents=["Policy A", "Policy B"],
+                sufficient_information=True,
+            )
+        ],
+        sufficient_information=True,
+        notes=["Evidence remains partial for a strong final recommendation."],
+    )
+
+
 def test_response_draft_tool_returns_typed_success() -> None:
     result = response_draft_tool(
         "What coverage applies?",
@@ -96,6 +111,35 @@ def test_response_draft_tool_returns_typed_success() -> None:
     assert "Coverage language differs" in result.result.suggested_answer
     assert result.result.confidence == "high"
     assert result.result.advisor_review_notice == "This response is a draft for advisor review."
+
+
+def test_response_draft_tool_downgrades_overconfident_output(caplog) -> None:
+    caplog.set_level(logging.INFO)
+
+    result = response_draft_tool(
+        "What coverage applies?",
+        [make_basis_item()],
+        [make_citation()],
+        verification=make_verification(confidence="high"),
+        comparison_result=make_comparison_result_with_notes(),
+        request_id="draft-123456789012",
+    )
+
+    assert result.ok is True
+    assert result.result is not None
+    assert result.result.confidence == "medium"
+    assert any(
+        "confidence was downgraded" in limitation.lower()
+        for limitation in result.result.limitations
+    )
+    guardrail_event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_type", "") == "confidence_consistency_guardrail_triggered"
+    )
+    assert guardrail_event.request_id == "draft-123456789012"
+    assert guardrail_event.proposed_confidence == "high"
+    assert guardrail_event.surfaced_confidence == "medium"
 
 
 def test_response_draft_tool_returns_valid_insufficient_information() -> None:

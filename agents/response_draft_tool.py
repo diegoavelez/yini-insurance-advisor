@@ -14,6 +14,7 @@ from contracts import (
     ResponseDraftToolResult,
     ToolError,
 )
+from core.confidence_guardrails import enforce_confidence_consistency
 from ops.observability import log_event, log_timed_event
 
 TOOL_LOGGER = logging.getLogger("yini.tools.response_draft")
@@ -93,7 +94,7 @@ def build_successful_draft_response(
 ) -> AdvisorDraftResponse:
     """Build a conservative advisor-facing draft from typed upstream inputs only."""
 
-    confidence = verification.confidence if verification is not None else "medium"
+    proposed_confidence = verification.confidence if verification is not None else "medium"
     limitations: list[str] = []
     if verification is not None:
         limitations.extend(verification.unsupported_claims)
@@ -119,6 +120,15 @@ def build_successful_draft_response(
             "supports the attached draft guidance."
         )
 
+    confidence, downgraded = enforce_confidence_consistency(
+        proposed_confidence,
+        has_cautionary_signals=bool(limitations),
+        verification_supported=(verification.supported if verification is not None else None),
+    )
+    if downgraded:
+        limitations.append(
+            "Confidence was downgraded to remain consistent with the available evidence."
+        )
     if confidence != "high":
         limitations.append(
             "Advisor review is required before relying on this draft response."
@@ -216,6 +226,18 @@ def response_draft_tool(
                 verification=verification,
                 comparison_result=comparison_result,
             )
+            if (
+                verification is not None
+                and verification.confidence != draft_response.confidence
+            ):
+                log_event(
+                    TOOL_LOGGER,
+                    event_type="confidence_consistency_guardrail_triggered",
+                    request_id=request_id,
+                    guardrail_surface="response_draft_tool",
+                    proposed_confidence=verification.confidence,
+                    surfaced_confidence=draft_response.confidence,
+                )
             return ResponseDraftToolResult(ok=True, result=draft_response)
     except Exception as exc:
         return ResponseDraftToolResult(

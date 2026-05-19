@@ -503,18 +503,25 @@ Initial narrow slices:
   - conservative downgrade behavior for mismatched confidence signals;
   - no injection detection or telemetry expansion yet.
 - `prompt-injection-and-abuse-case-telemetry` should cover:
+  - this concern should be split further into narrower slices before implementation.
+- `prompt-injection-signals-and-refusal` should cover:
   - narrow prompt-injection detection signals;
-  - abuse-case validation scenarios;
-  - refusal telemetry for guardrail-triggered outcomes.
+  - conservative refusal behavior when those signals trigger;
+  - no abuse-case suite expansion yet.
+- `abuse-case-validation-and-refusal-telemetry` should cover:
+  - abuse-case validation scenarios for the implemented guardrails;
+  - refusal telemetry for guardrail-triggered outcomes;
+  - no new injection-detection heuristics.
 
 Current implementation status:
 
 - completed:
   - `unsupported-query-scope-guardrails`
   - `answer-citation-presence-guardrails`
-- remaining in `Phase 9`:
   - `response-confidence-consistency-guardrails`
-  - `prompt-injection-and-abuse-case-telemetry`
+- remaining in `Phase 9`:
+  - `prompt-injection-signals-and-refusal`
+  - `abuse-case-validation-and-refusal-telemetry`
 
 ---
 
