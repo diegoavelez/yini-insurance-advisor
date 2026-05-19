@@ -89,9 +89,9 @@ def build_initial_workflow_state(user_query: str) -> AgentState:
             "retrieve",
             "extract_clauses",
             "compare",
-            "draft_initial",
-            "verify_citations",
-            "draft_final",
+            "policy_analyst",
+            "citation_verifier",
+            "response_drafter",
         ],
         trace_summary=["workflow_initialized"],
     )
@@ -327,15 +327,30 @@ def compare_policies_step(
     }
 
 
-def draft_initial_response_step(
+def build_analyst_summary(state: AgentState) -> str:
+    """Build one compact analyst-stage summary from comparison output."""
+
+    if state.comparison_result is None:
+        return "No policy comparison result was available."
+    if state.comparison_result.comparison_points:
+        return " ".join(
+            comparison_point.finding
+            for comparison_point in state.comparison_result.comparison_points
+        )
+    if state.comparison_result.notes:
+        return " ".join(state.comparison_result.notes)
+    return "Policy analyst pass did not produce a comparison finding."
+
+
+def policy_analyst_step(
     state: AgentState | dict[str, Any],
     *,
     request_id: str | None,
 ) -> dict[str, object]:
-    """Run the initial drafting step without verification input."""
+    """Run the explicit analyst pass over comparison and preliminary drafting."""
 
     typed_state = ensure_agent_state(state)
-    emit_transition(request_id=request_id, step="draft_initial", status="started")
+    emit_transition(request_id=request_id, step="policy_analyst", status="started")
     documentary_basis = build_documentary_basis(typed_state.retrieved_chunks)
     citations = build_citations_from_chunks(typed_state.retrieved_chunks)
     tool_result = response_draft_tool(
@@ -349,20 +364,28 @@ def draft_initial_response_step(
         raise RuntimeError(
             tool_result.error.message
             if tool_result.error
-            else "Initial drafting failed."
+            else "Policy analyst drafting failed."
         )
+    analyst_summary = build_analyst_summary(typed_state)
     emit_transition(
         request_id=request_id,
-        step="draft_initial",
+        step="policy_analyst",
         status="succeeded",
         confidence=tool_result.result.confidence,
+        sufficient_information=(
+            typed_state.comparison_result.sufficient_information
+            if typed_state.comparison_result is not None
+            else False
+        ),
     )
     return {
+        "documentary_basis": documentary_basis,
+        "analyst_summary": analyst_summary,
         "draft_response": tool_result.result,
         "draft_answer": tool_result.result.suggested_answer,
         "citations": tool_result.result.citations,
         "confidence": tool_result.result.confidence,
-        "trace_summary": append_trace(typed_state, "initial_draft_completed"),
+        "trace_summary": append_trace(typed_state, "policy_analyst_completed"),
     }
 
 
@@ -374,7 +397,7 @@ def verify_citations_step(
     """Run the citation verification tool step."""
 
     typed_state = ensure_agent_state(state)
-    emit_transition(request_id=request_id, step="verify_citations", status="started")
+    emit_transition(request_id=request_id, step="citation_verifier", status="started")
     tool_result = citation_verifier_tool(
         typed_state.draft_answer or "",
         typed_state.citations,
@@ -389,27 +412,31 @@ def verify_citations_step(
         )
     emit_transition(
         request_id=request_id,
-        step="verify_citations",
+        step="citation_verifier",
         status="succeeded",
         supported=tool_result.result.verification.supported,
         confidence=tool_result.result.verification.confidence,
     )
     return {
         "verification": tool_result.result.verification,
-        "trace_summary": append_trace(typed_state, "citation_verification_completed"),
+        "reviewed_citations": tool_result.result.reviewed_citations,
+        "verifier_notes": tool_result.result.notes,
+        "trace_summary": append_trace(typed_state, "citation_verifier_completed"),
     }
 
 
-def finalize_response_step(
+def response_drafter_step(
     state: AgentState | dict[str, Any],
     *,
     request_id: str | None,
 ) -> dict[str, object]:
-    """Run the final drafting step with verification input."""
+    """Run the explicit final drafting pass with verification input."""
 
     typed_state = ensure_agent_state(state)
-    emit_transition(request_id=request_id, step="draft_final", status="started")
-    documentary_basis = build_documentary_basis(typed_state.retrieved_chunks)
+    emit_transition(request_id=request_id, step="response_drafter", status="started")
+    documentary_basis = typed_state.documentary_basis or build_documentary_basis(
+        typed_state.retrieved_chunks
+    )
     tool_result = response_draft_tool(
         typed_state.user_query,
         documentary_basis,
@@ -426,19 +453,20 @@ def finalize_response_step(
         )
     emit_transition(
         request_id=request_id,
-        step="draft_final",
+        step="response_drafter",
         status="succeeded",
         confidence=tool_result.result.confidence,
         limitation_count=len(tool_result.result.limitations),
     )
     return {
+        "documentary_basis": documentary_basis,
         "draft_response": tool_result.result,
         "draft_answer": tool_result.result.suggested_answer,
         "final_answer": tool_result.result.suggested_answer,
         "citations": tool_result.result.citations,
         "confidence": tool_result.result.confidence,
         "requires_human_review": True,
-        "trace_summary": append_trace(typed_state, "workflow_completed"),
+        "trace_summary": append_trace(typed_state, "response_drafter_completed"),
     }
 
 
@@ -456,15 +484,18 @@ def run_linear_workflow_steps(
         lambda s: retrieve_step(s, settings=settings, client=client, request_id=request_id),
         lambda s: extract_clauses_step(s, request_id=request_id),
         lambda s: compare_policies_step(s, request_id=request_id),
-        lambda s: draft_initial_response_step(s, request_id=request_id),
+        lambda s: policy_analyst_step(s, request_id=request_id),
         lambda s: verify_citations_step(s, request_id=request_id),
-        lambda s: finalize_response_step(s, request_id=request_id),
+        lambda s: response_drafter_step(s, request_id=request_id),
     ):
         current_state = current_state.model_copy(
             update=step_runner(current_state),
             deep=True,
         )
-    return current_state
+    return current_state.model_copy(
+        update={"trace_summary": append_trace(current_state, "workflow_completed")},
+        deep=True,
+    )
 
 
 def run_planned_workflow_steps(
@@ -530,16 +561,16 @@ def build_linear_workflow_graph(
         lambda state: compare_policies_step(state, request_id=request_id),
     )
     workflow.add_node(
-        "draft_initial",
-        lambda state: draft_initial_response_step(state, request_id=request_id),
+        "policy_analyst",
+        lambda state: policy_analyst_step(state, request_id=request_id),
     )
     workflow.add_node(
-        "verify_citations",
+        "citation_verifier",
         lambda state: verify_citations_step(state, request_id=request_id),
     )
     workflow.add_node(
-        "draft_final",
-        lambda state: finalize_response_step(state, request_id=request_id),
+        "response_drafter",
+        lambda state: response_drafter_step(state, request_id=request_id),
     )
     workflow.add_node(
         "unsupported_route",
@@ -556,10 +587,10 @@ def build_linear_workflow_graph(
     )
     workflow.add_edge("retrieve", "extract_clauses")
     workflow.add_edge("extract_clauses", "compare")
-    workflow.add_edge("compare", "draft_initial")
-    workflow.add_edge("draft_initial", "verify_citations")
-    workflow.add_edge("verify_citations", "draft_final")
-    workflow.add_edge("draft_final", END)
+    workflow.add_edge("compare", "policy_analyst")
+    workflow.add_edge("policy_analyst", "citation_verifier")
+    workflow.add_edge("citation_verifier", "response_drafter")
+    workflow.add_edge("response_drafter", END)
     workflow.add_edge("unsupported_route", END)
     return workflow.compile()
 

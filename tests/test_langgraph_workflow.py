@@ -78,10 +78,14 @@ def test_langgraph_linear_workflow_returns_typed_success(monkeypatch) -> None:
         "retrieval:1",
         "clause_extraction:1",
         "comparison_completed",
-        "initial_draft_completed",
-        "citation_verification_completed",
+        "policy_analyst_completed",
+        "citation_verifier_completed",
+        "response_drafter_completed",
         "workflow_completed",
     ]
+    assert result.result.state.analyst_summary
+    assert result.result.state.documentary_basis
+    assert result.result.state.reviewed_citations
 
 
 def test_langgraph_linear_workflow_returns_valid_insufficient_information(monkeypatch) -> None:
@@ -186,7 +190,10 @@ def test_langgraph_linear_workflow_preserves_state_transition_observability(
     assert transitions
     assert any(record.workflow_step == "planner" for record in transitions)
     assert any(record.workflow_step == "retrieve" for record in transitions)
-    assert any(record.workflow_step == "draft_final" for record in transitions)
+    assert any(record.workflow_step == "compare" for record in transitions)
+    assert any(record.workflow_step == "policy_analyst" for record in transitions)
+    assert any(record.workflow_step == "citation_verifier" for record in transitions)
+    assert any(record.workflow_step == "response_drafter" for record in transitions)
     assert all(record.request_id == "wf-123456789012" for record in transitions)
     planner_event = next(
         record
@@ -246,6 +253,10 @@ def test_build_linear_workflow_graph_wires_langgraph_stategraph(monkeypatch) -> 
     assert node == "planner"
     assert mapping["grounded_qa"] == "retrieve"
     assert mapping["unsupported"] == "unsupported_route"
+    assert ("extract_clauses", "compare") in graph.edges
+    assert ("compare", "policy_analyst") in graph.edges
+    assert ("policy_analyst", "citation_verifier") in graph.edges
+    assert ("citation_verifier", "response_drafter") in graph.edges
 
 
 def test_build_initial_workflow_state_sets_linear_plan() -> None:
@@ -256,9 +267,9 @@ def test_build_initial_workflow_state_sets_linear_plan() -> None:
         "retrieve",
         "extract_clauses",
         "compare",
-        "draft_initial",
-        "verify_citations",
-        "draft_final",
+        "policy_analyst",
+        "citation_verifier",
+        "response_drafter",
     ]
     assert state.trace_summary == ["workflow_initialized"]
 
