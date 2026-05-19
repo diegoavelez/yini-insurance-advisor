@@ -49,6 +49,10 @@
   optional Phoenix activation, explicit Phoenix failure policy, startup smoke
   visibility for hosted app readiness, and correlated latency traces for the
   grounded QA path.
+- Add the first `Phase 7` tooling slice with an independently callable
+  `document_retrieval_tool`, typed tool failure contracts, empty-result
+  success handling, preserved request correlation, and explicit tool failure
+  observability coverage.
 
 ## 2026-05-17
 

@@ -354,6 +354,40 @@ Implement reusable tools.
 - outputs are structured;
 - tool failures are observable.
 
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `document-retrieval-tool-and-error-contracts` should cover:
+  - one independently callable retrieval tool wrapper over the current
+    retrieval pipeline;
+  - explicit tool-level success and failure behavior;
+  - narrow latency expectations for retrieval execution;
+  - typed error surface for tool callers.
+- `clause-extraction-tool-from-retrieved-evidence` should cover:
+  - clause extraction over retrieved chunks only;
+  - typed clause categorization and failure behavior;
+  - no policy comparison or answer drafting yet.
+- `policy-comparison-and-citation-verifier-tools` should cover:
+  - policy comparison over typed evidence and clauses;
+  - citation verification over drafted outputs;
+  - observable failure handling for both tool paths.
+- `response-draft-tool` should cover:
+  - a reusable drafting seam over the grounded QA backend;
+  - typed response-draft behavior for later workflow reuse;
+  - no LangGraph orchestration yet.
+
+Current implementation status:
+
+- completed:
+  - `document-retrieval-tool-and-error-contracts`
+- remaining in `Phase 7`:
+  - `clause-extraction-tool-from-retrieved-evidence`
+  - `policy-comparison-and-citation-verifier-tools`
+  - `response-draft-tool`
+
 ---
 
 # Phase 8 — LangGraph Workflow

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from contracts.documents import Clause, ComparisonItem, RetrievedChunk
@@ -29,6 +31,28 @@ class DocumentRetrievalResult(BaseModel):
     """Output contract for the document retrieval tool."""
 
     chunks: list[RetrievedChunk] = Field(default_factory=list)
+
+
+ToolErrorKind = Literal[
+    "configuration_failure",
+    "dependency_failure",
+    "backend_failure",
+]
+
+
+class ToolError(BaseModel):
+    """Typed failure contract for independently callable tools."""
+
+    kind: ToolErrorKind
+    message: str = Field(min_length=1)
+
+
+class DocumentRetrievalToolResult(BaseModel):
+    """Typed success or failure result for the retrieval tool wrapper."""
+
+    ok: bool
+    result: DocumentRetrievalResult | None = None
+    error: ToolError | None = None
 
 
 class ClauseExtractionResult(BaseModel):

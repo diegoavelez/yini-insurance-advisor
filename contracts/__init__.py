@@ -31,9 +31,11 @@ from contracts.tools import (
     ClauseExtractionResult,
     DocumentFilters,
     DocumentRetrievalResult,
+    DocumentRetrievalToolResult,
     GroundingVerificationResult,
     PolicyComparisonResult,
     RetrievalQuery,
+    ToolError,
 )
 
 __all__ = [
@@ -49,6 +51,7 @@ __all__ = [
     "ConfidenceLevel",
     "DocumentFilters",
     "DocumentRetrievalResult",
+    "DocumentRetrievalToolResult",
     "DocumentaryBasisItem",
     "EmbeddingBundle",
     "EmbeddingGenerationRecord",
@@ -64,5 +67,6 @@ __all__ = [
     "ProcessedDocument",
     "RetrievalQuery",
     "RetrievedChunk",
+    "ToolError",
     "VectorPayload",
 ]
