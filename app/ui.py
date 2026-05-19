@@ -3,13 +3,26 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import logging
 
 from contracts import Citation, GroundedAnswerResult, RetrievalQuery
 from core.config import Settings, get_settings, validate_startup_settings
 from core.logging import configure_logging
-from ops.observability import generate_request_id, log_event, log_startup_diagnostics
-from rag.ingestion import generate_grounded_answer
+from ops.observability import (
+    generate_request_id,
+    log_event,
+    log_health_status,
+    log_startup_diagnostics,
+    maybe_activate_phoenix,
+)
+from rag.ingestion import (
+    embedding_backend_is_available,
+    generate_grounded_answer,
+    groq_backend_is_available,
+    qdrant_backend_is_available,
+    validate_embedding_settings,
+)
 
 APP_TITLE = "Yini"
 APP_DESCRIPTION = (
@@ -18,6 +31,7 @@ APP_DESCRIPTION = (
 )
 DEFAULT_ERROR_MESSAGE = "Unable to process the query right now."
 UI_LOGGER = logging.getLogger("yini.ui")
+APP_LOGGER = logging.getLogger("yini.app")
 
 
 def format_citations(citations: list[Citation]) -> str:
@@ -187,15 +201,116 @@ def build_gradio_app(
     )
 
 
+def gradio_backend_is_available() -> bool:
+    """Return whether Gradio is importable in the current runtime."""
+
+    return importlib.util.find_spec("gradio") is not None
+
+
+def build_readiness_status(
+    settings: Settings,
+    *,
+    runtime_surface: str,
+    gradio_available: bool | None = None,
+    groq_available: bool | None = None,
+    qdrant_available: bool | None = None,
+    embedding_available: bool | None = None,
+) -> dict[str, object]:
+    """Build the narrow readiness payload for the current MVP runtime path."""
+
+    validated_settings = validate_startup_settings(
+        settings,
+        require_groq=True,
+        require_qdrant=True,
+    )
+    validate_embedding_settings(validated_settings)
+
+    if gradio_available is None:
+        gradio_available = gradio_backend_is_available()
+    if groq_available is None:
+        groq_available = groq_backend_is_available()
+    if qdrant_available is None:
+        qdrant_available = qdrant_backend_is_available()
+    if embedding_available is None:
+        embedding_available = embedding_backend_is_available(validated_settings)
+
+    missing_dependencies: list[str] = []
+    if not gradio_available:
+        missing_dependencies.append("gradio")
+    if not groq_available:
+        missing_dependencies.append("groq")
+    if not qdrant_available:
+        missing_dependencies.append("qdrant-client")
+    if not embedding_available:
+        missing_dependencies.append("sentence-transformers")
+
+    if missing_dependencies:
+        raise RuntimeError(
+            "Hosted readiness failed because required runtime dependencies are unavailable: "
+            + ", ".join(missing_dependencies)
+            + "."
+        )
+
+    return {
+        "event_type": "readiness_check_succeeded",
+        "runtime_surface": runtime_surface,
+        "status": "ready",
+        "dependency_checks": {
+            "gradio": gradio_available,
+            "groq": groq_available,
+            "qdrant": qdrant_available,
+            "embedding_backend": embedding_available,
+        },
+    }
+
+
+def log_readiness_status(
+    logger: logging.Logger,
+    settings: Settings,
+    *,
+    runtime_surface: str,
+    gradio_available: bool | None = None,
+    groq_available: bool | None = None,
+    qdrant_available: bool | None = None,
+    embedding_available: bool | None = None,
+) -> dict[str, object]:
+    """Emit readiness status for the MVP runtime path."""
+
+    try:
+        payload = build_readiness_status(
+            settings,
+            runtime_surface=runtime_surface,
+            gradio_available=gradio_available,
+            groq_available=groq_available,
+            qdrant_available=qdrant_available,
+            embedding_available=embedding_available,
+        )
+    except Exception as exc:
+        payload = {
+            "event_type": "readiness_check_failed",
+            "runtime_surface": runtime_surface,
+            "status": "not_ready",
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
+        logger.error("Readiness check failed", extra=payload)
+        raise
+
+    logger.info("Readiness check succeeded", extra=payload)
+    return payload
+
+
 def main(*, launch: bool = True) -> int:
     """Start the MVP Gradio app entrypoint."""
 
     settings = validate_startup_settings(get_settings())
     configure_logging(settings.log_level)
 
-    logger = logging.getLogger("yini.app")
+    log_startup_diagnostics(APP_LOGGER, settings, runtime_surface="gradio_ui")
+    log_health_status(APP_LOGGER, runtime_surface="gradio_ui")
+    log_readiness_status(APP_LOGGER, settings, runtime_surface="gradio_ui")
+    maybe_activate_phoenix(APP_LOGGER, settings, runtime_surface="gradio_ui")
     app = build_gradio_app(settings=settings)
-    log_startup_diagnostics(logger, settings, runtime_surface="gradio_ui")
     if launch:
         app.launch()
     return 0

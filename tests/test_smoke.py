@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 from pydantic import ValidationError
 
@@ -133,14 +135,19 @@ def test_cached_settings_access_is_stable() -> None:
     assert first is second
 
 
-def test_app_entrypoint_runs(capsys) -> None:
+def test_app_entrypoint_runs(
+    capsys,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     built = False
+    caplog.set_level(logging.INFO)
 
     class FakeApp:
         def launch(self) -> None:
             raise AssertionError("launch should not be called when launch=False")
 
     original_builder = app_ui.build_gradio_app
+    original_get_settings = app_ui.get_settings
 
     def fake_build_gradio_app(**_kwargs):
         nonlocal built
@@ -148,15 +155,27 @@ def test_app_entrypoint_runs(capsys) -> None:
         return FakeApp()
 
     app_ui.build_gradio_app = fake_build_gradio_app
+    app_ui.get_settings = lambda: Settings(
+        _env_file=None,
+        groq_api_key="test-groq-key",
+        qdrant_url="https://qdrant.example.com",
+        qdrant_api_key="test-qdrant-key",
+        app_env="test",
+    )
     try:
         exit_code = app_ui.main(launch=False)
     finally:
         app_ui.build_gradio_app = original_builder
+        app_ui.get_settings = original_get_settings
     captured = capsys.readouterr()
 
     assert exit_code == 0
     assert captured.out == ""
     assert built is True
+    event_types = [record.event_type for record in caplog.records if hasattr(record, "event_type")]
+    assert "startup_diagnostics" in event_types
+    assert "health_check_succeeded" in event_types
+    assert "readiness_check_succeeded" in event_types
 
 
 def test_hosted_request_smoke_path_runs_without_crashing() -> None:

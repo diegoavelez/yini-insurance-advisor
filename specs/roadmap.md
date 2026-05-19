@@ -325,7 +325,9 @@ Initial narrow slices:
 
 Current implementation status:
 
-- not started
+- completed:
+  - `startup-diagnostics-and-request-correlation`
+  - `retrieval-traces-and-hosted-health-checks`
 
 ---
 

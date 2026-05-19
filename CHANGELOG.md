@@ -45,6 +45,10 @@
   request correlation ids, structured retrieval and grounded-answer execution
   events, correlated CLI/UI failure logging, and validation that execution
   events do not leak secrets.
+- Add the remaining `Phase 6` observability slice with health/readiness checks,
+  optional Phoenix activation, explicit Phoenix failure policy, startup smoke
+  visibility for hosted app readiness, and correlated latency traces for the
+  grounded QA path.
 
 ## 2026-05-17
 

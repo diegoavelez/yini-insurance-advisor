@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import time
 import uuid
@@ -49,6 +50,89 @@ def log_startup_diagnostics(
         "Startup diagnostics emitted",
         extra=build_startup_diagnostics(settings, runtime_surface=runtime_surface),
     )
+
+
+def phoenix_backend_is_available() -> bool:
+    """Return whether the Phoenix backend is importable."""
+
+    return importlib.util.find_spec("phoenix") is not None
+
+
+def build_health_status(*, runtime_surface: str) -> dict[str, object]:
+    """Build the narrow liveness payload for the current runtime surface."""
+
+    return {
+        "event_type": "health_check_succeeded",
+        "runtime_surface": runtime_surface,
+        "status": "ok",
+    }
+
+
+def log_health_status(logger: logging.Logger, *, runtime_surface: str) -> dict[str, object]:
+    """Emit one health event and return the payload."""
+
+    payload = build_health_status(runtime_surface=runtime_surface)
+    logger.info("Health check succeeded", extra=payload)
+    return payload
+
+
+def maybe_activate_phoenix(
+    logger: logging.Logger,
+    settings: Settings,
+    *,
+    runtime_surface: str,
+    activator: Callable[[Settings], None] | None = None,
+    backend_available: bool | None = None,
+) -> dict[str, object]:
+    """Conditionally activate Phoenix tracing without breaking unconfigured runs."""
+
+    if settings.phoenix_endpoint is None:
+        payload = {
+            "event_type": "phoenix_activation_skipped",
+            "runtime_surface": runtime_surface,
+            "status": "disabled",
+            "reason": "not_configured",
+        }
+        logger.info("Phoenix activation skipped", extra=payload)
+        return payload
+
+    resolved_backend_available = (
+        phoenix_backend_is_available() if backend_available is None else backend_available
+    )
+    if not resolved_backend_available:
+        payload = {
+            "event_type": "phoenix_activation_skipped",
+            "runtime_surface": runtime_surface,
+            "status": "skipped",
+            "reason": "backend_unavailable",
+            "phoenix_project_name": settings.phoenix_project_name,
+        }
+        logger.warning("Phoenix activation skipped", extra=payload)
+        return payload
+
+    try:
+        if activator is not None:
+            activator(settings)
+    except Exception as exc:
+        payload = {
+            "event_type": "phoenix_activation_failed",
+            "runtime_surface": runtime_surface,
+            "status": "failed",
+            "phoenix_project_name": settings.phoenix_project_name,
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+        }
+        logger.error("Phoenix activation failed", extra=payload)
+        raise RuntimeError("Phoenix activation failed.") from exc
+
+    payload = {
+        "event_type": "phoenix_activation_enabled",
+        "runtime_surface": runtime_surface,
+        "status": "enabled",
+        "phoenix_project_name": settings.phoenix_project_name,
+    }
+    logger.info("Phoenix activation enabled", extra=payload)
+    return payload
 
 
 def log_event(
