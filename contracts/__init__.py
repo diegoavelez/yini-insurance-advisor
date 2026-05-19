@@ -29,6 +29,7 @@ from contracts.responses import (
 from contracts.state import AgentState
 from contracts.tools import (
     ClauseExtractionResult,
+    ClauseExtractionToolResult,
     DocumentFilters,
     DocumentRetrievalResult,
     DocumentRetrievalToolResult,
@@ -47,6 +48,7 @@ __all__ = [
     "Clause",
     "ClauseCategory",
     "ClauseExtractionResult",
+    "ClauseExtractionToolResult",
     "ComparisonItem",
     "ConfidenceLevel",
     "DocumentFilters",

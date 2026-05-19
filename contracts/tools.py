@@ -37,6 +37,8 @@ ToolErrorKind = Literal[
     "configuration_failure",
     "dependency_failure",
     "backend_failure",
+    "input_validation_failure",
+    "extraction_failure",
 ]
 
 
@@ -59,6 +61,14 @@ class ClauseExtractionResult(BaseModel):
     """Output contract for the clause extraction tool."""
 
     clauses: list[Clause] = Field(default_factory=list)
+
+
+class ClauseExtractionToolResult(BaseModel):
+    """Typed success or failure result for the clause extraction tool wrapper."""
+
+    ok: bool
+    result: ClauseExtractionResult | None = None
+    error: ToolError | None = None
 
 
 class PolicyComparisonResult(BaseModel):

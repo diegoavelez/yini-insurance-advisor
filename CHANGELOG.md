@@ -53,6 +53,10 @@
   `document_retrieval_tool`, typed tool failure contracts, empty-result
   success handling, preserved request correlation, and explicit tool failure
   observability coverage.
+- Add the next `Phase 7` tooling slice with an independently callable
+  `clause_extraction_tool`, conservative typed clause categorization over
+  retrieved evidence only, traceable supporting chunk ids, and explicit
+  success/failure observability coverage.
 
 ## 2026-05-17
 
