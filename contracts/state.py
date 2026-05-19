@@ -19,6 +19,8 @@ class AgentState(BaseModel):
 
     user_query: str = Field(min_length=1)
     query_type: str | None = None
+    planner_route: str | None = None
+    planner_reason: str | None = None
     plan: list[str] = Field(default_factory=list)
     retrieved_chunks: list[RetrievedChunk] = Field(default_factory=list)
     extracted_clauses: list[Clause] = Field(default_factory=list)

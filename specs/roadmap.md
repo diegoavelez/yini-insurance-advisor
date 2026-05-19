@@ -447,8 +447,8 @@ Current implementation status:
 
 - completed:
   - `langgraph-state-and-linear-workflow-skeleton`
-- remaining in `Phase 8`:
   - `planner-and-tool-routing-agent`
+- remaining in `Phase 8`:
   - `policy-analyst-and-verifier-workflow-pass`
   - `workflow-fallbacks-and-retry-policies`
 

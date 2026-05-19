@@ -13,6 +13,9 @@
 - Add the first `Phase 8` workflow slice with LangGraph wiring, shared workflow
   state, one linear end-to-end tool path, typed workflow success/failure
   output, and observable state transition tracing.
+- Add the next `Phase 8` workflow slice with a typed planner step, explicit
+  route selection over existing workflow paths, conservative unsupported-route
+  handling, and observable planner decision events.
 
 ## 2026-05-18
 

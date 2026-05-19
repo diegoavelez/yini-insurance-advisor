@@ -16,7 +16,9 @@ from agents.policy_comparison_tool import policy_comparison_tool
 from agents.response_draft_tool import response_draft_tool
 from contracts import (
     AgentState,
+    GroundingVerification,
     LangGraphWorkflowToolResult,
+    PlannerDecision,
     RetrievalQuery,
     ToolError,
     WorkflowExecutionResult,
@@ -26,6 +28,31 @@ from ops.observability import log_event, log_timed_event
 from rag.ingestion import build_citations_from_chunks, build_documentary_basis
 
 WORKFLOW_LOGGER = logging.getLogger("yini.workflow.langgraph")
+SUPPORTED_QUERY_TOKENS = {
+    "accident",
+    "authorization",
+    "benefit",
+    "claim",
+    "clause",
+    "compare",
+    "comparison",
+    "copay",
+    "coverage",
+    "covered",
+    "deductible",
+    "difference",
+    "endorsement",
+    "exclusion",
+    "hospital",
+    "insurance",
+    "policy",
+    "premium",
+    "procedure",
+    "reimbursement",
+    "restriction",
+    "versus",
+    "vs",
+}
 
 
 def langgraph_backend_is_available() -> bool:
@@ -58,6 +85,7 @@ def build_initial_workflow_state(user_query: str) -> AgentState:
     return AgentState(
         user_query=user_query,
         plan=[
+            "planner",
             "retrieve",
             "extract_clauses",
             "compare",
@@ -83,6 +111,25 @@ def append_trace(state: AgentState, message: str) -> list[str]:
     return [*state.trace_summary, message]
 
 
+def classify_planner_route(user_query: str) -> PlannerDecision:
+    """Return a deterministic typed route decision for one user query."""
+
+    normalized_tokens = {
+        token.strip(".,:;!?()[]{}'\"").lower()
+        for token in user_query.split()
+        if token.strip(".,:;!?()[]{}'\"")
+    }
+    if normalized_tokens & SUPPORTED_QUERY_TOKENS:
+        return PlannerDecision(
+            route="grounded_qa",
+            reason="Query matches supported insurance-document workflow patterns.",
+        )
+    return PlannerDecision(
+        route="unsupported",
+        reason="Query does not match supported insurance-document workflow patterns.",
+    )
+
+
 def emit_transition(
     *,
     request_id: str | None,
@@ -100,6 +147,85 @@ def emit_transition(
         transition_status=status,
         **fields,
     )
+
+
+def planner_step(
+    state: AgentState | dict[str, Any],
+    *,
+    request_id: str | None,
+) -> dict[str, object]:
+    """Run the narrow planner step and record the route decision."""
+
+    typed_state = ensure_agent_state(state)
+    emit_transition(request_id=request_id, step="planner", status="started")
+    decision = classify_planner_route(typed_state.user_query)
+    log_event(
+        WORKFLOW_LOGGER,
+        event_type="planner_route_selected",
+        request_id=request_id,
+        route=decision.route,
+        reason=decision.reason,
+    )
+    emit_transition(
+        request_id=request_id,
+        step="planner",
+        status="succeeded",
+        route=decision.route,
+    )
+    return {
+        "planner_route": decision.route,
+        "planner_reason": decision.reason,
+        "query_type": decision.route,
+        "trace_summary": append_trace(typed_state, f"planner:{decision.route}"),
+    }
+
+
+def unsupported_route_step(
+    state: AgentState | dict[str, Any],
+    *,
+    request_id: str | None,
+) -> dict[str, object]:
+    """Return a conservative valid workflow outcome for unsupported routes."""
+
+    typed_state = ensure_agent_state(state)
+    emit_transition(request_id=request_id, step="unsupported_route", status="started")
+    verification = GroundingVerification(
+        supported=False,
+        confidence="low",
+        unsupported_claims=[
+            "The query is outside the workflow's currently supported insurance-document scope."
+        ],
+        missing_citations=["No workflow evidence was gathered for this unsupported route."],
+    )
+    tool_result = response_draft_tool(
+        typed_state.user_query,
+        [],
+        [],
+        verification=verification,
+        request_id=request_id,
+    )
+    if not tool_result.ok or tool_result.result is None:
+        raise RuntimeError(
+            tool_result.error.message
+            if tool_result.error
+            else "Unsupported-route drafting failed."
+        )
+    emit_transition(
+        request_id=request_id,
+        step="unsupported_route",
+        status="succeeded",
+        confidence=tool_result.result.confidence,
+    )
+    return {
+        "draft_response": tool_result.result,
+        "draft_answer": tool_result.result.suggested_answer,
+        "final_answer": tool_result.result.suggested_answer,
+        "verification": verification,
+        "citations": tool_result.result.citations,
+        "confidence": tool_result.result.confidence,
+        "requires_human_review": True,
+        "trace_summary": append_trace(typed_state, "workflow_completed_unsupported"),
+    }
 
 
 def retrieve_step(
@@ -341,6 +467,33 @@ def run_linear_workflow_steps(
     return current_state
 
 
+def run_planned_workflow_steps(
+    state: AgentState,
+    *,
+    settings: Settings | None = None,
+    client: object | None = None,
+    request_id: str | None = None,
+) -> AgentState:
+    """Execute the planner step and then the selected narrow route."""
+
+    current_state = state.model_copy(deep=True)
+    current_state = current_state.model_copy(
+        update=planner_step(current_state, request_id=request_id),
+        deep=True,
+    )
+    if current_state.planner_route == "unsupported":
+        return current_state.model_copy(
+            update=unsupported_route_step(current_state, request_id=request_id),
+            deep=True,
+        )
+    return run_linear_workflow_steps(
+        current_state,
+        settings=settings,
+        client=client,
+        request_id=request_id,
+    )
+
+
 def build_linear_workflow_graph(
     *,
     settings: Settings | None = None,
@@ -355,6 +508,10 @@ def build_linear_workflow_graph(
     from langgraph.graph import END, StateGraph
 
     workflow = StateGraph(AgentState)
+    workflow.add_node(
+        "planner",
+        lambda state: planner_step(state, request_id=request_id),
+    )
     workflow.add_node(
         "retrieve",
         lambda state: retrieve_step(
@@ -384,13 +541,26 @@ def build_linear_workflow_graph(
         "draft_final",
         lambda state: finalize_response_step(state, request_id=request_id),
     )
-    workflow.set_entry_point("retrieve")
+    workflow.add_node(
+        "unsupported_route",
+        lambda state: unsupported_route_step(state, request_id=request_id),
+    )
+    workflow.set_entry_point("planner")
+    workflow.add_conditional_edges(
+        "planner",
+        lambda state: ensure_agent_state(state).planner_route or "unsupported",
+        {
+            "grounded_qa": "retrieve",
+            "unsupported": "unsupported_route",
+        },
+    )
     workflow.add_edge("retrieve", "extract_clauses")
     workflow.add_edge("extract_clauses", "compare")
     workflow.add_edge("compare", "draft_initial")
     workflow.add_edge("draft_initial", "verify_citations")
     workflow.add_edge("verify_citations", "draft_final")
     workflow.add_edge("draft_final", END)
+    workflow.add_edge("unsupported_route", END)
     return workflow.compile()
 
 

@@ -41,7 +41,12 @@ from contracts.tools import (
     RetrievalQuery,
     ToolError,
 )
-from contracts.workflow import LangGraphWorkflowToolResult, WorkflowExecutionResult
+from contracts.workflow import (
+    LangGraphWorkflowToolResult,
+    PlannerDecision,
+    PlannerRoute,
+    WorkflowExecutionResult,
+)
 
 __all__ = [
     "AdvisorDraftResponse",
@@ -71,6 +76,8 @@ __all__ = [
     "GroundingVerificationResult",
     "IngestionStatus",
     "LangGraphWorkflowToolResult",
+    "PlannerDecision",
+    "PlannerRoute",
     "PolicyComparisonResult",
     "PolicyComparisonToolResult",
     "ProcessedDocument",

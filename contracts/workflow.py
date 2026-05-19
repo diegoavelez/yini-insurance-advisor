@@ -2,11 +2,22 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 from contracts.responses import AdvisorDraftResponse
 from contracts.state import AgentState
 from contracts.tools import ToolError
+
+PlannerRoute = Literal["grounded_qa", "unsupported"]
+
+
+class PlannerDecision(BaseModel):
+    """Typed planner routing decision for the LangGraph workflow."""
+
+    route: PlannerRoute
+    reason: str
 
 
 class WorkflowExecutionResult(BaseModel):
