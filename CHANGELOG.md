@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Close the remaining `Phase 8` validation gap with an end-to-end
+  unsupported-route workflow test, confirming conservative non-error behavior
+  for out-of-scope queries and fully closing the documented planner slice
+  verification.
 - Add the next `Phase 8` workflow slice with explicit insufficient-evidence
   fallback edges after comparison and citation verification, conservative
   typed fallback outcomes, fallback traceability in shared state, and

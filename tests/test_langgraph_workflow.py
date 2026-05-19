@@ -14,11 +14,13 @@ from agents.langgraph_workflow import (
 )
 from contracts import (
     CitationVerifierToolResult,
+    ClauseExtractionToolResult,
     DocumentRetrievalResult,
     DocumentRetrievalToolResult,
     GroundingVerification,
     GroundingVerificationResult,
     RetrievedChunk,
+    ToolError,
 )
 
 
@@ -178,12 +180,171 @@ def test_langgraph_linear_workflow_returns_valid_verifier_fallback(monkeypatch) 
     assert "insufficient_evidence_fallback:citation_verifier" in result.result.state.trace_summary
 
 
+def test_langgraph_linear_workflow_retries_retryable_retrieval_failure(monkeypatch, caplog) -> None:
+    import agents.langgraph_workflow as workflow_module
+
+    caplog.set_level(logging.INFO)
+    attempts = {"count": 0}
+
+    def flaky_retrieval_tool(*_args, **_kwargs):
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            return DocumentRetrievalToolResult(
+                ok=False,
+                error=ToolError(kind="backend_failure", message="temporary qdrant timeout"),
+            )
+        return DocumentRetrievalToolResult(
+            ok=True,
+            result=DocumentRetrievalResult(chunks=make_comparable_chunks()),
+        )
+
+    monkeypatch.setattr(workflow_module, "document_retrieval_tool", flaky_retrieval_tool)
+    compiled_graph = FakeCompiledGraph(
+        lambda state: run_planned_workflow_steps(state, request_id="wf-123456789012")
+    )
+
+    result = langgraph_linear_workflow(
+        "What coverage applies?",
+        request_id="wf-123456789012",
+        compiled_graph=compiled_graph,
+    )
+
+    assert result.ok is True
+    assert result.result is not None
+    assert attempts["count"] == 2
+    assert "retry:retrieve:1" in result.result.state.trace_summary
+    assert result.result.state.retry_attempts == ["retrieve:attempt_1"]
+    retry_event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_type", "") == "workflow_retry_attempt"
+    )
+    assert retry_event.request_id == "wf-123456789012"
+    assert retry_event.workflow_step == "retrieve"
+    assert retry_event.attempt_number == 1
+
+
+def test_langgraph_linear_workflow_returns_retry_exhausted_failure(monkeypatch, caplog) -> None:
+    import agents.langgraph_workflow as workflow_module
+
+    caplog.set_level(logging.INFO)
+
+    def failing_citation_verifier_tool(*_args, **_kwargs):
+        return CitationVerifierToolResult(
+            ok=False,
+            error=ToolError(
+                kind="backend_failure",
+                message="temporary verifier backend outage",
+            ),
+        )
+
+    monkeypatch.setattr(
+        workflow_module,
+        "citation_verifier_tool",
+        failing_citation_verifier_tool,
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "document_retrieval_tool",
+        lambda *_args, **_kwargs: DocumentRetrievalToolResult(
+            ok=True,
+            result=DocumentRetrievalResult(chunks=make_comparable_chunks()),
+        ),
+    )
+    compiled_graph = FakeCompiledGraph(
+        lambda state: run_planned_workflow_steps(state, request_id="wf-123456789012")
+    )
+
+    result = langgraph_linear_workflow(
+        "What coverage applies?",
+        request_id="wf-123456789012",
+        compiled_graph=compiled_graph,
+    )
+
+    assert result.ok is False
+    assert result.error is not None
+    assert result.error.kind == "retry_exhausted_failure"
+    exhausted_event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_type", "") == "workflow_retry_exhausted"
+    )
+    assert exhausted_event.request_id == "wf-123456789012"
+    assert exhausted_event.workflow_step == "citation_verifier"
+    assert exhausted_event.attempts_used == 2
+
+
+def test_langgraph_linear_workflow_fails_immediately_for_non_retryable_failure(monkeypatch) -> None:
+    import agents.langgraph_workflow as workflow_module
+
+    attempts = {"count": 0}
+
+    def failing_clause_extraction_tool(*_args, **_kwargs):
+        attempts["count"] += 1
+        return ClauseExtractionToolResult(
+            ok=False,
+            error=ToolError(
+                kind="input_validation_failure",
+                message="clauses could not be parsed",
+            ),
+        )
+
+    monkeypatch.setattr(workflow_module, "clause_extraction_tool", failing_clause_extraction_tool)
+    monkeypatch.setattr(
+        workflow_module,
+        "document_retrieval_tool",
+        lambda *_args, **_kwargs: DocumentRetrievalToolResult(
+            ok=True,
+            result=DocumentRetrievalResult(chunks=make_comparable_chunks()),
+        ),
+    )
+    compiled_graph = FakeCompiledGraph(
+        lambda state: run_planned_workflow_steps(state, request_id="wf-123456789012")
+    )
+
+    result = langgraph_linear_workflow(
+        "What coverage applies?",
+        request_id="wf-123456789012",
+        compiled_graph=compiled_graph,
+    )
+
+    assert result.ok is False
+    assert result.error is not None
+    assert result.error.kind == "workflow_failure"
+    assert attempts["count"] == 1
+
+
 def test_langgraph_linear_workflow_returns_typed_input_validation_failure() -> None:
     result = langgraph_linear_workflow("", compiled_graph=FakeCompiledGraph(lambda state: state))
 
     assert result.ok is False
     assert result.error is not None
     assert result.error.kind == "input_validation_failure"
+
+
+def test_langgraph_linear_workflow_returns_valid_unsupported_route_outcome() -> None:
+    compiled_graph = FakeCompiledGraph(
+        lambda state: run_planned_workflow_steps(state, request_id="wf-123456789012")
+    )
+
+    result = langgraph_linear_workflow(
+        "What is the weather in Bogota?",
+        request_id="wf-123456789012",
+        compiled_graph=compiled_graph,
+    )
+
+    assert result.ok is True
+    assert result.result is not None
+    assert result.result.state.planner_route == "unsupported"
+    assert result.result.state.verification is not None
+    assert result.result.state.verification.supported is False
+    assert result.result.state.requires_human_review is True
+    assert result.result.response.confidence == "low"
+    assert result.result.state.trace_summary == [
+        "workflow_initialized",
+        "planner:unsupported",
+        "workflow_completed_unsupported",
+    ]
 
 
 def test_langgraph_linear_workflow_returns_dependency_failure_without_backend(monkeypatch) -> None:
