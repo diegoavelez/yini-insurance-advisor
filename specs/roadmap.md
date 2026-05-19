@@ -390,8 +390,9 @@ Current implementation status:
   - `clause-extraction-tool-from-retrieved-evidence`
   - `policy-comparison-tool-from-typed-evidence`
   - `citation-verifier-tool`
-- remaining in `Phase 7`:
   - `response-draft-tool`
+- remaining in `Phase 7`:
+  - none
 
 ---
 

@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from contracts.documents import Clause, ComparisonItem, RetrievedChunk
-from contracts.responses import Citation, GroundingVerification
+from contracts.responses import AdvisorDraftResponse, Citation, GroundingVerification
 
 
 class DocumentFilters(BaseModel):
@@ -41,6 +41,7 @@ ToolErrorKind = Literal[
     "extraction_failure",
     "comparison_failure",
     "verification_failure",
+    "drafting_failure",
 ]
 
 
@@ -102,4 +103,12 @@ class CitationVerifierToolResult(BaseModel):
 
     ok: bool
     result: GroundingVerificationResult | None = None
+    error: ToolError | None = None
+
+
+class ResponseDraftToolResult(BaseModel):
+    """Typed success or failure result for the response draft tool wrapper."""
+
+    ok: bool
+    result: AdvisorDraftResponse | None = None
     error: ToolError | None = None

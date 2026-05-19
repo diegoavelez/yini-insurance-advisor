@@ -6,6 +6,10 @@
   `citation_verifier_tool`, conservative verification over drafted output and
   cited evidence only, explicit weak/unsupported non-error outcomes, and typed
   success/failure observability coverage.
+- Add the final `Phase 7` tooling slice with an independently callable
+  `response_draft_tool`, typed advisor-facing draft output from upstream
+  evidence only, explicit insufficient-information handling, and preserved
+  observability for reusable drafting.
 
 ## 2026-05-18
 

@@ -37,6 +37,7 @@ from contracts.tools import (
     GroundingVerificationResult,
     PolicyComparisonResult,
     PolicyComparisonToolResult,
+    ResponseDraftToolResult,
     RetrievalQuery,
     ToolError,
 )
@@ -73,6 +74,7 @@ __all__ = [
     "ProcessedDocument",
     "RetrievalQuery",
     "RetrievedChunk",
+    "ResponseDraftToolResult",
     "ToolError",
     "VectorPayload",
 ]
