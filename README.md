@@ -7,7 +7,9 @@ insurance policy and procedure documents.
 This repository now contains the completed `Phase 0` foundation, the full
 `Phase 1` configuration and shared-contract slices, the implemented `Phase 2`
 and `Phase 3` ingestion/chunking pipeline, the full `Phase 4` embedding and
-indexing pipeline, and the core `Phase 5` grounded QA backend.
+indexing pipeline, the completed `Phase 5` MVP QA layer, the completed
+`Phase 6` observability foundation, the completed `Phase 7` reusable tooling
+layer, and the first `Phase 8` LangGraph workflow skeleton.
 
 ## Source Documents
 
@@ -33,7 +35,20 @@ indexing pipeline, and the core `Phase 5` grounded QA backend.
   - ranked retrieval
   - Gradio MVP query UI
   - grounded answer generation with citations
-- The next major work starts `Phase 6` observability.
+- `Phase 6` is complete through:
+  - startup diagnostics and request correlation
+  - hosted health/readiness checks
+  - Phoenix activation hooks
+- `Phase 7` is complete through:
+  - document retrieval tool
+  - clause extraction tool
+  - policy comparison tool
+  - citation verifier tool
+  - response draft tool
+- `Phase 8` has started through:
+  - LangGraph wiring
+  - shared workflow state
+  - one observable linear workflow path over the existing tools
 
 ## Local Setup
 
@@ -147,5 +162,10 @@ tests/      Smoke tests and future test coverage
 
 ## Next Milestones
 
-The next implementation work moves into `Phase 6` observability from
-`/Users/diegovelez/Documents/PROJECTS/codex/yini-insurance-advisor/specs/roadmap.md`.
+The next implementation work continues `Phase 8` from
+`/Users/diegovelez/Documents/PROJECTS/codex/yini-insurance-advisor/specs/roadmap.md`,
+starting with:
+
+- `planner-and-tool-routing-agent`
+- `policy-analyst-and-verifier-workflow-pass`
+- `workflow-fallbacks-and-retry-policies`

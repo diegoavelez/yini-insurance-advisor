@@ -5,7 +5,12 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from contracts.documents import Clause, RetrievedChunk
-from contracts.responses import Citation, ConfidenceLevel, GroundingVerification
+from contracts.responses import (
+    AdvisorDraftResponse,
+    Citation,
+    ConfidenceLevel,
+    GroundingVerification,
+)
 from contracts.tools import PolicyComparisonResult
 
 
@@ -18,6 +23,7 @@ class AgentState(BaseModel):
     retrieved_chunks: list[RetrievedChunk] = Field(default_factory=list)
     extracted_clauses: list[Clause] = Field(default_factory=list)
     comparison_result: PolicyComparisonResult | None = None
+    draft_response: AdvisorDraftResponse | None = None
     draft_answer: str | None = None
     citations: list[Citation] = Field(default_factory=list)
     verification: GroundingVerification | None = None

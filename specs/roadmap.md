@@ -419,6 +419,39 @@ Replace basic RAG with controlled multi-agent orchestration.
 - state transitions are observable;
 - fallbacks work.
 
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `langgraph-state-and-linear-workflow-skeleton` should cover:
+  - LangGraph project wiring;
+  - one shared workflow state over existing typed tool contracts;
+  - a single linear workflow path using the existing reusable tools;
+  - observable state transition tracing without planner branching yet.
+- `planner-and-tool-routing-agent` should cover:
+  - a narrow planner step that selects among the existing tool paths;
+  - explicit routing decisions and typed fallback behavior;
+  - no multi-branch recovery or advanced planning yet.
+- `policy-analyst-and-verifier-workflow-pass` should cover:
+  - integration of comparison, verification, and drafting inside the graph;
+  - one end-to-end analyst/verifier/drafter pass over the existing tools;
+  - no UI redesign or external tool exposure yet.
+- `workflow-fallbacks-and-retry-policies` should cover:
+  - typed fallback edges and retry boundaries;
+  - observable failure transitions;
+  - conservative recovery behavior for weak evidence and tool failures.
+
+Current implementation status:
+
+- completed:
+  - `langgraph-state-and-linear-workflow-skeleton`
+- remaining in `Phase 8`:
+  - `planner-and-tool-routing-agent`
+  - `policy-analyst-and-verifier-workflow-pass`
+  - `workflow-fallbacks-and-retry-policies`
+
 ---
 
 # Phase 9 — Guardrails

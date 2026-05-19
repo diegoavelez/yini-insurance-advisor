@@ -10,6 +10,9 @@
   `response_draft_tool`, typed advisor-facing draft output from upstream
   evidence only, explicit insufficient-information handling, and preserved
   observability for reusable drafting.
+- Add the first `Phase 8` workflow slice with LangGraph wiring, shared workflow
+  state, one linear end-to-end tool path, typed workflow success/failure
+  output, and observable state transition tracing.
 
 ## 2026-05-18
 

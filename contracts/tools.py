@@ -42,6 +42,7 @@ ToolErrorKind = Literal[
     "comparison_failure",
     "verification_failure",
     "drafting_failure",
+    "workflow_failure",
 ]
 
 
