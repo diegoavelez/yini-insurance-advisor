@@ -454,8 +454,9 @@ Current implementation status:
   - `planner-and-tool-routing-agent`
   - `policy-analyst-and-verifier-workflow-pass`
   - `workflow-insufficient-evidence-fallbacks`
-- remaining in `Phase 8`:
   - `workflow-tool-failure-retry-policies`
+- remaining in `Phase 8`:
+  - none
 
 ---
 
@@ -480,6 +481,33 @@ Add safety and scope protections.
 - unsupported queries are rejected safely;
 - unsafe behavior is measurable against abuse cases;
 - confidence signals appear consistently.
+
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `unsupported-query-scope-guardrails` should cover:
+  - explicit scope validation for out-of-scope or unsupported user queries;
+  - conservative refusal behavior at the workflow and UI boundary;
+  - no prompt-injection handling or abuse-case suite yet.
+- `citation-and-confidence-guardrails` should cover:
+  - mandatory citation presence checks for answerable responses;
+  - confidence consistency checks across typed response outputs;
+  - no injection detection or telemetry expansion yet.
+- `prompt-injection-and-abuse-case-telemetry` should cover:
+  - narrow prompt-injection detection signals;
+  - abuse-case validation scenarios;
+  - refusal telemetry for guardrail-triggered outcomes.
+
+Current implementation status:
+
+- completed:
+  - `unsupported-query-scope-guardrails`
+- remaining in `Phase 9`:
+  - `citation-and-confidence-guardrails`
+  - `prompt-injection-and-abuse-case-telemetry`
 
 ---
 

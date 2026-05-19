@@ -93,6 +93,24 @@ def test_generate_grounded_answer_fails_loudly_for_missing_groq_config() -> None
         )
 
 
+def test_generate_grounded_answer_returns_scope_refusal_without_backend_dependencies() -> None:
+    result = generate_grounded_answer(
+        RetrievalQuery(query="What is the weather in Bogota?"),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key=None,
+            qdrant_url=None,
+            qdrant_api_key=None,
+        ),
+    )
+
+    assert result.response.confidence == "low"
+    assert "cannot answer" in result.response.suggested_answer.lower()
+    assert result.response.citations == []
+    assert result.response.documentary_basis == []
+    assert result.verification.supported is False
+
+
 def test_generate_grounded_answer_returns_typed_response_with_citations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

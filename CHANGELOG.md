@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the first `Phase 9` guardrail slice with deterministic unsupported-query
+  scope classification, conservative typed refusal outcomes at the workflow and
+  UI boundary, and correlated refusal observability without drifting into
+  prompt-injection or citation-confidence policy work.
 - Close the remaining `Phase 8` validation gap with an end-to-end
   unsupported-route workflow test, confirming conservative non-error behavior
   for out-of-scope queries and fully closing the documented planner slice

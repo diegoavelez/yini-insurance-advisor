@@ -35,6 +35,7 @@ from contracts import (
 )
 from core.config import Settings, get_settings, validate_startup_settings
 from core.logging import configure_logging
+from core.query_scope import classify_query_scope
 from ops.observability import (
     generate_request_id,
     log_event,
@@ -1167,6 +1168,34 @@ def build_insufficient_evidence_response(
     )
 
 
+def build_unsupported_query_response(*, query: str) -> GroundedAnswerResult:
+    """Return a typed conservative refusal for out-of-scope queries."""
+
+    verification = GroundingVerification(
+        supported=False,
+        confidence="low",
+        unsupported_claims=[
+            "The query is outside the supported insurance-document scope for this assistant."
+        ],
+        missing_citations=["No citations are available for an out-of-scope refusal outcome."],
+    )
+    return GroundedAnswerResult(
+        query=query,
+        response=AdvisorDraftResponse(
+            suggested_answer=(
+                "I cannot answer that request within the supported insurance-document scope "
+                "of this assistant."
+            ),
+            documentary_basis=[],
+            citations=[],
+            confidence="low",
+            limitations=["This request is outside the supported insurance-document scope."],
+            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+        ),
+        verification=verification,
+    )
+
+
 def generate_grounded_answer(
     retrieval_query: RetrievalQuery,
     *,
@@ -1188,6 +1217,17 @@ def generate_grounded_answer(
             "limitation_count": len(result.response.limitations),
         },
     ):
+        scope_decision = classify_query_scope(retrieval_query.query)
+        if scope_decision.scope == "unsupported":
+            log_event(
+                RAG_LOGGER,
+                event_type="query_scope_refusal",
+                request_id=request_id,
+                scope="unsupported",
+                refusal_reason=scope_decision.reason,
+            )
+            result = build_unsupported_query_response(query=retrieval_query.query)
+            return result
         resolved_settings = validate_startup_settings(
             settings or get_settings(),
             require_groq=True,

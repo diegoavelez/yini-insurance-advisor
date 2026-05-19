@@ -24,35 +24,39 @@ from contracts import (
     WorkflowExecutionResult,
 )
 from core.config import Settings
+from core.query_scope import classify_query_scope
 from ops.observability import log_event, log_timed_event
 from rag.ingestion import build_citations_from_chunks, build_documentary_basis
 
 WORKFLOW_LOGGER = logging.getLogger("yini.workflow.langgraph")
-SUPPORTED_QUERY_TOKENS = {
-    "accident",
-    "authorization",
-    "benefit",
-    "claim",
-    "clause",
-    "compare",
-    "comparison",
-    "copay",
-    "coverage",
-    "covered",
-    "deductible",
-    "difference",
-    "endorsement",
-    "exclusion",
-    "hospital",
-    "insurance",
-    "policy",
-    "premium",
-    "procedure",
-    "reimbursement",
-    "restriction",
-    "versus",
-    "vs",
-}
+MAX_WORKFLOW_RETRY_ATTEMPTS = 2
+RETRYABLE_WORKFLOW_STEPS = {"retrieve", "citation_verifier"}
+
+
+class WorkflowStepError(RuntimeError):
+    """Internal typed workflow-step failure."""
+
+    def __init__(
+        self,
+        stage: str,
+        message: str,
+        *,
+        retryable: bool,
+        failure_kind: str,
+    ) -> None:
+        super().__init__(message)
+        self.stage = stage
+        self.retryable = retryable
+        self.failure_kind = failure_kind
+
+
+class WorkflowRetryExhaustedError(RuntimeError):
+    """Internal terminal failure after bounded retry exhaustion."""
+
+    def __init__(self, stage: str, last_error: WorkflowStepError) -> None:
+        super().__init__(str(last_error))
+        self.stage = stage
+        self.last_error = last_error
 
 
 def langgraph_backend_is_available() -> bool:
@@ -66,6 +70,11 @@ def classify_langgraph_workflow_error(exc: Exception) -> ToolError:
 
     if isinstance(exc, ValueError):
         return ToolError(kind="input_validation_failure", message=str(exc))
+    if isinstance(exc, WorkflowRetryExhaustedError):
+        return ToolError(
+            kind="retry_exhausted_failure",
+            message=f"{exc.stage} exhausted bounded retry attempts: {exc.last_error}",
+        )
     message = str(exc).lower()
     if "langgraph" in message and ("not installed" in message or "unavailable" in message):
         return ToolError(kind="dependency_failure", message=str(exc))
@@ -114,19 +123,15 @@ def append_trace(state: AgentState, message: str) -> list[str]:
 def classify_planner_route(user_query: str) -> PlannerDecision:
     """Return a deterministic typed route decision for one user query."""
 
-    normalized_tokens = {
-        token.strip(".,:;!?()[]{}'\"").lower()
-        for token in user_query.split()
-        if token.strip(".,:;!?()[]{}'\"")
-    }
-    if normalized_tokens & SUPPORTED_QUERY_TOKENS:
+    scope_decision = classify_query_scope(user_query)
+    if scope_decision.scope == "supported":
         return PlannerDecision(
             route="grounded_qa",
-            reason="Query matches supported insurance-document workflow patterns.",
+            reason=scope_decision.reason,
         )
     return PlannerDecision(
         route="unsupported",
-        reason="Query does not match supported insurance-document workflow patterns.",
+        reason=scope_decision.reason,
     )
 
 
@@ -164,6 +169,106 @@ def emit_fallback_selected(
         fallback_stage=fallback_stage,
         fallback_reason=fallback_reason,
     )
+
+
+def emit_retry_attempt(
+    *,
+    request_id: str | None,
+    workflow_step: str,
+    attempt_number: int,
+    max_attempts: int,
+    error_message: str,
+) -> None:
+    """Emit one structured retry-attempt event."""
+
+    log_event(
+        WORKFLOW_LOGGER,
+        event_type="workflow_retry_attempt",
+        request_id=request_id,
+        workflow_step=workflow_step,
+        attempt_number=attempt_number,
+        max_attempts=max_attempts,
+        error_message=error_message,
+    )
+
+
+def emit_retry_exhausted(
+    *,
+    request_id: str | None,
+    workflow_step: str,
+    attempts_used: int,
+    error_message: str,
+) -> None:
+    """Emit one structured retry-exhausted event."""
+
+    log_event(
+        WORKFLOW_LOGGER,
+        event_type="workflow_retry_exhausted",
+        request_id=request_id,
+        workflow_step=workflow_step,
+        attempts_used=attempts_used,
+        error_message=error_message,
+    )
+
+
+def classify_retryable_failure_kind(error_kind: str) -> bool:
+    """Return whether one tool failure kind is eligible for bounded retry."""
+
+    return error_kind in {"dependency_failure", "backend_failure"}
+
+
+def execute_workflow_step_with_retry(
+    state: AgentState,
+    *,
+    step_name: str,
+    step_runner: Any,
+    request_id: str | None,
+) -> AgentState:
+    """Execute one workflow step with bounded retry when the boundary allows it."""
+
+    current_state = state.model_copy(deep=True)
+    max_attempts = (
+        MAX_WORKFLOW_RETRY_ATTEMPTS if step_name in RETRYABLE_WORKFLOW_STEPS else 1
+    )
+    attempt_number = 1
+    while True:
+        try:
+            return current_state.model_copy(
+                update=step_runner(current_state),
+                deep=True,
+            )
+        except WorkflowStepError as exc:
+            if not exc.retryable or attempt_number >= max_attempts:
+                if exc.retryable and step_name in RETRYABLE_WORKFLOW_STEPS:
+                    emit_retry_exhausted(
+                        request_id=request_id,
+                        workflow_step=step_name,
+                        attempts_used=attempt_number,
+                        error_message=str(exc),
+                    )
+                    raise WorkflowRetryExhaustedError(step_name, exc) from exc
+                raise
+            emit_retry_attempt(
+                request_id=request_id,
+                workflow_step=step_name,
+                attempt_number=attempt_number,
+                max_attempts=max_attempts,
+                error_message=str(exc),
+            )
+            current_state = current_state.model_copy(
+                update={
+                    "retry_attempts": [
+                        *current_state.retry_attempts,
+                        f"{step_name}:attempt_{attempt_number}",
+                    ],
+                    "trace_summary": append_trace(
+                        current_state,
+                        f"retry:{step_name}:{attempt_number}",
+                    ),
+                },
+                deep=True,
+            )
+            attempt_number += 1
 
 
 def planner_step(
@@ -288,7 +393,20 @@ def retrieve_step(
         client=client,
         request_id=request_id,
     )
-    retrieval_result = unwrap_retrieval_tool_result(retrieval_tool_result)
+    try:
+        retrieval_result = unwrap_retrieval_tool_result(retrieval_tool_result)
+    except Exception as exc:
+        error_kind = (
+            retrieval_tool_result.error.kind
+            if retrieval_tool_result.error is not None
+            else "backend_failure"
+        )
+        raise WorkflowStepError(
+            "retrieve",
+            str(exc),
+            retryable=classify_retryable_failure_kind(error_kind),
+            failure_kind=error_kind,
+        ) from exc
     emit_transition(
         request_id=request_id,
         step="retrieve",
@@ -315,10 +433,18 @@ def extract_clauses_step(
         request_id=request_id,
     )
     if not tool_result.ok or tool_result.result is None:
-        raise RuntimeError(
-            tool_result.error.message
-            if tool_result.error
-            else "Clause extraction failed."
+        error_kind = (
+            tool_result.error.kind if tool_result.error is not None else "extraction_failure"
+        )
+        raise WorkflowStepError(
+            "extract_clauses",
+            (
+                tool_result.error.message
+                if tool_result.error
+                else "Clause extraction failed."
+            ),
+            retryable=False,
+            failure_kind=error_kind,
         )
     emit_transition(
         request_id=request_id,
@@ -349,10 +475,18 @@ def compare_policies_step(
         request_id=request_id,
     )
     if not tool_result.ok or tool_result.result is None:
-        raise RuntimeError(
-            tool_result.error.message
-            if tool_result.error
-            else "Policy comparison failed."
+        error_kind = (
+            tool_result.error.kind if tool_result.error is not None else "comparison_failure"
+        )
+        raise WorkflowStepError(
+            "compare",
+            (
+                tool_result.error.message
+                if tool_result.error
+                else "Policy comparison failed."
+            ),
+            retryable=False,
+            failure_kind=error_kind,
         )
     emit_transition(
         request_id=request_id,
@@ -400,10 +534,18 @@ def policy_analyst_step(
         request_id=request_id,
     )
     if not tool_result.ok or tool_result.result is None:
-        raise RuntimeError(
-            tool_result.error.message
-            if tool_result.error
-            else "Policy analyst drafting failed."
+        error_kind = (
+            tool_result.error.kind if tool_result.error is not None else "drafting_failure"
+        )
+        raise WorkflowStepError(
+            "policy_analyst",
+            (
+                tool_result.error.message
+                if tool_result.error
+                else "Policy analyst drafting failed."
+            ),
+            retryable=False,
+            failure_kind=error_kind,
         )
     analyst_summary = build_analyst_summary(typed_state)
     emit_transition(
@@ -444,10 +586,18 @@ def verify_citations_step(
         request_id=request_id,
     )
     if not tool_result.ok or tool_result.result is None:
-        raise RuntimeError(
-            tool_result.error.message
-            if tool_result.error
-            else "Citation verification failed."
+        error_kind = (
+            tool_result.error.kind if tool_result.error is not None else "verification_failure"
+        )
+        raise WorkflowStepError(
+            "citation_verifier",
+            (
+                tool_result.error.message
+                if tool_result.error
+                else "Citation verification failed."
+            ),
+            retryable=classify_retryable_failure_kind(error_kind),
+            failure_kind=error_kind,
         )
     emit_transition(
         request_id=request_id,
@@ -485,10 +635,18 @@ def response_drafter_step(
         request_id=request_id,
     )
     if not tool_result.ok or tool_result.result is None:
-        raise RuntimeError(
-            tool_result.error.message
-            if tool_result.error
-            else "Final drafting failed."
+        error_kind = (
+            tool_result.error.kind if tool_result.error is not None else "drafting_failure"
+        )
+        raise WorkflowStepError(
+            "response_drafter",
+            (
+                tool_result.error.message
+                if tool_result.error
+                else "Final drafting failed."
+            ),
+            retryable=False,
+            failure_kind=error_kind,
         )
     emit_transition(
         request_id=request_id,
@@ -565,10 +723,18 @@ def insufficient_evidence_fallback_step(
         request_id=request_id,
     )
     if not tool_result.ok or tool_result.result is None:
-        raise RuntimeError(
-            tool_result.error.message
-            if tool_result.error
-            else "Insufficient-evidence fallback drafting failed."
+        error_kind = (
+            tool_result.error.kind if tool_result.error is not None else "drafting_failure"
+        )
+        raise WorkflowStepError(
+            "insufficient_evidence_fallback",
+            (
+                tool_result.error.message
+                if tool_result.error
+                else "Insufficient-evidence fallback drafting failed."
+            ),
+            retryable=False,
+            failure_kind=error_kind,
         )
     emit_transition(
         request_id=request_id,
@@ -605,22 +771,28 @@ def run_linear_workflow_steps(
     """Execute the fixed linear workflow path over existing tools."""
 
     current_state = state.model_copy(deep=True)
-    current_state = current_state.model_copy(
-        update=retrieve_step(
-            current_state,
+    current_state = execute_workflow_step_with_retry(
+        current_state,
+        step_name="retrieve",
+        step_runner=lambda s: retrieve_step(
+            s,
             settings=settings,
             client=client,
             request_id=request_id,
         ),
-        deep=True,
+        request_id=request_id,
     )
-    current_state = current_state.model_copy(
-        update=extract_clauses_step(current_state, request_id=request_id),
-        deep=True,
+    current_state = execute_workflow_step_with_retry(
+        current_state,
+        step_name="extract_clauses",
+        step_runner=lambda s: extract_clauses_step(s, request_id=request_id),
+        request_id=request_id,
     )
-    current_state = current_state.model_copy(
-        update=compare_policies_step(current_state, request_id=request_id),
-        deep=True,
+    current_state = execute_workflow_step_with_retry(
+        current_state,
+        step_name="compare",
+        step_runner=lambda s: compare_policies_step(s, request_id=request_id),
+        request_id=request_id,
     )
     if determine_post_compare_route(current_state) == "insufficient_evidence_fallback":
         current_state = current_state.model_copy(
@@ -634,13 +806,17 @@ def run_linear_workflow_steps(
             update={"trace_summary": append_trace(current_state, "workflow_completed")},
             deep=True,
         )
-    current_state = current_state.model_copy(
-        update=policy_analyst_step(current_state, request_id=request_id),
-        deep=True,
+    current_state = execute_workflow_step_with_retry(
+        current_state,
+        step_name="policy_analyst",
+        step_runner=lambda s: policy_analyst_step(s, request_id=request_id),
+        request_id=request_id,
     )
-    current_state = current_state.model_copy(
-        update=verify_citations_step(current_state, request_id=request_id),
-        deep=True,
+    current_state = execute_workflow_step_with_retry(
+        current_state,
+        step_name="citation_verifier",
+        step_runner=lambda s: verify_citations_step(s, request_id=request_id),
+        request_id=request_id,
     )
     if determine_post_verifier_route(current_state) == "insufficient_evidence_fallback":
         current_state = current_state.model_copy(
@@ -654,9 +830,11 @@ def run_linear_workflow_steps(
             update={"trace_summary": append_trace(current_state, "workflow_completed")},
             deep=True,
         )
-    current_state = current_state.model_copy(
-        update=response_drafter_step(current_state, request_id=request_id),
-        deep=True,
+    current_state = execute_workflow_step_with_retry(
+        current_state,
+        step_name="response_drafter",
+        step_runner=lambda s: response_drafter_step(s, request_id=request_id),
+        request_id=request_id,
     )
     return current_state.model_copy(
         update={"trace_summary": append_trace(current_state, "workflow_completed")},
@@ -711,24 +889,44 @@ def build_linear_workflow_graph(
     )
     workflow.add_node(
         "retrieve",
-        lambda state: retrieve_step(
-            state,
-            settings=settings,
-            client=client,
+        lambda state: execute_workflow_step_with_retry(
+            ensure_agent_state(state),
+            step_name="retrieve",
+            step_runner=lambda s: retrieve_step(
+                s,
+                settings=settings,
+                client=client,
+                request_id=request_id,
+            ),
             request_id=request_id,
         ),
     )
     workflow.add_node(
         "extract_clauses",
-        lambda state: extract_clauses_step(state, request_id=request_id),
+        lambda state: execute_workflow_step_with_retry(
+            ensure_agent_state(state),
+            step_name="extract_clauses",
+            step_runner=lambda s: extract_clauses_step(s, request_id=request_id),
+            request_id=request_id,
+        ),
     )
     workflow.add_node(
         "compare",
-        lambda state: compare_policies_step(state, request_id=request_id),
+        lambda state: execute_workflow_step_with_retry(
+            ensure_agent_state(state),
+            step_name="compare",
+            step_runner=lambda s: compare_policies_step(s, request_id=request_id),
+            request_id=request_id,
+        ),
     )
     workflow.add_node(
         "policy_analyst",
-        lambda state: policy_analyst_step(state, request_id=request_id),
+        lambda state: execute_workflow_step_with_retry(
+            ensure_agent_state(state),
+            step_name="policy_analyst",
+            step_runner=lambda s: policy_analyst_step(s, request_id=request_id),
+            request_id=request_id,
+        ),
     )
     workflow.add_node(
         "insufficient_evidence_fallback",
@@ -736,11 +934,21 @@ def build_linear_workflow_graph(
     )
     workflow.add_node(
         "citation_verifier",
-        lambda state: verify_citations_step(state, request_id=request_id),
+        lambda state: execute_workflow_step_with_retry(
+            ensure_agent_state(state),
+            step_name="citation_verifier",
+            step_runner=lambda s: verify_citations_step(s, request_id=request_id),
+            request_id=request_id,
+        ),
     )
     workflow.add_node(
         "response_drafter",
-        lambda state: response_drafter_step(state, request_id=request_id),
+        lambda state: execute_workflow_step_with_retry(
+            ensure_agent_state(state),
+            step_name="response_drafter",
+            step_runner=lambda s: response_drafter_step(s, request_id=request_id),
+            request_id=request_id,
+        ),
     )
     workflow.add_node(
         "unsupported_route",

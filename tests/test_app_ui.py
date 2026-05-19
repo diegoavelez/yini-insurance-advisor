@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import pytest
@@ -122,6 +123,48 @@ def test_run_query_returns_successful_grounded_output() -> None:
     assert confidence == "HIGH"
     assert "Advisor review is still required." in limitations
     assert status == "Advisor review required before external use."
+
+
+def test_run_query_returns_scope_refusal_without_backend_call() -> None:
+    called = False
+
+    def grounded_answer_fn(*_args, **_kwargs):
+        nonlocal called
+        called = True
+        return make_grounded_result()
+
+    answer, citations, confidence, limitations, status = run_query(
+        "What is the weather in Bogota?",
+        settings=make_settings(),
+        grounded_answer_fn=grounded_answer_fn,
+    )
+
+    assert "cannot answer" in answer.lower()
+    assert citations == "No citations available."
+    assert confidence == "LOW"
+    assert "outside the supported insurance-document scope" in limitations
+    assert status == "This response is a draft for advisor review."
+    assert called is False
+
+
+def test_run_query_emits_scope_refusal_event(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.INFO)
+
+    answer, _citations, confidence, _limitations, _status = run_query(
+        "What is the weather in Bogota?",
+        settings=make_settings(),
+        grounded_answer_fn=lambda *_args, **_kwargs: make_grounded_result(),
+    )
+
+    assert "cannot answer" in answer.lower()
+    assert confidence == "LOW"
+    refusal_event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_type", "") == "query_scope_refusal"
+    )
+    assert refusal_event.request_id.startswith("ui-")
+    assert refusal_event.runtime_surface == "gradio_ui"
 
 
 def test_run_query_returns_blank_query_error_without_backend_call() -> None:

@@ -9,6 +9,7 @@ import logging
 from contracts import Citation, GroundedAnswerResult, RetrievalQuery
 from core.config import Settings, get_settings, validate_startup_settings
 from core.logging import configure_logging
+from core.query_scope import classify_query_scope
 from ops.observability import (
     generate_request_id,
     log_event,
@@ -17,6 +18,7 @@ from ops.observability import (
     maybe_activate_phoenix,
 )
 from rag.ingestion import (
+    build_unsupported_query_response,
     embedding_backend_is_available,
     generate_grounded_answer,
     groq_backend_is_available,
@@ -99,6 +101,19 @@ def run_query(
         require_groq=True,
         require_qdrant=True,
     )
+    scope_decision = classify_query_scope(normalized_query)
+    if scope_decision.scope == "unsupported":
+        log_event(
+            UI_LOGGER,
+            event_type="query_scope_refusal",
+            request_id=request_id,
+            runtime_surface="gradio_ui",
+            scope="unsupported",
+            refusal_reason=scope_decision.reason,
+        )
+        return render_grounded_result(
+            build_unsupported_query_response(query=normalized_query)
+        )
     retrieval_query = build_retrieval_query(normalized_query, resolved_settings)
     log_event(
         UI_LOGGER,
