@@ -41,6 +41,10 @@
 - Add the remaining `Phase 5` MVP UI slice with a thin Gradio app over the
   grounded QA backend, explicit user-visible insufficiency and runtime error
   states, startup/request smoke coverage, and local usage documentation.
+- Add the first `Phase 6` observability slice with startup diagnostics,
+  request correlation ids, structured retrieval and grounded-answer execution
+  events, correlated CLI/UI failure logging, and validation that execution
+  events do not leak secrets.
 
 ## 2026-05-17
 

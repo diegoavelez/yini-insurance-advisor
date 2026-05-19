@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import importlib.util
+import logging
 import re
 import sys
 import time
@@ -33,6 +34,13 @@ from contracts import (
     VectorPayload,
 )
 from core.config import Settings, get_settings, validate_startup_settings
+from core.logging import configure_logging
+from ops.observability import (
+    generate_request_id,
+    log_event,
+    log_startup_diagnostics,
+    log_timed_event,
+)
 
 VERSION_PATTERN = re.compile(r"(?i)\b(?:version|versión)\b[:\s-]*([A-Za-z0-9][A-Za-z0-9._/-]*)")
 EMPTY_BOILERPLATE_LINES = {"[]", "[ ]", "[]()", "![]()", "<!-- image -->"}
@@ -49,6 +57,7 @@ DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
 MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
+RAG_LOGGER = logging.getLogger("yini.rag")
 
 
 @dataclass(frozen=True)
@@ -219,6 +228,19 @@ def groq_backend_is_available() -> bool:
     """Return whether the Groq client is importable."""
 
     return importlib.util.find_spec("groq") is not None
+
+
+def call_with_optional_request_id(function, *args, request_id: str | None = None, **kwargs):
+    """Call a seam with request_id when supported, otherwise retry without it."""
+
+    if request_id is None:
+        return function(*args, **kwargs)
+    try:
+        return function(*args, request_id=request_id, **kwargs)
+    except TypeError as exc:
+        if "request_id" not in str(exc):
+            raise
+        return function(*args, **kwargs)
 
 
 def ensure_groq_backend_available() -> None:
@@ -994,24 +1016,36 @@ def retrieve_ranked_chunks(
     *,
     settings: Settings | None = None,
     client: object | None = None,
+    request_id: str | None = None,
 ) -> DocumentRetrievalResult:
     """Retrieve ranked chunks from Qdrant using typed query contracts."""
 
-    resolved_settings = validate_embedding_settings(
-        validate_startup_settings(settings or get_settings(), require_qdrant=True)
-    )
-    ensure_qdrant_backend_available()
-    resolved_client = client or create_qdrant_client(resolved_settings)
-    query_vector = generate_embedding_vector(retrieval_query.query, resolved_settings)
-    hits = search_qdrant_chunks(
-        client=resolved_client,
-        settings=resolved_settings,
-        retrieval_query=retrieval_query,
-        query_vector=query_vector,
-    )
-    return DocumentRetrievalResult(
-        chunks=[map_search_hit_to_retrieved_chunk(hit) for hit in hits]
-    )
+    with log_timed_event(
+        RAG_LOGGER,
+        event_type="retrieval_execution",
+        request_id=request_id,
+        start_fields={
+            "top_k": retrieval_query.top_k,
+            "has_filters": bool(retrieval_query.filters),
+        },
+        success_fields_factory=lambda _duration_ms: {"result_count": len(result.chunks)},
+    ):
+        resolved_settings = validate_embedding_settings(
+            validate_startup_settings(settings or get_settings(), require_qdrant=True)
+        )
+        ensure_qdrant_backend_available()
+        resolved_client = client or create_qdrant_client(resolved_settings)
+        query_vector = generate_embedding_vector(retrieval_query.query, resolved_settings)
+        hits = search_qdrant_chunks(
+            client=resolved_client,
+            settings=resolved_settings,
+            retrieval_query=retrieval_query,
+            query_vector=query_vector,
+        )
+        result = DocumentRetrievalResult(
+            chunks=[map_search_hit_to_retrieved_chunk(hit) for hit in hits]
+        )
+        return result
 
 
 def build_grounded_prompt(
@@ -1139,64 +1173,81 @@ def generate_grounded_answer(
     settings: Settings | None = None,
     retrieval_result: DocumentRetrievalResult | None = None,
     completion_generator: callable | None = None,
+    request_id: str | None = None,
 ) -> GroundedAnswerResult:
     """Generate the first typed grounded draft answer from retrieved evidence."""
 
-    resolved_settings = validate_startup_settings(
-        settings or get_settings(),
-        require_groq=True,
-        require_qdrant=True,
-    )
-    validate_embedding_settings(resolved_settings)
-    ensure_groq_backend_available()
+    with log_timed_event(
+        RAG_LOGGER,
+        event_type="grounded_answer_execution",
+        request_id=request_id,
+        start_fields={"top_k": retrieval_query.top_k},
+        success_fields_factory=lambda _duration_ms: {
+            "confidence": result.response.confidence,
+            "citation_count": len(result.response.citations),
+            "limitation_count": len(result.response.limitations),
+        },
+    ):
+        resolved_settings = validate_startup_settings(
+            settings or get_settings(),
+            require_groq=True,
+            require_qdrant=True,
+        )
+        validate_embedding_settings(resolved_settings)
+        ensure_groq_backend_available()
 
-    resolved_retrieval_result = retrieval_result or retrieve_ranked_chunks(
-        retrieval_query,
-        settings=resolved_settings,
-    )
-    retrieved_chunks = resolved_retrieval_result.chunks
-    if not retrieved_chunks:
-        return build_insufficient_evidence_response(
+        resolved_retrieval_result = retrieval_result or call_with_optional_request_id(
+            retrieve_ranked_chunks,
+            retrieval_query,
+            settings=resolved_settings,
+            request_id=request_id,
+        )
+        retrieved_chunks = resolved_retrieval_result.chunks
+        if not retrieved_chunks:
+            result = build_insufficient_evidence_response(
+                query=retrieval_query.query,
+                retrieved_chunks=retrieved_chunks,
+            )
+            return result
+        if len(retrieved_chunks) < MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE:
+            result = build_insufficient_evidence_response(
+                query=retrieval_query.query,
+                retrieved_chunks=retrieved_chunks,
+                limitation_note=(
+                    "Retrieved evidence is too limited to support a strong grounded answer."
+                ),
+            )
+            return result
+
+        citations = build_citations_from_chunks(retrieved_chunks)
+        prompt = build_grounded_prompt(
             query=retrieval_query.query,
             retrieved_chunks=retrieved_chunks,
         )
-    if len(retrieved_chunks) < MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE:
-        return build_insufficient_evidence_response(
+        completion_fn = completion_generator or generate_grounded_completion
+        suggested_answer = completion_fn(prompt, resolved_settings)
+        verification = assess_grounding(retrieved_chunks=retrieved_chunks, citations=citations)
+
+        limitations: list[str] = []
+        confidence = verification.confidence
+        if confidence != "high":
+            limitations.append(
+                "Evidence is partial; advisor review is required before relying on this draft."
+            )
+
+        result = GroundedAnswerResult(
             query=retrieval_query.query,
-            retrieved_chunks=retrieved_chunks,
-            limitation_note=(
-                "Retrieved evidence is too limited to support a strong grounded answer."
+            response=AdvisorDraftResponse(
+                suggested_answer=suggested_answer,
+                documentary_basis=build_documentary_basis(retrieved_chunks),
+                citations=citations,
+                confidence=confidence,
+                limitations=limitations,
+                advisor_review_notice=ADVISOR_REVIEW_NOTICE,
             ),
+            verification=verification,
         )
-
-    citations = build_citations_from_chunks(retrieved_chunks)
-    prompt = build_grounded_prompt(
-        query=retrieval_query.query,
-        retrieved_chunks=retrieved_chunks,
-    )
-    completion_fn = completion_generator or generate_grounded_completion
-    suggested_answer = completion_fn(prompt, resolved_settings)
-    verification = assess_grounding(retrieved_chunks=retrieved_chunks, citations=citations)
-
-    limitations: list[str] = []
-    confidence = verification.confidence
-    if confidence != "high":
-        limitations.append(
-            "Evidence is partial; advisor review is required before relying on this draft."
-        )
-
-    return GroundedAnswerResult(
-        query=retrieval_query.query,
-        response=AdvisorDraftResponse(
-            suggested_answer=suggested_answer,
-            documentary_basis=build_documentary_basis(retrieved_chunks),
-            citations=citations,
-            confidence=confidence,
-            limitations=limitations,
-            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
-        ),
-        verification=verification,
-    )
+        return result
 
 
 def get_collection_vector_size(collection_info: object) -> int | None:
@@ -1661,7 +1712,7 @@ def run_qdrant_indexing(args: argparse.Namespace) -> int:
     return 0 if not (encountered_failures and args.fail_fast) else 1
 
 
-def run_retrieval(args: argparse.Namespace) -> int:
+def run_retrieval(args: argparse.Namespace, *, request_id: str | None = None) -> int:
     """Execute the first retrieval pipeline over indexed Qdrant data."""
 
     retrieval_query = RetrievalQuery(
@@ -1674,12 +1725,16 @@ def run_retrieval(args: argparse.Namespace) -> int:
             "version": args.version,
         },
     )
-    result = retrieve_ranked_chunks(retrieval_query)
+    result = retrieve_ranked_chunks(retrieval_query, request_id=request_id)
     print(result.model_dump_json(indent=2))
     return 0
 
 
-def run_grounded_answer_generation(args: argparse.Namespace) -> int:
+def run_grounded_answer_generation(
+    args: argparse.Namespace,
+    *,
+    request_id: str | None = None,
+) -> int:
     """Execute the first grounded answer-generation workflow."""
 
     retrieval_query = RetrievalQuery(
@@ -1692,7 +1747,7 @@ def run_grounded_answer_generation(args: argparse.Namespace) -> int:
             "version": args.version,
         },
     )
-    result = generate_grounded_answer(retrieval_query)
+    result = generate_grounded_answer(retrieval_query, request_id=request_id)
     print(result.model_dump_json(indent=2))
     return 0
 
@@ -1700,22 +1755,67 @@ def run_grounded_answer_generation(args: argparse.Namespace) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint for the current offline ingestion, embedding, and indexing pipeline."""
 
+    settings = get_settings()
+    configure_logging(settings.log_level)
+    log_startup_diagnostics(RAG_LOGGER, settings, runtime_surface="cli")
+
     parser = build_parser()
     args = parser.parse_args(argv)
+    request_id = generate_request_id("cli")
+    log_event(
+        RAG_LOGGER,
+        event_type="request_started",
+        request_id=request_id,
+        runtime_surface="cli",
+        command=args.command,
+    )
 
     try:
         if args.command == "ingest-pdfs":
-            return run_ingestion(args)
-        if args.command == "generate-embeddings":
-            return run_embedding_generation(args)
-        if args.command == "index-embeddings":
-            return run_qdrant_indexing(args)
-        if args.command == "retrieve-chunks":
-            return run_retrieval(args)
-        if args.command == "answer-query":
-            return run_grounded_answer_generation(args)
-        parser.error(f"Unsupported command: {args.command}")
-    except (RuntimeError, ValueError) as exc:
+            exit_code = run_ingestion(args)
+        elif args.command == "generate-embeddings":
+            exit_code = run_embedding_generation(args)
+        elif args.command == "index-embeddings":
+            exit_code = run_qdrant_indexing(args)
+        elif args.command == "retrieve-chunks":
+            exit_code = run_retrieval(args, request_id=request_id)
+        elif args.command == "answer-query":
+            exit_code = run_grounded_answer_generation(args, request_id=request_id)
+        else:
+            parser.error(f"Unsupported command: {args.command}")
+        if exit_code == 0:
+            log_event(
+                RAG_LOGGER,
+                event_type="request_succeeded",
+                request_id=request_id,
+                runtime_surface="cli",
+                command=args.command,
+                exit_code=exit_code,
+            )
+        else:
+            log_event(
+                RAG_LOGGER,
+                event_type="request_failed",
+                request_id=request_id,
+                level=logging.ERROR,
+                runtime_surface="cli",
+                command=args.command,
+                error_type="CommandExit",
+                error_message=f"Command exited with status {exit_code}.",
+                exit_code=exit_code,
+            )
+        return exit_code
+    except Exception as exc:
+        log_event(
+            RAG_LOGGER,
+            event_type="request_failed",
+            request_id=request_id,
+            level=logging.ERROR,
+            runtime_surface="cli",
+            command=args.command,
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+        )
         print(str(exc), file=sys.stderr)
         return 1
 

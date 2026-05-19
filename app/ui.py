@@ -8,6 +8,7 @@ import logging
 from contracts import Citation, GroundedAnswerResult, RetrievalQuery
 from core.config import Settings, get_settings, validate_startup_settings
 from core.logging import configure_logging
+from ops.observability import generate_request_id, log_event, log_startup_diagnostics
 from rag.ingestion import generate_grounded_answer
 
 APP_TITLE = "Yini"
@@ -16,6 +17,7 @@ APP_DESCRIPTION = (
     "must remain tied to cited evidence."
 )
 DEFAULT_ERROR_MESSAGE = "Unable to process the query right now."
+UI_LOGGER = logging.getLogger("yini.ui")
 
 
 def format_citations(citations: list[Citation]) -> str:
@@ -64,8 +66,18 @@ def run_query(
 ) -> tuple[str, str, str, str, str]:
     """Execute one grounded QA request for the UI."""
 
+    request_id = generate_request_id("ui")
     normalized_query = query.strip()
     if not normalized_query:
+        log_event(
+            UI_LOGGER,
+            event_type="request_failed",
+            request_id=request_id,
+            level=logging.ERROR,
+            runtime_surface="gradio_ui",
+            error_type="ValidationError",
+            error_message="Please enter a question.",
+        )
         return "", "", "", "", "Please enter a question."
 
     resolved_settings = validate_startup_settings(
@@ -74,12 +86,42 @@ def run_query(
         require_qdrant=True,
     )
     retrieval_query = build_retrieval_query(normalized_query, resolved_settings)
+    log_event(
+        UI_LOGGER,
+        event_type="request_started",
+        request_id=request_id,
+        runtime_surface="gradio_ui",
+        query_length=len(normalized_query),
+        top_k=retrieval_query.top_k,
+    )
 
     try:
-        result = grounded_answer_fn(retrieval_query, settings=resolved_settings)
+        result = grounded_answer_fn(
+            retrieval_query,
+            settings=resolved_settings,
+            request_id=request_id,
+        )
     except Exception as exc:
+        log_event(
+            UI_LOGGER,
+            event_type="request_failed",
+            request_id=request_id,
+            level=logging.ERROR,
+            runtime_surface="gradio_ui",
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+        )
         return "", "", "", "", f"{DEFAULT_ERROR_MESSAGE} Error: {exc}"
 
+    log_event(
+        UI_LOGGER,
+        event_type="request_succeeded",
+        request_id=request_id,
+        runtime_surface="gradio_ui",
+        confidence=result.response.confidence,
+        citation_count=len(result.response.citations),
+        limitation_count=len(result.response.limitations),
+    )
     return render_grounded_result(result)
 
 
@@ -153,14 +195,7 @@ def main(*, launch: bool = True) -> int:
 
     logger = logging.getLogger("yini.app")
     app = build_gradio_app(settings=settings)
-    logger.info(
-        "Phase 5 MVP UI ready",
-        extra={
-            "app_env": settings.app_env,
-            "groq_model": settings.groq_model,
-            "top_k": settings.top_k,
-        },
-    )
+    log_startup_diagnostics(logger, settings, runtime_surface="gradio_ui")
     if launch:
         app.launch()
     return 0
