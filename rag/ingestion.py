@@ -1196,6 +1196,43 @@ def build_unsupported_query_response(*, query: str) -> GroundedAnswerResult:
     )
 
 
+def build_missing_citation_guardrail_response(
+    *,
+    query: str,
+    retrieved_chunks: list[RetrievedChunk],
+) -> GroundedAnswerResult:
+    """Return a typed guarded outcome for citationless answerable responses."""
+
+    verification = GroundingVerification(
+        supported=False,
+        confidence="low",
+        unsupported_claims=[
+            "No traceable citations could be derived from the retrieved evidence."
+        ],
+        missing_citations=["At least one citation is required for an answerable response."],
+    )
+    return GroundedAnswerResult(
+        query=query,
+        response=AdvisorDraftResponse(
+            suggested_answer=(
+                "I cannot provide a grounded answer because the retrieved evidence did not "
+                "produce traceable citations."
+            ),
+            documentary_basis=build_documentary_basis(retrieved_chunks),
+            citations=[],
+            confidence="low",
+            limitations=[
+                (
+                    "At least one traceable citation is required before surfacing "
+                    "an answerable response."
+                )
+            ],
+            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+        ),
+        verification=verification,
+    )
+
+
 def generate_grounded_answer(
     retrieval_query: RetrievalQuery,
     *,
@@ -1260,6 +1297,20 @@ def generate_grounded_answer(
             return result
 
         citations = build_citations_from_chunks(retrieved_chunks)
+        if not citations:
+            log_event(
+                RAG_LOGGER,
+                event_type="citation_presence_guardrail_triggered",
+                request_id=request_id,
+                guardrail_surface="grounded_answer_generation",
+                retrieved_chunk_count=len(retrieved_chunks),
+                citation_count=0,
+            )
+            result = build_missing_citation_guardrail_response(
+                query=retrieval_query.query,
+                retrieved_chunks=retrieved_chunks,
+            )
+            return result
         prompt = build_grounded_prompt(
             query=retrieval_query.query,
             retrieved_chunks=retrieved_chunks,

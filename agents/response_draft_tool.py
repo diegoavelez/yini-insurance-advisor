@@ -14,7 +14,7 @@ from contracts import (
     ResponseDraftToolResult,
     ToolError,
 )
-from ops.observability import log_timed_event
+from ops.observability import log_event, log_timed_event
 
 TOOL_LOGGER = logging.getLogger("yini.tools.response_draft")
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
@@ -186,6 +186,16 @@ def response_draft_tool(
                     limitations.append("No documentary basis was provided.")
                 if not citations:
                     limitations.append("No citations were provided.")
+                if documentary_basis and not citations:
+                    limitations.append("Citations are required for answerable responses.")
+                    log_event(
+                        TOOL_LOGGER,
+                        event_type="citation_presence_guardrail_triggered",
+                        request_id=request_id,
+                        guardrail_surface="response_draft_tool",
+                        documentary_basis_count=len(documentary_basis),
+                        citation_count=0,
+                    )
                 limitations = list(
                     dict.fromkeys(
                         limitations

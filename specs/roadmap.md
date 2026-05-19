@@ -493,8 +493,14 @@ Initial narrow slices:
   - conservative refusal behavior at the workflow and UI boundary;
   - no prompt-injection handling or abuse-case suite yet.
 - `citation-and-confidence-guardrails` should cover:
-  - mandatory citation presence checks for answerable responses;
+  - this concern should be split further into narrower slices before implementation.
+- `answer-citation-presence-guardrails` should cover:
+  - mandatory citation presence checks for answerable responses only;
+  - conservative fallback or refusal behavior when an answerable response lacks citations;
+  - no confidence-policy expansion yet.
+- `response-confidence-consistency-guardrails` should cover:
   - confidence consistency checks across typed response outputs;
+  - conservative downgrade behavior for mismatched confidence signals;
   - no injection detection or telemetry expansion yet.
 - `prompt-injection-and-abuse-case-telemetry` should cover:
   - narrow prompt-injection detection signals;
@@ -505,8 +511,9 @@ Current implementation status:
 
 - completed:
   - `unsupported-query-scope-guardrails`
+  - `answer-citation-presence-guardrails`
 - remaining in `Phase 9`:
-  - `citation-and-confidence-guardrails`
+  - `response-confidence-consistency-guardrails`
   - `prompt-injection-and-abuse-case-telemetry`
 
 ---

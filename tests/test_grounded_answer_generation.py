@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from contracts import (
@@ -138,6 +140,42 @@ def test_generate_grounded_answer_returns_typed_response_with_citations(
     assert result.response.citations[0].document_name == "Policy A"
     assert result.response.citations[0].chunk_id == "policy-a:v2:0000"
     assert result.verification.confidence == "high"
+
+
+def test_generate_grounded_answer_downgrades_answerable_response_without_citations(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.build_citations_from_chunks", lambda _chunks: [])
+    caplog.set_level(logging.INFO)
+
+    result = generate_grounded_answer(
+        RetrievalQuery(query="What is covered?"),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=make_retrieval_result(),
+        completion_generator=(
+            lambda prompt, settings: "Coverage applies to outpatient care after deductible."
+        ),
+        request_id="rag-123456789012",
+    )
+
+    assert result.response.confidence == "low"
+    assert result.response.citations == []
+    assert "did not produce traceable citations" in result.response.suggested_answer.lower()
+    assert result.verification.supported is False
+    guardrail_event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_type", "") == "citation_presence_guardrail_triggered"
+    )
+    assert guardrail_event.request_id == "rag-123456789012"
+    assert guardrail_event.guardrail_surface == "grounded_answer_generation"
 
 
 def test_generate_grounded_answer_returns_limited_response_for_empty_retrieval(

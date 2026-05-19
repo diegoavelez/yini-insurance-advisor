@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 9` guardrail slice with mandatory citation presence for
+  answerable responses, conservative typed downgrade behavior when citations
+  are missing, and correlated guardrail observability without drifting into
+  broader confidence-policy work.
 - Add the first `Phase 9` guardrail slice with deterministic unsupported-query
   scope classification, conservative typed refusal outcomes at the workflow and
   UI boundary, and correlated refusal observability without drifting into

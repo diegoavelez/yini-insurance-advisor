@@ -119,6 +119,34 @@ def test_response_draft_tool_returns_valid_insufficient_information() -> None:
     assert result.result.advisor_review_notice == "This response is a draft for advisor review."
 
 
+def test_response_draft_tool_applies_citation_presence_guardrail(caplog) -> None:
+    caplog.set_level(logging.INFO)
+
+    result = response_draft_tool(
+        "What coverage applies?",
+        [make_basis_item()],
+        [],
+        verification=make_verification(supported=True, confidence="high"),
+        request_id="draft-123456789012",
+    )
+
+    assert result.ok is True
+    assert result.result is not None
+    assert result.result.confidence == "low"
+    assert result.result.citations == []
+    assert any(
+        "citations are required" in limitation.lower()
+        for limitation in result.result.limitations
+    )
+    guardrail_event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_type", "") == "citation_presence_guardrail_triggered"
+    )
+    assert guardrail_event.request_id == "draft-123456789012"
+    assert guardrail_event.guardrail_surface == "response_draft_tool"
+
+
 def test_response_draft_output_remains_traceable_to_inputs() -> None:
     basis_item = make_basis_item()
     citation = make_citation()
