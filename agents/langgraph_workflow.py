@@ -149,6 +149,23 @@ def emit_transition(
     )
 
 
+def emit_fallback_selected(
+    *,
+    request_id: str | None,
+    fallback_stage: str,
+    fallback_reason: str,
+) -> None:
+    """Emit one structured insufficient-evidence fallback event."""
+
+    log_event(
+        WORKFLOW_LOGGER,
+        event_type="workflow_insufficient_evidence_fallback_selected",
+        request_id=request_id,
+        fallback_stage=fallback_stage,
+        fallback_reason=fallback_reason,
+    )
+
+
 def planner_step(
     state: AgentState | dict[str, Any],
     *,
@@ -226,6 +243,28 @@ def unsupported_route_step(
         "requires_human_review": True,
         "trace_summary": append_trace(typed_state, "workflow_completed_unsupported"),
     }
+
+
+def determine_post_compare_route(state: AgentState | dict[str, Any]) -> str:
+    """Return the next route after comparison."""
+
+    typed_state = ensure_agent_state(state)
+    if typed_state.comparison_result is None:
+        return "insufficient_evidence_fallback"
+    if not typed_state.comparison_result.sufficient_information:
+        return "insufficient_evidence_fallback"
+    return "policy_analyst"
+
+
+def determine_post_verifier_route(state: AgentState | dict[str, Any]) -> str:
+    """Return the next route after citation verification."""
+
+    typed_state = ensure_agent_state(state)
+    if typed_state.verification is None:
+        return "insufficient_evidence_fallback"
+    if not typed_state.verification.supported:
+        return "insufficient_evidence_fallback"
+    return "response_drafter"
 
 
 def retrieve_step(
@@ -470,6 +509,92 @@ def response_drafter_step(
     }
 
 
+def insufficient_evidence_fallback_step(
+    state: AgentState | dict[str, Any],
+    *,
+    request_id: str | None,
+) -> dict[str, object]:
+    """Return a conservative non-error workflow outcome for insufficient evidence."""
+
+    typed_state = ensure_agent_state(state)
+    fallback_stage = "compare"
+    fallback_reason = "Comparison evidence is insufficient for a strong workflow conclusion."
+    verification = typed_state.verification
+
+    if typed_state.verification is not None and not typed_state.verification.supported:
+        fallback_stage = "citation_verifier"
+        fallback_reason = (
+            "Citation verification did not confirm enough evidence for a strong workflow result."
+        )
+    elif (
+        typed_state.comparison_result is None
+        or not typed_state.comparison_result.sufficient_information
+    ):
+        verification = GroundingVerification(
+            supported=False,
+            confidence="low",
+            unsupported_claims=[fallback_reason],
+            missing_citations=(
+                []
+                if typed_state.citations
+                else ["No citations were available for fallback support."]
+            ),
+        )
+
+    emit_transition(
+        request_id=request_id,
+        step="insufficient_evidence_fallback",
+        status="started",
+        fallback_stage=fallback_stage,
+    )
+    emit_fallback_selected(
+        request_id=request_id,
+        fallback_stage=fallback_stage,
+        fallback_reason=fallback_reason,
+    )
+    documentary_basis = typed_state.documentary_basis or build_documentary_basis(
+        typed_state.retrieved_chunks
+    )
+    citations = typed_state.citations or build_citations_from_chunks(typed_state.retrieved_chunks)
+    tool_result = response_draft_tool(
+        typed_state.user_query,
+        documentary_basis,
+        citations,
+        verification=verification,
+        comparison_result=typed_state.comparison_result,
+        request_id=request_id,
+    )
+    if not tool_result.ok or tool_result.result is None:
+        raise RuntimeError(
+            tool_result.error.message
+            if tool_result.error
+            else "Insufficient-evidence fallback drafting failed."
+        )
+    emit_transition(
+        request_id=request_id,
+        step="insufficient_evidence_fallback",
+        status="succeeded",
+        confidence=tool_result.result.confidence,
+        fallback_stage=fallback_stage,
+    )
+    return {
+        "documentary_basis": documentary_basis,
+        "draft_response": tool_result.result,
+        "draft_answer": tool_result.result.suggested_answer,
+        "final_answer": tool_result.result.suggested_answer,
+        "verification": verification,
+        "citations": tool_result.result.citations,
+        "confidence": tool_result.result.confidence,
+        "requires_human_review": True,
+        "fallback_stage": fallback_stage,
+        "fallback_reason": fallback_reason,
+        "trace_summary": append_trace(
+            typed_state,
+            f"insufficient_evidence_fallback:{fallback_stage}",
+        ),
+    }
+
+
 def run_linear_workflow_steps(
     state: AgentState,
     *,
@@ -480,18 +605,59 @@ def run_linear_workflow_steps(
     """Execute the fixed linear workflow path over existing tools."""
 
     current_state = state.model_copy(deep=True)
-    for step_runner in (
-        lambda s: retrieve_step(s, settings=settings, client=client, request_id=request_id),
-        lambda s: extract_clauses_step(s, request_id=request_id),
-        lambda s: compare_policies_step(s, request_id=request_id),
-        lambda s: policy_analyst_step(s, request_id=request_id),
-        lambda s: verify_citations_step(s, request_id=request_id),
-        lambda s: response_drafter_step(s, request_id=request_id),
-    ):
+    current_state = current_state.model_copy(
+        update=retrieve_step(
+            current_state,
+            settings=settings,
+            client=client,
+            request_id=request_id,
+        ),
+        deep=True,
+    )
+    current_state = current_state.model_copy(
+        update=extract_clauses_step(current_state, request_id=request_id),
+        deep=True,
+    )
+    current_state = current_state.model_copy(
+        update=compare_policies_step(current_state, request_id=request_id),
+        deep=True,
+    )
+    if determine_post_compare_route(current_state) == "insufficient_evidence_fallback":
         current_state = current_state.model_copy(
-            update=step_runner(current_state),
+            update=insufficient_evidence_fallback_step(
+                current_state,
+                request_id=request_id,
+            ),
             deep=True,
         )
+        return current_state.model_copy(
+            update={"trace_summary": append_trace(current_state, "workflow_completed")},
+            deep=True,
+        )
+    current_state = current_state.model_copy(
+        update=policy_analyst_step(current_state, request_id=request_id),
+        deep=True,
+    )
+    current_state = current_state.model_copy(
+        update=verify_citations_step(current_state, request_id=request_id),
+        deep=True,
+    )
+    if determine_post_verifier_route(current_state) == "insufficient_evidence_fallback":
+        current_state = current_state.model_copy(
+            update=insufficient_evidence_fallback_step(
+                current_state,
+                request_id=request_id,
+            ),
+            deep=True,
+        )
+        return current_state.model_copy(
+            update={"trace_summary": append_trace(current_state, "workflow_completed")},
+            deep=True,
+        )
+    current_state = current_state.model_copy(
+        update=response_drafter_step(current_state, request_id=request_id),
+        deep=True,
+    )
     return current_state.model_copy(
         update={"trace_summary": append_trace(current_state, "workflow_completed")},
         deep=True,
@@ -565,6 +731,10 @@ def build_linear_workflow_graph(
         lambda state: policy_analyst_step(state, request_id=request_id),
     )
     workflow.add_node(
+        "insufficient_evidence_fallback",
+        lambda state: insufficient_evidence_fallback_step(state, request_id=request_id),
+    )
+    workflow.add_node(
         "citation_verifier",
         lambda state: verify_citations_step(state, request_id=request_id),
     )
@@ -587,10 +757,25 @@ def build_linear_workflow_graph(
     )
     workflow.add_edge("retrieve", "extract_clauses")
     workflow.add_edge("extract_clauses", "compare")
-    workflow.add_edge("compare", "policy_analyst")
+    workflow.add_conditional_edges(
+        "compare",
+        determine_post_compare_route,
+        {
+            "policy_analyst": "policy_analyst",
+            "insufficient_evidence_fallback": "insufficient_evidence_fallback",
+        },
+    )
     workflow.add_edge("policy_analyst", "citation_verifier")
-    workflow.add_edge("citation_verifier", "response_drafter")
+    workflow.add_conditional_edges(
+        "citation_verifier",
+        determine_post_verifier_route,
+        {
+            "response_drafter": "response_drafter",
+            "insufficient_evidence_fallback": "insufficient_evidence_fallback",
+        },
+    )
     workflow.add_edge("response_drafter", END)
+    workflow.add_edge("insufficient_evidence_fallback", END)
     workflow.add_edge("unsupported_route", END)
     return workflow.compile()
 

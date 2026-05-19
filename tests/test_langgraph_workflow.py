@@ -13,8 +13,11 @@ from agents.langgraph_workflow import (
     run_planned_workflow_steps,
 )
 from contracts import (
+    CitationVerifierToolResult,
     DocumentRetrievalResult,
     DocumentRetrievalToolResult,
+    GroundingVerification,
+    GroundingVerificationResult,
     RetrievedChunk,
 )
 
@@ -40,6 +43,21 @@ def make_chunk(
     )
 
 
+def make_comparable_chunks() -> list[RetrievedChunk]:
+    return [
+        make_chunk(
+            chunk_id="policy-a:v2:0000",
+            document_name="Policy A",
+            text="Coverage applies for listed hospitalization emergencies.",
+        ),
+        make_chunk(
+            chunk_id="policy-b:v2:0001",
+            document_name="Policy B",
+            text="Coverage applies for listed hospitalization emergencies.",
+        ),
+    ]
+
+
 class FakeCompiledGraph:
     def __init__(self, invoker):
         self._invoker = invoker
@@ -54,7 +72,7 @@ def test_langgraph_linear_workflow_returns_typed_success(monkeypatch) -> None:
     def fake_retrieval_tool(*_args, **_kwargs):
         return DocumentRetrievalToolResult(
             ok=True,
-            result=DocumentRetrievalResult(chunks=[make_chunk()]),
+            result=DocumentRetrievalResult(chunks=make_comparable_chunks()),
         )
 
     monkeypatch.setattr(workflow_module, "document_retrieval_tool", fake_retrieval_tool)
@@ -75,8 +93,8 @@ def test_langgraph_linear_workflow_returns_typed_success(monkeypatch) -> None:
     assert result.result.state.trace_summary == [
         "workflow_initialized",
         "planner:grounded_qa",
-        "retrieval:1",
-        "clause_extraction:1",
+        "retrieval:2",
+        "clause_extraction:2",
         "comparison_completed",
         "policy_analyst_completed",
         "citation_verifier_completed",
@@ -101,7 +119,7 @@ def test_langgraph_linear_workflow_returns_valid_insufficient_information(monkey
     compiled_graph = FakeCompiledGraph(lambda state: run_planned_workflow_steps(state))
 
     result = langgraph_linear_workflow(
-        "What is the weather today?",
+        "Compare policy coverage for hospitalization.",
         compiled_graph=compiled_graph,
     )
 
@@ -110,7 +128,54 @@ def test_langgraph_linear_workflow_returns_valid_insufficient_information(monkey
     assert result.result.response.confidence == "low"
     assert result.result.state.verification is not None
     assert result.result.state.verification.supported is False
-    assert result.result.state.planner_route == "unsupported"
+    assert result.result.state.fallback_stage == "compare"
+    assert "insufficient_evidence_fallback:compare" in result.result.state.trace_summary
+
+
+def test_langgraph_linear_workflow_returns_valid_verifier_fallback(monkeypatch) -> None:
+    import agents.langgraph_workflow as workflow_module
+
+    def fake_retrieval_tool(*_args, **_kwargs):
+        return DocumentRetrievalToolResult(
+            ok=True,
+            result=DocumentRetrievalResult(chunks=make_comparable_chunks()),
+        )
+
+    def fake_citation_verifier_tool(*_args, **_kwargs):
+        return CitationVerifierToolResult(
+            ok=True,
+            result=GroundingVerificationResult(
+                verification=GroundingVerification(
+                    supported=False,
+                    confidence="low",
+                    unsupported_claims=["Citations did not support the draft."],
+                    missing_citations=[],
+                ),
+                reviewed_citations=[],
+                notes=["Verifier fallback triggered."],
+            ),
+        )
+
+    monkeypatch.setattr(workflow_module, "document_retrieval_tool", fake_retrieval_tool)
+    monkeypatch.setattr(
+        workflow_module,
+        "citation_verifier_tool",
+        fake_citation_verifier_tool,
+    )
+    compiled_graph = FakeCompiledGraph(
+        lambda state: run_planned_workflow_steps(state, request_id="wf-123456789012")
+    )
+
+    result = langgraph_linear_workflow(
+        "What coverage applies?",
+        request_id="wf-123456789012",
+        compiled_graph=compiled_graph,
+    )
+
+    assert result.ok is True
+    assert result.result is not None
+    assert result.result.state.fallback_stage == "citation_verifier"
+    assert "insufficient_evidence_fallback:citation_verifier" in result.result.state.trace_summary
 
 
 def test_langgraph_linear_workflow_returns_typed_input_validation_failure() -> None:
@@ -167,7 +232,7 @@ def test_langgraph_linear_workflow_preserves_state_transition_observability(
     def fake_retrieval_tool(*_args, **_kwargs):
         return DocumentRetrievalToolResult(
             ok=True,
-            result=DocumentRetrievalResult(chunks=[make_chunk()]),
+            result=DocumentRetrievalResult(chunks=make_comparable_chunks()),
         )
 
     monkeypatch.setattr(workflow_module, "document_retrieval_tool", fake_retrieval_tool)
@@ -202,6 +267,39 @@ def test_langgraph_linear_workflow_preserves_state_transition_observability(
     )
     assert planner_event.request_id == "wf-123456789012"
     assert planner_event.route == "grounded_qa"
+
+
+def test_insufficient_evidence_fallback_emits_observable_event(monkeypatch, caplog) -> None:
+    import agents.langgraph_workflow as workflow_module
+
+    caplog.set_level(logging.INFO)
+
+    def fake_retrieval_tool(*_args, **_kwargs):
+        return DocumentRetrievalToolResult(
+            ok=True,
+            result=DocumentRetrievalResult(chunks=[]),
+        )
+
+    monkeypatch.setattr(workflow_module, "document_retrieval_tool", fake_retrieval_tool)
+    compiled_graph = FakeCompiledGraph(
+        lambda state: run_planned_workflow_steps(state, request_id="wf-123456789012")
+    )
+
+    result = langgraph_linear_workflow(
+        "Compare policy coverage for hospitalization.",
+        request_id="wf-123456789012",
+        compiled_graph=compiled_graph,
+    )
+
+    assert result.ok is True
+    fallback_event = next(
+        record
+        for record in caplog.records
+        if getattr(record, "event_type", "")
+        == "workflow_insufficient_evidence_fallback_selected"
+    )
+    assert fallback_event.request_id == "wf-123456789012"
+    assert fallback_event.fallback_stage == "compare"
 
 
 def test_build_linear_workflow_graph_wires_langgraph_stategraph(monkeypatch) -> None:
@@ -254,9 +352,16 @@ def test_build_linear_workflow_graph_wires_langgraph_stategraph(monkeypatch) -> 
     assert mapping["grounded_qa"] == "retrieve"
     assert mapping["unsupported"] == "unsupported_route"
     assert ("extract_clauses", "compare") in graph.edges
-    assert ("compare", "policy_analyst") in graph.edges
+    assert len(graph.conditional_edges) == 3
+    compare_node, _compare_route_fn, compare_mapping = graph.conditional_edges[1]
+    assert compare_node == "compare"
+    assert compare_mapping["policy_analyst"] == "policy_analyst"
+    assert compare_mapping["insufficient_evidence_fallback"] == "insufficient_evidence_fallback"
     assert ("policy_analyst", "citation_verifier") in graph.edges
-    assert ("citation_verifier", "response_drafter") in graph.edges
+    verifier_node, _verifier_route_fn, verifier_mapping = graph.conditional_edges[2]
+    assert verifier_node == "citation_verifier"
+    assert verifier_mapping["response_drafter"] == "response_drafter"
+    assert verifier_mapping["insufficient_evidence_fallback"] == "insufficient_evidence_fallback"
 
 
 def test_build_initial_workflow_state_sets_linear_plan() -> None:

@@ -438,10 +438,14 @@ Initial narrow slices:
   - integration of comparison, verification, and drafting inside the graph;
   - one end-to-end analyst/verifier/drafter pass over the existing tools;
   - no UI redesign or external tool exposure yet.
-- `workflow-fallbacks-and-retry-policies` should cover:
-  - typed fallback edges and retry boundaries;
-  - observable failure transitions;
-  - conservative recovery behavior for weak evidence and tool failures.
+- `workflow-insufficient-evidence-fallbacks` should cover:
+  - typed fallback edges for weak or insufficient evidence only;
+  - observable fallback transitions for conservative non-error outcomes;
+  - no retry behavior yet.
+- `workflow-tool-failure-retry-policies` should cover:
+  - retry boundaries for selected tool/runtime failures only;
+  - observable retry and terminal-failure transitions;
+  - no broader recovery tree beyond the existing workflow path.
 
 Current implementation status:
 
@@ -449,8 +453,9 @@ Current implementation status:
   - `langgraph-state-and-linear-workflow-skeleton`
   - `planner-and-tool-routing-agent`
   - `policy-analyst-and-verifier-workflow-pass`
+  - `workflow-insufficient-evidence-fallbacks`
 - remaining in `Phase 8`:
-  - `workflow-fallbacks-and-retry-policies`
+  - `workflow-tool-failure-retry-policies`
 
 ---
 

@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 8` workflow slice with explicit insufficient-evidence
+  fallback edges after comparison and citation verification, conservative
+  typed fallback outcomes, fallback traceability in shared state, and
+  observability for fallback selection events.
 - Add the next `Phase 7` tooling slice with an independently callable
   `citation_verifier_tool`, conservative verification over drafted output and
   cited evidence only, explicit weak/unsupported non-error outcomes, and typed
@@ -16,6 +20,9 @@
 - Add the next `Phase 8` workflow slice with a typed planner step, explicit
   route selection over existing workflow paths, conservative unsupported-route
   handling, and observable planner decision events.
+- Add the next `Phase 8` workflow slice with explicit analyst, verifier, and
+  drafter stages, clearer stage outputs in shared workflow state, and tighter
+  graph-stage boundaries over the existing tool seams.
 
 ## 2026-05-18
 
