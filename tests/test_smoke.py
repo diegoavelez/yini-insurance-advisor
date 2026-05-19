@@ -3,7 +3,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from app.ui import main
+import app.ui as app_ui
+from contracts import AdvisorDraftResponse, GroundedAnswerResult, GroundingVerification
 from core.config import (
     Settings,
     clear_settings_cache,
@@ -133,8 +134,66 @@ def test_cached_settings_access_is_stable() -> None:
 
 
 def test_app_entrypoint_runs(capsys) -> None:
-    exit_code = main()
+    built = False
+
+    class FakeApp:
+        def launch(self) -> None:
+            raise AssertionError("launch should not be called when launch=False")
+
+    original_builder = app_ui.build_gradio_app
+
+    def fake_build_gradio_app(**_kwargs):
+        nonlocal built
+        built = True
+        return FakeApp()
+
+    app_ui.build_gradio_app = fake_build_gradio_app
+    try:
+        exit_code = app_ui.main(launch=False)
+    finally:
+        app_ui.build_gradio_app = original_builder
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "foundation scaffold" in captured.out
+    assert captured.out == ""
+    assert built is True
+
+
+def test_hosted_request_smoke_path_runs_without_crashing() -> None:
+    def grounded_answer_fn(*_args, **_kwargs):
+        return GroundedAnswerResult(
+            query="What is covered?",
+            response=AdvisorDraftResponse(
+                suggested_answer="Coverage applies after the waiting period.",
+                documentary_basis=[],
+                citations=[],
+                confidence="high",
+                limitations=[],
+                advisor_review_notice="Advisor review required before external use.",
+            ),
+            verification=GroundingVerification(
+                supported=True,
+                confidence="high",
+                unsupported_claims=[],
+                missing_citations=[],
+            ),
+        )
+
+    handler = app_ui.build_query_handler(
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="test-groq-key",
+            qdrant_url="https://qdrant.example.com",
+            qdrant_api_key="test-qdrant-key",
+            app_env="test",
+        ),
+        grounded_answer_fn=grounded_answer_fn,
+    )
+
+    answer, citations, confidence, limitations, status = handler("What is covered?")
+
+    assert "Coverage applies" in answer
+    assert citations == "No citations available."
+    assert confidence == "HIGH"
+    assert limitations == "No additional limitations noted."
+    assert status == "Advisor review required before external use."

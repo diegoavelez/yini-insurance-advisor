@@ -38,6 +38,9 @@
   deterministic prompt construction from retrieved evidence, Groq-backed draft
   answers, citation mapping with stable `chunk_id` traceability, and explicit
   low-confidence handling for empty or weak retrieval evidence.
+- Add the remaining `Phase 5` MVP UI slice with a thin Gradio app over the
+  grounded QA backend, explicit user-visible insufficiency and runtime error
+  states, startup/request smoke coverage, and local usage documentation.
 
 ## 2026-05-17
 

@@ -268,6 +268,19 @@ Initial narrow slices:
   - citation formatting and response contracts;
   - basic failure handling for empty or insufficient retrieval results;
   - initial end-to-end grounded QA flow before UI work expands further.
+- `gradio-query-ui-and-hosted-smoke` should cover:
+  - the first user-facing Gradio query interface over the grounded QA path;
+  - startup validation for the hosted app path;
+  - request smoke checks for the public MVP demo;
+  - minimal user-visible failure states for retrieval and answer-generation errors;
+  - deployable hosted packaging for the first usable MVP interaction surface.
+
+Current implementation status:
+
+- completed:
+  - `retrieval-pipeline-and-ranked-results`
+  - `grounded-answer-generation-and-citations`
+  - `gradio-query-ui-and-hosted-smoke`
 
 ---
 
@@ -292,6 +305,27 @@ increase complexity.
 - traces and diagnostics are visible during local and hosted runs;
 - startup failures are actionable;
 - performance bottlenecks can be localized.
+
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `startup-diagnostics-and-request-correlation` should cover:
+  - request identifiers;
+  - startup diagnostics for active configuration and runtime mode;
+  - structured logging hooks around retrieval and grounded-answer execution;
+  - explicit error-event shape for the current CLI and app entrypoints.
+- `retrieval-traces-and-hosted-health-checks` should cover:
+  - retrieval and answer-generation latency tracking;
+  - hosted health/readiness checks;
+  - narrow Phoenix activation where configured;
+  - smoke visibility for the MVP runtime path.
+
+Current implementation status:
+
+- not started
 
 ---
 

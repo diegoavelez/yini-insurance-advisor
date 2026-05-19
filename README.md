@@ -5,8 +5,9 @@ retrieve, analyze, compare, and summarize information from official Sura
 insurance policy and procedure documents.
 
 This repository now contains the completed `Phase 0` foundation, the full
-`Phase 1` configuration and shared-contract slices, and the first narrow
-implementation slice of `Phase 2` for Docling-based PDF ingestion.
+`Phase 1` configuration and shared-contract slices, the implemented `Phase 2`
+and `Phase 3` ingestion/chunking pipeline, the full `Phase 4` embedding and
+indexing pipeline, and the core `Phase 5` grounded QA backend.
 
 ## Source Documents
 
@@ -17,16 +18,22 @@ implementation slice of `Phase 2` for Docling-based PDF ingestion.
 
 ## Current Status
 
-- `Phase 0` foundation is complete.
-- `Phase 1` is complete through settings validation, deployment mode flags, and
-  shared typed contracts.
-- The first narrow `Phase 2` slice is implemented:
-  - admin-only Docling ingestion CLI
+- `Phase 0` and `Phase 1` are complete.
+- `Phase 2` is complete through:
+  - Docling-based offline ingestion
   - deterministic raw/markdown/processed storage conventions
-  - typed processed-document contracts
-  - manifest-based ingestion reporting
-- The app UI remains a placeholder entry point while ingestion and retrieval are
-  built incrementally.
+  - conservative Markdown cleaning and minimal metadata extraction
+- `Phase 3` is complete through:
+  - deterministic chunk persistence
+  - semantic boundary-aware chunk refinement
+- `Phase 4` is complete through:
+  - local embedding generation artifacts
+  - Qdrant collection bootstrap and idempotent indexing
+- `Phase 5` is complete through:
+  - ranked retrieval
+  - Gradio MVP query UI
+  - grounded answer generation with citations
+- The next major work starts `Phase 6` observability.
 
 ## Local Setup
 
@@ -36,7 +43,7 @@ Use a local virtual environment for all development.
 python3.11 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -e .[dev]
+pip install -e '.[dev]'
 cp .env.example .env
 ```
 
@@ -51,6 +58,31 @@ make lint
 make test
 make app
 ```
+
+## Gradio MVP UI
+
+The current app entrypoint is a thin Gradio layer over the grounded QA backend.
+
+Canonical command:
+
+```bash
+python -m app.ui
+```
+
+The UI exposes:
+
+- advisor question input
+- suggested grounded answer
+- citations
+- confidence
+- limitations
+- status / advisor-review messaging
+
+User-visible failure behavior:
+
+- blank input returns an explicit prompt to enter a question
+- insufficient evidence remains a typed low-confidence response
+- retrieval or generation failures surface as explicit UI errors
 
 ## Ingestion CLI
 
@@ -99,9 +131,9 @@ Current metadata behavior for this slice:
 ## Repository Layout
 
 ```text
-app/        Placeholder application entry point
+app/        Gradio MVP application entry point
 agents/     Future LangGraph agents
-contracts/  Shared typed contracts and ingestion metadata
+contracts/  Shared typed contracts across ingestion, retrieval, and answers
 core/       Settings and logging bootstrap
 data/       Raw, markdown, processed, and eval data
 deploy/     Container and startup files
@@ -115,6 +147,5 @@ tests/      Smoke tests and future test coverage
 
 ## Next Milestones
 
-The next implementation work continues `Phase 2` from `specs/roadmap.md`:
-clean Markdown normalization, metadata extraction, and the remaining PDF
-processing pipeline slices after the `docling-ingestion-skeleton` foundation.
+The next implementation work moves into `Phase 6` observability from
+`/Users/diegovelez/Documents/PROJECTS/codex/yini-insurance-advisor/specs/roadmap.md`.
