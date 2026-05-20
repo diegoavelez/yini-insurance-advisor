@@ -18,6 +18,9 @@ from contracts.embeddings import (
     VectorPayload,
 )
 from contracts.evaluation import (
+    CitationExpectationAnnotation,
+    CitationExpectationKind,
+    CitationExpectationSet,
     EvaluationQuestion,
     EvaluationQuestionCategory,
     EvaluationQuestionSet,
@@ -66,6 +69,9 @@ __all__ = [
     "Citation",
     "ChunkBundle",
     "ChunkRecord",
+    "CitationExpectationAnnotation",
+    "CitationExpectationKind",
+    "CitationExpectationSet",
     "CitationVerifierToolResult",
     "Clause",
     "ClauseCategory",

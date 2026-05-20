@@ -584,9 +584,13 @@ Initial narrow slices:
   - citation expectations where applicable;
   - explicit citation-oriented annotations over the existing retrieval-aware golden set;
   - no hosted-like regression execution yet.
-- `evaluation-runner-and-hosted-regression-smokes` should cover:
+- `local-evaluation-runner` should cover:
   - a repeatable local evaluation runner;
+  - deterministic execution over the curated evaluation assets;
+  - no hosted-like regression scenarios yet.
+- `hosted-regression-smoke-scenarios` should cover:
   - hosted-like regression scenarios for startup, latency, and citation checks;
+  - smoke-oriented execution over the existing local runner surface;
   - no DSPy optimization yet.
 
 Current implementation status:
@@ -597,9 +601,10 @@ Current implementation status:
   - `question-set-target-30-completion`
   - `golden-behavior-and-guardrail-outcomes`
   - `retrieval-expectation-annotations`
-- remaining in `Phase 10`:
   - `citation-expectation-annotations`
-  - `evaluation-runner-and-hosted-regression-smokes`
+- remaining in `Phase 10`:
+  - `local-evaluation-runner`
+  - `hosted-regression-smoke-scenarios`
 
 ---
 

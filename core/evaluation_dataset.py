@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from contracts.evaluation import (
+    CitationExpectationSet,
     EvaluationQuestionSet,
     GoldenBehaviorSet,
     RetrievalExpectationSet,
@@ -16,6 +17,9 @@ DEFAULT_EVALUATION_QUESTION_SET_PATH = PROJECT_ROOT / "data" / "eval" / "questio
 DEFAULT_GOLDEN_BEHAVIOR_SET_PATH = PROJECT_ROOT / "data" / "eval" / "golden-behaviors.json"
 DEFAULT_RETRIEVAL_EXPECTATION_SET_PATH = (
     PROJECT_ROOT / "data" / "eval" / "retrieval-expectations.json"
+)
+DEFAULT_CITATION_EXPECTATION_SET_PATH = (
+    PROJECT_ROOT / "data" / "eval" / "citation-expectations.json"
 )
 
 
@@ -93,3 +97,31 @@ def validate_retrieval_expectation_alignment(
         raise ValueError("retrieval expectation set contains unknown question ids.")
     if missing_question_ids:
         raise ValueError("retrieval expectation set is missing question ids.")
+
+
+def load_citation_expectation_set(
+    path: Path = DEFAULT_CITATION_EXPECTATION_SET_PATH,
+) -> CitationExpectationSet:
+    """Load and validate the local citation expectation set."""
+
+    return CitationExpectationSet.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def validate_citation_expectation_alignment(
+    question_set: EvaluationQuestionSet,
+    citation_expectation_set: CitationExpectationSet,
+) -> None:
+    """Validate that citation expectations map exactly to known questions."""
+
+    question_ids = {question.question_id for question in question_set.questions}
+    citation_question_ids = {
+        expectation.question_id for expectation in citation_expectation_set.expectations
+    }
+
+    missing_question_ids = question_ids - citation_question_ids
+    extra_question_ids = citation_question_ids - question_ids
+
+    if extra_question_ids:
+        raise ValueError("citation expectation set contains unknown question ids.")
+    if missing_question_ids:
+        raise ValueError("citation expectation set is missing question ids.")

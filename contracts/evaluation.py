@@ -28,6 +28,12 @@ RetrievalExpectationKind = Literal[
     "guardrail_retrieval_expected",
 ]
 
+CitationExpectationKind = Literal[
+    "citations_required",
+    "no_citations_expected",
+    "guardrail_citation_posture",
+]
+
 
 class EvaluationQuestion(BaseModel):
     """One typed evaluation question entry."""
@@ -92,4 +98,25 @@ class RetrievalExpectationSet(BaseModel):
         question_ids = [expectation.question_id for expectation in self.expectations]
         if len(question_ids) != len(set(question_ids)):
             raise ValueError("retrieval expectation question ids must be unique.")
+        return self
+
+
+class CitationExpectationAnnotation(BaseModel):
+    """One explicit citation expectation entry linked to a question id."""
+
+    question_id: str = Field(min_length=1)
+    citation_expectation: CitationExpectationKind
+
+
+class CitationExpectationSet(BaseModel):
+    """Versioned citation expectations for the evaluation question set."""
+
+    version: str = Field(min_length=1)
+    expectations: list[CitationExpectationAnnotation] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_question_ids(self) -> CitationExpectationSet:
+        question_ids = [expectation.question_id for expectation in self.expectations]
+        if len(question_ids) != len(set(question_ids)):
+            raise ValueError("citation expectation question ids must be unique.")
         return self
