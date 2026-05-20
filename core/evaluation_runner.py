@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from contracts.evaluation import EvaluationQuestionResult, EvaluationRunResult
 from core.evaluation_dataset import (
     load_citation_expectation_set,
@@ -56,3 +58,19 @@ def run_local_evaluation() -> EvaluationRunResult:
         golden_behavior_version=golden_behavior_set.version,
         results=results,
     )
+
+
+def run_hosted_latency_smoke(*, latency_budget_ms: float = 5000.0) -> dict[str, object]:
+    """Execute a narrow hosted-like latency smoke over the local evaluation runner."""
+
+    started_at = time.perf_counter()
+    run_result = run_local_evaluation()
+    duration_ms = round((time.perf_counter() - started_at) * 1000, 3)
+
+    return {
+        "event_type": "hosted_latency_smoke_succeeded",
+        "question_count": len(run_result.results),
+        "duration_ms": duration_ms,
+        "latency_budget_ms": latency_budget_ms,
+        "within_budget": duration_ms <= latency_budget_ms,
+    }

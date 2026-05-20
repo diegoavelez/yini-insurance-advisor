@@ -596,8 +596,12 @@ Initial narrow slices:
   - hosted-like startup and health smoke scenarios;
   - smoke-oriented execution over the existing local runner surface where relevant;
   - no latency or citation regression checks yet.
-- `hosted-latency-and-citation-smokes` should cover:
-  - hosted-like latency and citation regression smoke scenarios;
+- `hosted-latency-smokes` should cover:
+  - hosted-like latency regression smoke scenarios;
+  - smoke-oriented execution over the existing local runner surface;
+  - no citation regression checks yet.
+- `hosted-citation-regression-smokes` should cover:
+  - hosted-like citation regression smoke scenarios;
   - smoke-oriented execution over the existing local runner surface;
   - no DSPy optimization yet.
 
@@ -613,8 +617,9 @@ Current implementation status:
   - `evaluation-runner-contract-and-result-schema`
   - `local-evaluation-runner-execution`
   - `hosted-startup-and-health-smokes`
+  - `hosted-latency-smokes`
 - remaining in `Phase 10`:
-  - `hosted-latency-and-citation-smokes`
+  - `hosted-citation-regression-smokes`
 
 ---
 

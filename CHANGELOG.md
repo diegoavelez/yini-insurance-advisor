@@ -2,6 +2,9 @@
 
 ## 2026-05-20
 
+- Add the next `Phase 10` evaluation slice with a hosted-like latency smoke
+  over the local evaluation runner, a deterministic latency assertion surface,
+  and local validation without drifting into citation regression smoke work.
 - Add the next `Phase 10` evaluation slice with hosted-like startup and
   health/readiness smoke coverage over the current app/runtime seams, keeping
   the checks deterministic and scoped away from latency and citation

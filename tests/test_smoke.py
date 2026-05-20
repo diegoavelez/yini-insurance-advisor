@@ -13,6 +13,8 @@ from core.config import (
     get_settings,
     validate_startup_settings,
 )
+from core.evaluation_runner import run_hosted_latency_smoke
+from ops.observability import build_health_status
 
 
 @pytest.fixture(autouse=True)
@@ -216,3 +218,40 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
     assert confidence == "HIGH"
     assert limitations == "No additional limitations noted."
     assert status == "Advisor review required before external use."
+
+
+def test_hosted_health_smoke_payload_is_callable() -> None:
+    payload = build_health_status(runtime_surface="gradio_ui")
+
+    assert payload["event_type"] == "health_check_succeeded"
+    assert payload["status"] == "ok"
+
+
+def test_hosted_readiness_smoke_payload_is_callable() -> None:
+    payload = app_ui.build_readiness_status(
+        Settings(
+            _env_file=None,
+            groq_api_key="test-groq-key",
+            qdrant_url="https://qdrant.example.com",
+            qdrant_api_key="test-qdrant-key",
+            app_env="test",
+        ),
+        runtime_surface="gradio_ui",
+        gradio_available=True,
+        groq_available=True,
+        qdrant_available=True,
+        embedding_available=True,
+    )
+
+    assert payload["event_type"] == "readiness_check_succeeded"
+    assert payload["status"] == "ready"
+
+
+def test_hosted_latency_smoke_is_callable() -> None:
+    payload = run_hosted_latency_smoke(latency_budget_ms=5000.0)
+
+    assert payload["event_type"] == "hosted_latency_smoke_succeeded"
+    assert payload["question_count"] == 30
+    assert payload["duration_ms"] >= 0
+    assert payload["latency_budget_ms"] == 5000.0
+    assert payload["within_budget"] is True
