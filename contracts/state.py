@@ -39,5 +39,6 @@ class AgentState(BaseModel):
     requires_human_review: bool = True
     fallback_stage: str | None = None
     fallback_reason: str | None = None
+    retry_attempts: list[str] = Field(default_factory=list)
     trace_summary: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)

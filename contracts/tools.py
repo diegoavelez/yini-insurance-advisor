@@ -43,6 +43,7 @@ ToolErrorKind = Literal[
     "verification_failure",
     "drafting_failure",
     "workflow_failure",
+    "retry_exhausted_failure",
 ]
 
 
