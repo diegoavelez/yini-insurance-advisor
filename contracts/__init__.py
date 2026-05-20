@@ -37,6 +37,8 @@ from contracts.evaluation import (
 from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.optimization import (
+    QueryClassificationOptimizationDataset,
+    QueryClassificationOptimizationExample,
     QueryClassificationOptimizationInput,
     QueryClassificationOptimizationOutput,
 )
@@ -120,6 +122,8 @@ __all__ = [
     "PolicyComparisonResult",
     "PolicyComparisonToolResult",
     "ProcessedDocument",
+    "QueryClassificationOptimizationDataset",
+    "QueryClassificationOptimizationExample",
     "QueryClassificationOptimizationInput",
     "QueryClassificationOptimizationOutput",
     "RetrievalQuery",

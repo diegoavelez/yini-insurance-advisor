@@ -707,8 +707,8 @@ Current implementation status:
 - completed:
   - `optimization-target-selection-and-baseline`
   - `dspy-query-classification-module-skeleton`
-- remaining in `Phase 11`:
   - `query-classification-optimization-dataset-subset`
+- remaining in `Phase 11`:
   - `query-classification-before-after-comparison`
 
 ---

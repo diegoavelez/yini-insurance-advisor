@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from contracts.evaluation import ExpectedBehavior
+from contracts.evaluation import EvaluationQuestionCategory, ExpectedBehavior
 
 
 class QueryClassificationOptimizationInput(BaseModel):
@@ -18,3 +18,32 @@ class QueryClassificationOptimizationOutput(BaseModel):
 
     expected_behavior: ExpectedBehavior
     rationale: str = Field(min_length=1)
+
+
+class QueryClassificationOptimizationExample(BaseModel):
+    """One typed optimization example for query classification."""
+
+    example_id: str = Field(min_length=1)
+    source_question_id: str = Field(min_length=1)
+    user_query: str = Field(min_length=1)
+    category: EvaluationQuestionCategory
+    expected_behavior: ExpectedBehavior
+    rationale: str = Field(min_length=1)
+
+
+class QueryClassificationOptimizationDataset(BaseModel):
+    """Versioned typed optimization subset for query classification."""
+
+    version: str = Field(min_length=1)
+    examples: list[QueryClassificationOptimizationExample] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_ids(self) -> QueryClassificationOptimizationDataset:
+        example_ids = [example.example_id for example in self.examples]
+        if len(example_ids) != len(set(example_ids)):
+            raise ValueError("optimization example ids must be unique.")
+
+        source_question_ids = [example.source_question_id for example in self.examples]
+        if len(source_question_ids) != len(set(source_question_ids)):
+            raise ValueError("optimization source question ids must be unique.")
+        return self

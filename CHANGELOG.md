@@ -2,6 +2,10 @@
 
 ## 2026-05-20
 
+- Add the next `Phase 11` optimization slice with a narrow query-classification
+  optimization dataset subset, typed optimization-example contracts, explicit
+  linkage to the 30-question evaluation and golden-behavior assets, and local
+  validation without drifting into before/after comparison work.
 - Add the next `Phase 11` optimization slice with a minimal DSPy
   query-classification module skeleton, explicit typed optimization I/O
   contracts, lazy DSPy runtime loading, and local validation without drifting
