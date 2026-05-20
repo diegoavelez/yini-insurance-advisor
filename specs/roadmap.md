@@ -30,7 +30,7 @@ Create a stable engineering foundation before writing AI logic.
 
 - repository structure;
 - AGENTS.md;
-- constitution docs;
+- governance docs;
 - pyproject.toml;
 - Ruff configuration;
 - Pytest configuration;

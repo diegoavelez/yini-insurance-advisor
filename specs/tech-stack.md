@@ -1,343 +1,165 @@
 # Tech Stack
 
-## Philosophy
+## Core Stack
 
-The stack is intentionally optimized for:
-
-- fast iteration;
-- strong observability;
-- production-oriented architecture;
-- modularity;
-- low operational complexity for MVP deployment.
-
-The goal is not maximal complexity.
-The goal is a clean, reliable, extensible AI Engineering system.
-
----
-
-# Core Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Python 3.11+ |
-| Frontend | Gradio |
-| API Layer | Optional FastAPI integration later |
-| Orchestration | LangGraph |
-| LLM Provider | Groq API |
-| Initial Model | GPT-OSS-120B |
-| Document Processing | Docling |
-| Vector Database | Qdrant Cloud |
-| Contracts | Pydantic v2 |
-| Optimization | DSPy |
-| MCP | MCP Server + Client |
-| Observability | Phoenix |
-| Testing | Pytest |
-| Linting | Ruff |
-| Containerization | Docker |
-| MVP Deployment | Hugging Face Spaces |
-| Production Deployment | Internal environment, defined later |
-| Config Management | python-dotenv + Pydantic Settings |
-| Logging | Structured logging |
+| Layer               | Technology                        |
+| ------------------- | --------------------------------- |
+| Language            | Python 3.11+                      |
+| Frontend            | Gradio                            |
+| API Layer           | Optional FastAPI later            |
+| Orchestration       | LangGraph                         |
+| LLM Provider        | Groq API                          |
+| Initial Model       | GPT-OSS-120B                      |
+| Document Processing | Docling                           |
+| Vector Database     | Qdrant Cloud                      |
+| Contracts           | Pydantic v2                       |
+| Optimization        | DSPy                              |
+| MCP                 | MCP Server + Client               |
+| Observability       | Phoenix                           |
+| Testing             | Pytest                            |
+| Linting             | Ruff                              |
+| Containerization    | Docker                            |
+| MVP Deployment      | Hugging Face Spaces               |
+| Config              | python-dotenv + Pydantic Settings |
+| Logging             | Structured logging                |
 
 ---
 
-# Why These Technologies
+## Local Development
 
-## Python
-
-Python provides:
-
-- mature AI ecosystem;
-- LangGraph compatibility;
-- DSPy support;
-- MCP compatibility;
-- strong tooling for RAG systems.
+* Use Python virtual environment `.venv`.
+* Never install dependencies globally.
+* Use `requirements.txt` or `pyproject.toml` as dependency source of truth.
+* Docker is for reproducibility and deployment, not the primary local dev loop.
 
 ---
 
-## Gradio
+## Architecture Rules
 
-Chosen because:
+* Use explicit Pydantic contracts at system boundaries.
+* Keep workflow state typed and explicit.
+* Preserve modular boundaries:
 
-- minimal frontend overhead;
-- fast MVP iteration;
-- native Hugging Face Spaces compatibility;
-- sufficient for demo workflows.
-
-Avoid building React or complex frontend infrastructure during MVP.
-
----
-
-## LangGraph
-
-Chosen because:
-
-- explicit workflow control;
-- state-machine architecture;
-- predictable execution;
-- better fit for insurance workflows than open-ended ReAct loops;
-- supports multi-agent orchestration cleanly.
-
-The project should avoid unconstrained autonomous agent loops.
+  * `rag/`
+  * `agents/`
+  * `contracts/`
+  * `data/eval/`
+  * `ops/`
+  * `mcp/`
+* Avoid hidden mutable state.
+* Avoid monolithic scripts.
+* Avoid large untyped dictionaries.
+* Avoid speculative abstractions.
 
 ---
 
-## Groq API + GPT-OSS-120B
+## LLM Provider Rules
 
-Chosen because:
-
-- fast inference;
-- simple integration;
-- good performance/cost ratio for MVP;
-- suitable for public demo environments.
-
-The architecture must support provider abstraction.
-
-Future support:
-
-- OpenAI;
-- Gemini;
-- Ollama;
-- llama-cpp;
-- local Llama-compatible providers.
+* Use Groq API with GPT-OSS-120B for the MVP.
+* Keep provider access behind an explicit abstraction.
+* Do not hardcode model names outside configuration.
+* Future providers may include OpenAI, Gemini, Ollama, llama-cpp, or local Llama-compatible models.
+* Do not run heavy local models in the public Hugging Face Spaces demo.
 
 ---
 
-## Docling
+## RAG and Vector Store Rules
 
-Chosen because:
+* Use Qdrant Cloud for MVP vector storage.
+* Preserve metadata required for citations:
 
-- high-quality PDF extraction;
-- strong document structure preservation;
-- suitable for policy documents;
-- modern document-processing pipeline.
-
-Document quality is critical for retrieval quality.
-
----
-
-## Qdrant Cloud
-
-Chosen because:
-
-- production-oriented vector database;
-- managed infrastructure;
-- metadata filtering;
-- strong Python integration;
-- easier public demo deployment than local persistence.
-
-Avoid local vector databases for public demo persistence.
+  * document name;
+  * page;
+  * section;
+  * clause ID when available;
+  * chunk ID.
+* Retrieval quality is more important than model size.
+* Avoid startup-time ingestion in hosted demo mode.
 
 ---
 
-## DSPy
+## Deployment Modes
 
-Chosen because:
+The project must distinguish:
 
-- programmatic optimization of prompts and pipelines;
-- evaluation-driven improvement;
-- valuable AI Engineering portfolio capability.
+1. `public_mvp_demo`
+2. `internal_production`
 
-DSPy should optimize targeted components only.
-Avoid premature optimization everywhere.
+For `public_mvp_demo`:
 
----
+* deploy on Hugging Face Spaces;
+* use Docker;
+* use approved documents only;
+* prefer managed services;
+* keep runtime lightweight.
 
-## MCP
+For `internal_production`:
 
-Chosen because:
-
-- emerging interoperability standard;
-- valuable architecture skill demonstration;
-- enables reusable tool exposure.
-
-MCP should complement the architecture, not dominate it.
+* preserve auditability;
+* support future access controls;
+* keep deployment targets replaceable behind contracts.
 
 ---
 
-## Phoenix
+## Observability Rules
 
-Chosen because:
+Use Phoenix for:
 
-- LLM observability;
-- tracing;
-- retrieval inspection;
-- latency analysis;
-- cost monitoring;
-- evaluation support.
+* latency;
+* token usage;
+* retrieval events;
+* tool usage;
+* errors;
+* cost estimates;
+* confidence scores.
 
-Observability is mandatory for debugging and evaluation.
-
----
-
-# Architecture Principles
-
-## Explicit State
-
-All shared workflow state should be typed and explicit.
-
-Use:
-
-- Pydantic models;
-- typed contracts;
-- structured tool IO.
-
-Avoid hidden mutable state.
+Baseline observability must exist before complex orchestration grows further.
 
 ---
 
-## Local Development Environment
+## Evaluation Rules
 
-All local development must use a Python virtual environment.
+Track at minimum:
 
-Recommended setup:
+* groundedness;
+* retrieval precision;
+* retrieval recall;
+* citation accuracy;
+* latency;
+* tool success rate.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
----
-
-## Modular Boundaries
-
-The repository should preserve clear boundaries:
-
-- rag/
-- agents/
-- contracts/
-- evals/
-- ops/
-- mcp/
-
-Avoid monolithic scripts.
+Do not rely only on subjective manual inspection.
 
 ---
-
-## Cloud-First Demo
-
-The MVP deployment prioritizes:
-
-- reliability;
-- simplicity;
-- low deployment friction.
-
-Therefore:
-
-- use Groq cloud inference;
-- use Qdrant Cloud;
-- avoid heavy local models during public deployment.
-
-Local models remain future-compatible through provider abstraction.
-
-## Dual Deployment Modes
-
-The project must distinguish between:
-
-- public MVP demo deployment;
-- internal production deployment.
-
-For the MVP:
-
-- optimize for safe public demonstration;
-- deploy on Hugging Face Spaces;
-- use sanitized, approved documents only;
-- prefer managed services and simple operations.
-
-For future production:
-
-- support internal access controls;
-- preserve auditability and observability;
-- keep deployment targets replaceable behind explicit contracts.
-
----
-
-## Evaluation-Driven Development
-
-Features should be evaluated continuously.
-
-Important metrics:
-
-- groundedness;
-- retrieval precision;
-- retrieval recall;
-- citation accuracy;
-- latency;
-- tool success rate.
-
-Avoid subjective-only evaluation.
 
 ## Deployment Spine
 
-Deployment readiness must be built incrementally rather than deferred to the
-final deployment phase.
+Deployment readiness must be built incrementally.
 
-Required early operational capabilities:
+Required:
 
-- startup validation;
-- structured logs with request correlation when applicable;
-- health/readiness checks for hosted environments;
-- explicit environment variable mapping;
-- reproducible offline jobs for ingestion and indexing;
-- hosted smoke tests before full public deployment.
-
----
-
-# Coding Standards
-
-## Required
-
-- type hints everywhere;
-- Pydantic contracts;
-- modular functions;
-- structured logging;
-- explicit error handling;
-- small diffs;
-- testable components.
+* startup validation;
+* explicit environment variable mapping;
+* structured logs;
+* request correlation when applicable;
+* health/readiness checks;
+* reproducible ingestion/indexing jobs;
+* hosted smoke tests.
 
 ---
 
-## Avoid
+## Infrastructure Constraints
 
-- massive utility files;
-- hidden globals;
-- speculative abstractions;
-- unnecessary frameworks;
-- giant orchestrator functions;
-- long untyped dictionaries.
+For Hugging Face Spaces, avoid:
 
----
-
-# Infrastructure Constraints
-
-## Hugging Face Spaces Constraints
-
-The deployment environment has limited resources.
-
-Avoid:
-
-- large local models;
-- excessive memory usage;
-- startup-time ingestion;
-- unnecessary background workers.
+* large local models;
+* excessive memory use;
+* startup-time ingestion;
+* unnecessary background workers.
 
 Prefer:
 
-- prebuilt indexes;
-- lightweight containers;
-- cloud inference.
-
----
-
-# Future-Compatible Decisions
-
-The architecture should remain compatible with:
-
-- local model inference;
-- enterprise authentication;
-- multiple collections;
-- production observability;
-- multi-user workflows;
-- advanced evaluation systems.
-
-But these should not block MVP delivery.
+* lightweight containers;
+* cloud inference;
+* Qdrant Cloud;
+* prebuilt or reproducible indexes.

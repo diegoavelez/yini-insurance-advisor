@@ -1,17 +1,15 @@
 # Architecture Notes
 
-This file is intentionally minimal during Phase 0.
+This file is intentionally minimal.
 
 ## Current Architecture State
 
 - `PRD.md` defines the target architecture and milestones.
-- `constitution.md` defines the durable mission, technical posture, and
-  implementation order.
-- The repository currently exposes only the base runtime seams required to start
-  Phase 1 safely: configuration, logging, package boundaries, tests, and deploy
-  skeletons.
+- `specs/mission.md` defines durable product principles and anti-goals.
+- `specs/tech-stack.md` defines stack constraints and architecture boundaries.
+- `specs/roadmap.md` defines implementation order and current status.
+- Dated specs in `specs/` are the implementation truth.
 
 ## Next Step
 
-Phase 1 should add shared typed contracts and expand configuration validation
-without introducing retrieval or orchestration logic yet.
+Follow the next incomplete narrow slice in `specs/roadmap.md`.

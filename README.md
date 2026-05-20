@@ -9,46 +9,23 @@ This repository now contains the completed `Phase 0` foundation, the full
 and `Phase 3` ingestion/chunking pipeline, the full `Phase 4` embedding and
 indexing pipeline, the completed `Phase 5` MVP QA layer, the completed
 `Phase 6` observability foundation, the completed `Phase 7` reusable tooling
-layer, and the first `Phase 8` LangGraph workflow skeleton.
+layer, the completed `Phase 8` workflow orchestration layer, the completed
+`Phase 9` guardrail layer, and the first `Phase 10` evaluation slice.
 
 ## Source Documents
 
 - `PRD.md` is the product requirements source of truth.
-- `constitution.md` is the constitution entry point.
-- `specs/` contains the split constitution documents and future implementation
-  specs.
+- `specs/mission.md` contains product principles and anti-goals.
+- `specs/tech-stack.md` contains stack constraints and architecture boundaries.
+- `specs/roadmap.md` contains implementation order and current build status.
+- `specs/` also contains dated implementation specs.
 
 ## Current Status
 
-- `Phase 0` and `Phase 1` are complete.
-- `Phase 2` is complete through:
-  - Docling-based offline ingestion
-  - deterministic raw/markdown/processed storage conventions
-  - conservative Markdown cleaning and minimal metadata extraction
-- `Phase 3` is complete through:
-  - deterministic chunk persistence
-  - semantic boundary-aware chunk refinement
-- `Phase 4` is complete through:
-  - local embedding generation artifacts
-  - Qdrant collection bootstrap and idempotent indexing
-- `Phase 5` is complete through:
-  - ranked retrieval
-  - Gradio MVP query UI
-  - grounded answer generation with citations
-- `Phase 6` is complete through:
-  - startup diagnostics and request correlation
-  - hosted health/readiness checks
-  - Phoenix activation hooks
-- `Phase 7` is complete through:
-  - document retrieval tool
-  - clause extraction tool
-  - policy comparison tool
-  - citation verifier tool
-  - response draft tool
-- `Phase 8` has started through:
-  - LangGraph wiring
-  - shared workflow state
-  - one observable linear workflow path over the existing tools
+- `Phase 0` through `Phase 9` are complete.
+- `Phase 10` has started with evaluation schemas and the initial curated
+  question set.
+- Detailed implementation status lives in `specs/roadmap.md`.
 
 ## Local Setup
 
