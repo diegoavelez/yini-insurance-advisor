@@ -554,6 +554,33 @@ Create a repeatable evaluation baseline.
 - retrieval quality can be measured;
 - startup, latency, and citation regressions are detectable.
 
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `evaluation-schema-and-question-set` should cover:
+  - typed evaluation schemas;
+  - a first curated question set;
+  - no runner execution yet.
+- `golden-dataset-and-expected-outcomes` should cover:
+  - golden reference outputs and expected guardrail behavior;
+  - retrieval/citation expectations where applicable;
+  - no hosted-like regression execution yet.
+- `evaluation-runner-and-hosted-regression-smokes` should cover:
+  - a repeatable local evaluation runner;
+  - hosted-like regression scenarios for startup, latency, and citation checks;
+  - no DSPy optimization yet.
+
+Current implementation status:
+
+- completed:
+  - `evaluation-schema-and-question-set`
+- remaining in `Phase 10`:
+  - `golden-dataset-and-expected-outcomes`
+  - `evaluation-runner-and-hosted-regression-smokes`
+
 ---
 
 # Phase 11 — DSPy Optimization

@@ -2,6 +2,9 @@
 
 ## 2026-05-19
 
+- Add the first `Phase 10` evaluation slice with typed evaluation-question
+  schemas, a versioned local curated question set covering normal QA and
+  guardrail-oriented prompts, and deterministic dataset validation coverage.
 - Add the final `Phase 9` guardrail slice with a narrow local summary surface
   for guardrail/refusal events, typed event records, distinguishable guardrail
   classes, and preserved request-correlation context without drifting into
