@@ -592,8 +592,12 @@ Initial narrow slices:
   - a repeatable local evaluation runner;
   - deterministic execution over the curated evaluation assets;
   - no hosted-like regression scenarios yet.
-- `hosted-regression-smoke-scenarios` should cover:
-  - hosted-like regression scenarios for startup, latency, and citation checks;
+- `hosted-startup-and-health-smokes` should cover:
+  - hosted-like startup and health smoke scenarios;
+  - smoke-oriented execution over the existing local runner surface where relevant;
+  - no latency or citation regression checks yet.
+- `hosted-latency-and-citation-smokes` should cover:
+  - hosted-like latency and citation regression smoke scenarios;
   - smoke-oriented execution over the existing local runner surface;
   - no DSPy optimization yet.
 
@@ -608,8 +612,9 @@ Current implementation status:
   - `citation-expectation-annotations`
   - `evaluation-runner-contract-and-result-schema`
   - `local-evaluation-runner-execution`
+  - `hosted-startup-and-health-smokes`
 - remaining in `Phase 10`:
-  - `hosted-regression-smoke-scenarios`
+  - `hosted-latency-and-citation-smokes`
 
 ---
 

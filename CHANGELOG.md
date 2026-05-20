@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-20
+
+- Add the next `Phase 10` evaluation slice with hosted-like startup and
+  health/readiness smoke coverage over the current app/runtime seams, keeping
+  the checks deterministic and scoped away from latency and citation
+  regressions.
+
 ## 2026-05-19
 
 - Add the next `Phase 10` evaluation slice with a deterministic local
