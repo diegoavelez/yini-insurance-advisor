@@ -24,6 +24,9 @@ from contracts.evaluation import (
     ExpectedBehavior,
     GoldenBehaviorExpectation,
     GoldenBehaviorSet,
+    RetrievalExpectationAnnotation,
+    RetrievalExpectationKind,
+    RetrievalExpectationSet,
 )
 from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
@@ -90,6 +93,9 @@ __all__ = [
     "GuardrailSummary",
     "GroundedAnswerResult",
     "GroundingVerification",
+    "RetrievalExpectationAnnotation",
+    "RetrievalExpectationKind",
+    "RetrievalExpectationSet",
     "GroundingVerificationResult",
     "IngestionStatus",
     "LangGraphWorkflowToolResult",

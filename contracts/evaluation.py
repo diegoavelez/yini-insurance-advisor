@@ -22,6 +22,12 @@ ExpectedBehavior = Literal[
     "confidence_guardrail",
 ]
 
+RetrievalExpectationKind = Literal[
+    "grounded_retrieval_required",
+    "no_retrieval_expected",
+    "guardrail_retrieval_expected",
+]
+
 
 class EvaluationQuestion(BaseModel):
     """One typed evaluation question entry."""
@@ -65,4 +71,25 @@ class GoldenBehaviorSet(BaseModel):
         question_ids = [expectation.question_id for expectation in self.expectations]
         if len(question_ids) != len(set(question_ids)):
             raise ValueError("golden behavior question ids must be unique.")
+        return self
+
+
+class RetrievalExpectationAnnotation(BaseModel):
+    """One explicit retrieval expectation entry linked to a question id."""
+
+    question_id: str = Field(min_length=1)
+    retrieval_expectation: RetrievalExpectationKind
+
+
+class RetrievalExpectationSet(BaseModel):
+    """Versioned retrieval expectations for the evaluation question set."""
+
+    version: str = Field(min_length=1)
+    expectations: list[RetrievalExpectationAnnotation] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_question_ids(self) -> RetrievalExpectationSet:
+        question_ids = [expectation.question_id for expectation in self.expectations]
+        if len(question_ids) != len(set(question_ids)):
+            raise ValueError("retrieval expectation question ids must be unique.")
         return self

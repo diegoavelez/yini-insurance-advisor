@@ -2,6 +2,11 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 10` evaluation slice with a typed retrieval-expectation
+  dataset for the curated 30-question set, deterministic question linkage,
+  explicit distinction between grounded, no-retrieval, and guardrail retrieval
+  cases, and local alignment validation without drifting into citation
+  expectations or runner work.
 - Add the next `Phase 10` evaluation slice with a typed golden behavior
   dataset for the 30-question curated set, deterministic question-to-outcome
   linkage, explicit refusal and guardrail expectations, and local alignment

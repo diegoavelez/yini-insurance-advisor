@@ -4,11 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from contracts import EvaluationQuestionSet, GoldenBehaviorSet
+from contracts import EvaluationQuestionSet, GoldenBehaviorSet, RetrievalExpectationSet
 from core.evaluation_dataset import (
     load_evaluation_question_set,
     load_golden_behavior_set,
+    load_retrieval_expectation_set,
     validate_golden_behavior_alignment,
+    validate_retrieval_expectation_alignment,
 )
 
 
@@ -154,3 +156,83 @@ def test_invalid_golden_behavior_set_with_unknown_question_id_fails(tmp_path: Pa
 
     with pytest.raises(ValueError, match="unknown question ids"):
         validate_golden_behavior_alignment(question_set, golden_behavior_set)
+
+
+def test_load_retrieval_expectation_set_returns_typed_dataset() -> None:
+    retrieval_expectation_set = load_retrieval_expectation_set()
+
+    assert isinstance(retrieval_expectation_set, RetrievalExpectationSet)
+    assert retrieval_expectation_set.version == "2026-05-20-retrieval-expectations-v1"
+    assert len(retrieval_expectation_set.expectations) == 30
+
+
+def test_retrieval_expectation_set_covers_every_curated_question() -> None:
+    question_set = load_evaluation_question_set()
+    retrieval_expectation_set = load_retrieval_expectation_set()
+
+    validate_retrieval_expectation_alignment(question_set, retrieval_expectation_set)
+
+
+def test_grounded_questions_retain_retrieval_required_expectations() -> None:
+    retrieval_expectation_set = load_retrieval_expectation_set()
+
+    expectations = {
+        expectation.question_id: expectation.retrieval_expectation
+        for expectation in retrieval_expectation_set.expectations
+    }
+
+    for question_id in ["qa-001", "qa-006"]:
+        assert expectations[question_id] == "grounded_retrieval_required"
+
+
+def test_refusal_questions_retain_no_retrieval_expectations() -> None:
+    retrieval_expectation_set = load_retrieval_expectation_set()
+
+    expectations = {
+        expectation.question_id: expectation.retrieval_expectation
+        for expectation in retrieval_expectation_set.expectations
+    }
+
+    for question_id in ["scope-001", "scope-006", "inj-001", "inj-006"]:
+        assert expectations[question_id] == "no_retrieval_expected"
+
+
+def test_guardrail_questions_retain_guardrail_retrieval_expectations() -> None:
+    retrieval_expectation_set = load_retrieval_expectation_set()
+
+    expectations = {
+        expectation.question_id: expectation.retrieval_expectation
+        for expectation in retrieval_expectation_set.expectations
+    }
+
+    for question_id in ["cite-001", "cite-006", "conf-001", "conf-006"]:
+        assert expectations[question_id] == "guardrail_retrieval_expected"
+
+
+def test_invalid_retrieval_expectation_set_with_unknown_question_id_fails(
+    tmp_path: Path,
+) -> None:
+    invalid_retrieval_expectation_path = tmp_path / "invalid-retrieval-expectations.json"
+    invalid_retrieval_expectation_path.write_text(
+        """
+{
+  "version": "invalid",
+  "expectations": [
+    {
+      "question_id": "unknown-001",
+      "retrieval_expectation": "grounded_retrieval_required"
+    }
+  ]
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    question_set = load_evaluation_question_set()
+    retrieval_expectation_set = load_retrieval_expectation_set(
+        invalid_retrieval_expectation_path
+    )
+
+    with pytest.raises(ValueError, match="unknown question ids"):
+        validate_retrieval_expectation_alignment(question_set, retrieval_expectation_set)

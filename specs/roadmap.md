@@ -576,9 +576,13 @@ Initial narrow slices:
   - golden expected behavior labels for the curated question set;
   - expected refusal or guarded-answer outcomes where applicable;
   - no retrieval/citation evidence expectations yet.
-- `retrieval-and-citation-expectation-annotations` should cover:
-  - retrieval and citation expectations where applicable;
-  - explicit evidence-oriented annotations over the existing golden set;
+- `retrieval-expectation-annotations` should cover:
+  - retrieval expectations where applicable;
+  - explicit evidence-oriented retrieval annotations over the existing golden set;
+  - no citation-specific expectation work yet.
+- `citation-expectation-annotations` should cover:
+  - citation expectations where applicable;
+  - explicit citation-oriented annotations over the existing retrieval-aware golden set;
   - no hosted-like regression execution yet.
 - `evaluation-runner-and-hosted-regression-smokes` should cover:
   - a repeatable local evaluation runner;
@@ -592,8 +596,9 @@ Current implementation status:
   - `question-set-expansion-and-category-balance`
   - `question-set-target-30-completion`
   - `golden-behavior-and-guardrail-outcomes`
+  - `retrieval-expectation-annotations`
 - remaining in `Phase 10`:
-  - `retrieval-and-citation-expectation-annotations`
+  - `citation-expectation-annotations`
   - `evaluation-runner-and-hosted-regression-smokes`
 
 ---

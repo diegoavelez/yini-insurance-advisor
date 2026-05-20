@@ -5,11 +5,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from contracts.evaluation import EvaluationQuestionSet, GoldenBehaviorSet
+from contracts.evaluation import (
+    EvaluationQuestionSet,
+    GoldenBehaviorSet,
+    RetrievalExpectationSet,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_EVALUATION_QUESTION_SET_PATH = PROJECT_ROOT / "data" / "eval" / "questions.json"
 DEFAULT_GOLDEN_BEHAVIOR_SET_PATH = PROJECT_ROOT / "data" / "eval" / "golden-behaviors.json"
+DEFAULT_RETRIEVAL_EXPECTATION_SET_PATH = (
+    PROJECT_ROOT / "data" / "eval" / "retrieval-expectations.json"
+)
 
 
 def load_evaluation_question_set(
@@ -58,3 +65,31 @@ def validate_golden_behavior_alignment(
         raise ValueError("golden behavior set contains unknown question ids.")
     if missing_question_ids:
         raise ValueError("golden behavior set is missing question ids.")
+
+
+def load_retrieval_expectation_set(
+    path: Path = DEFAULT_RETRIEVAL_EXPECTATION_SET_PATH,
+) -> RetrievalExpectationSet:
+    """Load and validate the local retrieval expectation set."""
+
+    return RetrievalExpectationSet.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def validate_retrieval_expectation_alignment(
+    question_set: EvaluationQuestionSet,
+    retrieval_expectation_set: RetrievalExpectationSet,
+) -> None:
+    """Validate that retrieval expectations map exactly to known questions."""
+
+    question_ids = {question.question_id for question in question_set.questions}
+    retrieval_question_ids = {
+        expectation.question_id for expectation in retrieval_expectation_set.expectations
+    }
+
+    missing_question_ids = question_ids - retrieval_question_ids
+    extra_question_ids = retrieval_question_ids - question_ids
+
+    if extra_question_ids:
+        raise ValueError("retrieval expectation set contains unknown question ids.")
+    if missing_question_ids:
+        raise ValueError("retrieval expectation set is missing question ids.")
