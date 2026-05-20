@@ -1,8 +1,10 @@
 """Observability helpers and future guardrail modules."""
 
 from ops.observability import (
+    build_guardrail_summary,
     build_health_status,
     build_startup_diagnostics,
+    clear_guardrail_event_buffer,
     generate_request_id,
     log_event,
     log_health_status,
@@ -14,7 +16,9 @@ from ops.observability import (
 
 __all__ = [
     "build_health_status",
+    "build_guardrail_summary",
     "build_startup_diagnostics",
+    "clear_guardrail_event_buffer",
     "generate_request_id",
     "log_health_status",
     "log_event",

@@ -6,10 +6,20 @@ import importlib.util
 import logging
 import time
 import uuid
+from collections import deque
 from collections.abc import Callable
 from contextlib import contextmanager
 
+from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from core.config import Settings
+
+GUARDRAIL_EVENT_TYPES = {
+    "query_scope_refusal",
+    "prompt_injection_guardrail_triggered",
+    "citation_presence_guardrail_triggered",
+    "confidence_consistency_guardrail_triggered",
+}
+GUARDRAIL_EVENT_BUFFER: deque[GuardrailEventRecord] = deque(maxlen=200)
 
 
 def generate_request_id(prefix: str = "req") -> str:
@@ -150,7 +160,40 @@ def log_event(
     if request_id is not None:
         payload["request_id"] = request_id
     payload.update(fields)
+    if event_type in GUARDRAIL_EVENT_TYPES:
+        record = GuardrailEventRecord(
+            event_type=event_type,
+            request_id=request_id,
+            guardrail_surface=(
+                fields.get("guardrail_surface")
+                if isinstance(fields.get("guardrail_surface"), str)
+                else None
+            ),
+            timestamp_ms=round(time.time() * 1000),
+            details=dict(fields),
+        )
+        GUARDRAIL_EVENT_BUFFER.append(record)
     logger.log(level, message or event_type, extra=payload)
+
+
+def clear_guardrail_event_buffer() -> None:
+    """Clear the local in-memory guardrail event buffer."""
+
+    GUARDRAIL_EVENT_BUFFER.clear()
+
+
+def build_guardrail_summary(*, recent_limit: int = 10) -> GuardrailSummary:
+    """Build a compact local summary of recent guardrail/refusal activity."""
+
+    recorded_events = list(GUARDRAIL_EVENT_BUFFER)
+    event_counts: dict[str, int] = {}
+    for record in recorded_events:
+        event_counts[record.event_type] = event_counts.get(record.event_type, 0) + 1
+    return GuardrailSummary(
+        total_events=len(recorded_events),
+        event_counts=event_counts,
+        recent_events=recorded_events[-recent_limit:],
+    )
 
 
 @contextmanager

@@ -527,8 +527,9 @@ Current implementation status:
   - `response-confidence-consistency-guardrails`
   - `prompt-injection-signals-and-refusal`
   - `guardrail-abuse-case-scenarios`
-- remaining in `Phase 9`:
   - `refusal-telemetry-and-guardrail-summary`
+- remaining in `Phase 9`:
+  - none
 
 ---
 

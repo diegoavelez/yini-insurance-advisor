@@ -17,6 +17,7 @@ from contracts.embeddings import (
     EmbeddingRecord,
     VectorPayload,
 )
+from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.responses import (
     AdvisorDraftResponse,
@@ -71,6 +72,8 @@ __all__ = [
     "EmbeddingIndexingRecord",
     "EmbeddingIndexingStatus",
     "EmbeddingRecord",
+    "GuardrailEventRecord",
+    "GuardrailSummary",
     "GroundedAnswerResult",
     "GroundingVerification",
     "GroundingVerificationResult",

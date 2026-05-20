@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the final `Phase 9` guardrail slice with a narrow local summary surface
+  for guardrail/refusal events, typed event records, distinguishable guardrail
+  classes, and preserved request-correlation context without drifting into
+  broader analytics work.
 - Add the next `Phase 9` guardrail slice with deterministic abuse-case
   regression scenarios over implemented guardrails, explicit assertions of the
   expected refusal or downgrade outcomes, and benign supported control coverage
