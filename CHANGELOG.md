@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 10` evaluation slice with a deterministic local
+  evaluation runner over the curated assets, typed run-level and per-question
+  outputs, stable `question_id` linkage, and local validation without drifting
+  into hosted regression smoke work.
 - Add the next `Phase 10` evaluation slice with typed local evaluation
   run-result contracts, deterministic per-question result linkage, and schema
   validation for run-level and per-question outputs without drifting into

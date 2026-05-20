@@ -607,8 +607,8 @@ Current implementation status:
   - `retrieval-expectation-annotations`
   - `citation-expectation-annotations`
   - `evaluation-runner-contract-and-result-schema`
-- remaining in `Phase 10`:
   - `local-evaluation-runner-execution`
+- remaining in `Phase 10`:
   - `hosted-regression-smoke-scenarios`
 
 ---

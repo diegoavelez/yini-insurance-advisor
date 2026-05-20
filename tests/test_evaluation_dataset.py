@@ -21,6 +21,7 @@ from core.evaluation_dataset import (
     validate_golden_behavior_alignment,
     validate_retrieval_expectation_alignment,
 )
+from core.evaluation_runner import run_local_evaluation
 
 
 def test_load_evaluation_question_set_returns_typed_dataset() -> None:
@@ -380,3 +381,33 @@ def test_evaluation_run_result_requires_unique_question_ids() -> None:
                 ),
             ],
         )
+
+
+def test_run_local_evaluation_returns_typed_run_result() -> None:
+    run_result = run_local_evaluation()
+
+    assert isinstance(run_result, EvaluationRunResult)
+    assert run_result.question_set_version == "2026-05-19-target-30-complete"
+    assert run_result.golden_behavior_version == "2026-05-19-golden-behaviors-v1"
+    assert len(run_result.results) == 30
+
+
+def test_run_local_evaluation_is_deterministic() -> None:
+    first_result = run_local_evaluation()
+    second_result = run_local_evaluation()
+
+    assert first_result.model_dump(mode="json") == second_result.model_dump(mode="json")
+
+
+def test_run_local_evaluation_preserves_question_id_linkage() -> None:
+    run_result = run_local_evaluation()
+
+    question_ids = [result.question_id for result in run_result.results]
+    assert question_ids[0] == "qa-001"
+    assert question_ids[-1] == "conf-006"
+
+
+def test_run_local_evaluation_marks_current_assets_as_matched() -> None:
+    run_result = run_local_evaluation()
+
+    assert all(result.status == "matched" for result in run_result.results)
