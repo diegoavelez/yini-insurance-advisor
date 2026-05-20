@@ -13,7 +13,10 @@ from core.config import (
     get_settings,
     validate_startup_settings,
 )
-from core.evaluation_runner import run_hosted_latency_smoke
+from core.evaluation_runner import (
+    run_hosted_citation_regression_smoke,
+    run_hosted_latency_smoke,
+)
 from ops.observability import build_health_status
 
 
@@ -255,3 +258,16 @@ def test_hosted_latency_smoke_is_callable() -> None:
     assert payload["duration_ms"] >= 0
     assert payload["latency_budget_ms"] == 5000.0
     assert payload["within_budget"] is True
+
+
+def test_hosted_citation_regression_smoke_is_callable() -> None:
+    payload = run_hosted_citation_regression_smoke()
+
+    assert payload["event_type"] == "hosted_citation_regression_smoke_succeeded"
+    assert payload["question_count"] == 30
+    assert payload["all_questions_covered"] is True
+    assert payload["expectation_counts"] == {
+        "citations_required": 6,
+        "no_citations_expected": 12,
+        "guardrail_citation_posture": 12,
+    }

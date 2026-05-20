@@ -43,7 +43,6 @@ class EvaluationQuestion(BaseModel):
     question_id: str = Field(min_length=1)
     prompt: str = Field(min_length=1)
     category: EvaluationQuestionCategory
-    expected_behavior: ExpectedBehavior
     rationale: str = Field(min_length=1)
 
 
@@ -140,6 +139,8 @@ class EvaluationRunResult(BaseModel):
     run_id: str = Field(min_length=1)
     question_set_version: str = Field(min_length=1)
     golden_behavior_version: str = Field(min_length=1)
+    retrieval_expectation_version: str = Field(min_length=1)
+    citation_expectation_version: str = Field(min_length=1)
     results: list[EvaluationQuestionResult] = Field(min_length=1)
 
     @model_validator(mode="after")

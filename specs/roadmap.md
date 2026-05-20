@@ -604,6 +604,10 @@ Initial narrow slices:
   - hosted-like citation regression smoke scenarios;
   - smoke-oriented execution over the existing local runner surface;
   - no DSPy optimization yet.
+- `behavioral-evaluation-runner-remediation` should cover:
+  - removal of tautological behavior evaluation in the local runner;
+  - explicit linkage of run results to the active expectation datasets;
+  - correction of any duplicated golden-output ownership between question and golden datasets.
 
 Current implementation status:
 
@@ -618,8 +622,10 @@ Current implementation status:
   - `local-evaluation-runner-execution`
   - `hosted-startup-and-health-smokes`
   - `hosted-latency-smokes`
-- remaining in `Phase 10`:
   - `hosted-citation-regression-smokes`
+  - `behavioral-evaluation-runner-remediation`
+- remaining in `Phase 10`:
+  - none
 
 ---
 
