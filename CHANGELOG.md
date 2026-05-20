@@ -2,6 +2,10 @@
 
 ## 2026-05-20
 
+- Add the first `Phase 11` optimization slice by selecting `query
+  classification` as the initial DSPy target, defining explicit baseline
+  quality, latency, and zero-external-call cost surfaces, and documenting the
+  decision without drifting into module implementation.
 - Add the next `Phase 10` evaluation slice with a hosted-like latency smoke
   over the local evaluation runner, a deterministic latency assertion surface,
   and local validation without drifting into citation regression smoke work.

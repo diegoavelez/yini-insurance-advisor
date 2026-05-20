@@ -655,6 +655,62 @@ Optimize one targeted component programmatically.
 - optimization process is documented;
 - hosted latency remains within budget.
 
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `optimization-target-selection-and-baseline` should cover:
+  - selection of one optimization target from the recommended set;
+  - explicit baseline metric definition for that target;
+  - no DSPy module implementation yet.
+- `dspy-module-skeleton-for-selected-target` should cover:
+  - one minimal DSPy module for the selected target;
+  - explicit input/output contract for local optimization work;
+  - no optimization dataset subset yet.
+- `optimization-dataset-subset-for-selected-target` should cover:
+  - a narrow dataset subset for the selected target;
+  - stable linkage to the existing evaluation assets where relevant;
+  - no before/after comparison yet.
+- `before-after-optimization-comparison` should cover:
+  - measurable baseline versus optimized comparison;
+  - explicit quality, latency, and cost reporting for the selected target;
+  - no broader productionization yet.
+
+Selected first target and baseline:
+
+- selected target:
+  - `query classification`
+- rationale:
+  - it already has narrow deterministic seams in `query_scope` and
+    `prompt_guardrails`;
+  - it is directly measurable with the existing 30-question evaluation assets;
+  - it has lower latency and cost risk than answer drafting or retrieval
+    routing for the first DSPy slice.
+- baseline quality surface:
+  - exact-match rate against `ExpectedBehavior` over the 30-question evaluation
+    set;
+  - per-category exact-match rate across grounded QA, unsupported, prompt
+    injection, citation guardrail, and confidence guardrail scenarios.
+- baseline latency surface:
+  - wall-clock duration of `run_local_evaluation()`;
+  - derived per-question average duration from the local evaluation run.
+- baseline cost surface:
+  - current baseline is zero external model calls for the deterministic local
+    classification seam;
+  - future DSPy comparisons must report any incremental model-call or token-cost
+    surface against that baseline.
+
+Current implementation status:
+
+- completed:
+  - `optimization-target-selection-and-baseline`
+- remaining in `Phase 11`:
+  - `dspy-module-skeleton-for-selected-target`
+  - `optimization-dataset-subset-for-selected-target`
+  - `before-after-optimization-comparison`
+
 ---
 
 # Phase 12 — MCP Integration
