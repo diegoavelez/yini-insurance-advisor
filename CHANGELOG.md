@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 10` evaluation slice by expanding the local curated
+  question set from the initial seed to a broader balanced dataset with stable
+  ids, explicit expected-behavior metadata, and schema validation coverage
+  across normal QA and current guardrail categories.
 - Add the first `Phase 10` evaluation slice with typed evaluation-question
   schemas, a versioned local curated question set covering normal QA and
   guardrail-oriented prompts, and deterministic dataset validation coverage.

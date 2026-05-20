@@ -564,6 +564,10 @@ Initial narrow slices:
   - typed evaluation schemas;
   - a first curated question set;
   - no runner execution yet.
+- `question-set-expansion-and-category-balance` should cover:
+  - expansion from the initial question set toward the 30-question target;
+  - category balance across normal QA and guardrail scenarios;
+  - no golden reference outputs yet.
 - `golden-dataset-and-expected-outcomes` should cover:
   - golden reference outputs and expected guardrail behavior;
   - retrieval/citation expectations where applicable;
@@ -577,6 +581,7 @@ Current implementation status:
 
 - completed:
   - `evaluation-schema-and-question-set`
+  - `question-set-expansion-and-category-balance`
 - remaining in `Phase 10`:
   - `golden-dataset-and-expected-outcomes`
   - `evaluation-runner-and-hosted-regression-smokes`

@@ -12,8 +12,8 @@ def test_load_evaluation_question_set_returns_typed_dataset() -> None:
     question_set = load_evaluation_question_set()
 
     assert isinstance(question_set, EvaluationQuestionSet)
-    assert question_set.version == "2026-05-19-initial"
-    assert len(question_set.questions) == 10
+    assert question_set.version == "2026-05-19-expanded-balanced"
+    assert len(question_set.questions) == 20
 
 
 def test_evaluation_question_set_covers_required_categories() -> None:
@@ -25,6 +25,22 @@ def test_evaluation_question_set_covers_required_categories() -> None:
     assert "prompt_injection" in categories
     assert "citation_guardrail" in categories
     assert "confidence_guardrail" in categories
+
+
+def test_evaluation_question_set_balances_current_categories() -> None:
+    question_set = load_evaluation_question_set()
+
+    category_counts: dict[str, int] = {}
+    for question in question_set.questions:
+        category_counts[question.category] = category_counts.get(question.category, 0) + 1
+
+    assert category_counts == {
+        "grounded_qa": 4,
+        "unsupported_query": 4,
+        "prompt_injection": 4,
+        "citation_guardrail": 4,
+        "confidence_guardrail": 4,
+    }
 
 
 def test_evaluation_question_ids_are_unique() -> None:
