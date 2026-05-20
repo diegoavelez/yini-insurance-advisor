@@ -22,6 +22,8 @@ from contracts.evaluation import (
     EvaluationQuestionCategory,
     EvaluationQuestionSet,
     ExpectedBehavior,
+    GoldenBehaviorExpectation,
+    GoldenBehaviorSet,
 )
 from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
@@ -82,6 +84,8 @@ __all__ = [
     "EvaluationQuestionCategory",
     "EvaluationQuestionSet",
     "ExpectedBehavior",
+    "GoldenBehaviorExpectation",
+    "GoldenBehaviorSet",
     "GuardrailEventRecord",
     "GuardrailSummary",
     "GroundedAnswerResult",

@@ -4,8 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from contracts import EvaluationQuestionSet
-from core.evaluation_dataset import load_evaluation_question_set
+from contracts import EvaluationQuestionSet, GoldenBehaviorSet
+from core.evaluation_dataset import (
+    load_evaluation_question_set,
+    load_golden_behavior_set,
+    validate_golden_behavior_alignment,
+)
 
 
 def test_load_evaluation_question_set_returns_typed_dataset() -> None:
@@ -80,3 +84,73 @@ def test_invalid_question_set_with_duplicate_ids_fails_validation(tmp_path: Path
 
     with pytest.raises(ValueError, match="unique"):
         load_evaluation_question_set(invalid_dataset_path)
+
+
+def test_load_golden_behavior_set_returns_typed_dataset() -> None:
+    golden_behavior_set = load_golden_behavior_set()
+
+    assert isinstance(golden_behavior_set, GoldenBehaviorSet)
+    assert golden_behavior_set.version == "2026-05-19-golden-behaviors-v1"
+    assert len(golden_behavior_set.expectations) == 30
+
+
+def test_golden_behavior_set_covers_every_curated_question() -> None:
+    question_set = load_evaluation_question_set()
+    golden_behavior_set = load_golden_behavior_set()
+
+    validate_golden_behavior_alignment(question_set, golden_behavior_set)
+
+
+def test_grounded_questions_retain_normal_answer_expectations() -> None:
+    golden_behavior_set = load_golden_behavior_set()
+
+    expectations = {
+        expectation.question_id: expectation.expected_behavior
+        for expectation in golden_behavior_set.expectations
+    }
+
+    for question_id in ["qa-001", "qa-002", "qa-003", "qa-004", "qa-005", "qa-006"]:
+        assert expectations[question_id] == "normal_answer"
+
+
+def test_refusal_and_guardrail_questions_retain_explicit_expectations() -> None:
+    golden_behavior_set = load_golden_behavior_set()
+
+    expectations = {
+        expectation.question_id: expectation.expected_behavior
+        for expectation in golden_behavior_set.expectations
+    }
+
+    for question_id in ["scope-001", "scope-006"]:
+        assert expectations[question_id] == "scope_refusal"
+    for question_id in ["inj-001", "inj-006"]:
+        assert expectations[question_id] == "prompt_injection_refusal"
+    for question_id in ["cite-001", "cite-006"]:
+        assert expectations[question_id] == "citation_guardrail"
+    for question_id in ["conf-001", "conf-006"]:
+        assert expectations[question_id] == "confidence_guardrail"
+
+
+def test_invalid_golden_behavior_set_with_unknown_question_id_fails(tmp_path: Path) -> None:
+    invalid_golden_behavior_path = tmp_path / "invalid-golden-behaviors.json"
+    invalid_golden_behavior_path.write_text(
+        """
+{
+  "version": "invalid",
+  "expectations": [
+    {
+      "question_id": "unknown-001",
+      "expected_behavior": "normal_answer"
+    }
+  ]
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    question_set = load_evaluation_question_set()
+    golden_behavior_set = load_golden_behavior_set(invalid_golden_behavior_path)
+
+    with pytest.raises(ValueError, match="unknown question ids"):
+        validate_golden_behavior_alignment(question_set, golden_behavior_set)

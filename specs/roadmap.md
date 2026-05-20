@@ -572,9 +572,13 @@ Initial narrow slices:
   - completion of the curated set to the 30-question roadmap target;
   - final gap-filling across underrepresented scenarios;
   - no golden reference outputs yet.
-- `golden-dataset-and-expected-outcomes` should cover:
-  - golden reference outputs and expected guardrail behavior;
-  - retrieval/citation expectations where applicable;
+- `golden-behavior-and-guardrail-outcomes` should cover:
+  - golden expected behavior labels for the curated question set;
+  - expected refusal or guarded-answer outcomes where applicable;
+  - no retrieval/citation evidence expectations yet.
+- `retrieval-and-citation-expectation-annotations` should cover:
+  - retrieval and citation expectations where applicable;
+  - explicit evidence-oriented annotations over the existing golden set;
   - no hosted-like regression execution yet.
 - `evaluation-runner-and-hosted-regression-smokes` should cover:
   - a repeatable local evaluation runner;
@@ -587,8 +591,9 @@ Current implementation status:
   - `evaluation-schema-and-question-set`
   - `question-set-expansion-and-category-balance`
   - `question-set-target-30-completion`
+  - `golden-behavior-and-guardrail-outcomes`
 - remaining in `Phase 10`:
-  - `golden-dataset-and-expected-outcomes`
+  - `retrieval-and-citation-expectation-annotations`
   - `evaluation-runner-and-hosted-regression-smokes`
 
 ---

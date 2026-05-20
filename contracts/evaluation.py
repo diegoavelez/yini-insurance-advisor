@@ -45,3 +45,24 @@ class EvaluationQuestionSet(BaseModel):
         if len(question_ids) != len(set(question_ids)):
             raise ValueError("evaluation question ids must be unique.")
         return self
+
+
+class GoldenBehaviorExpectation(BaseModel):
+    """One explicit expected behavior entry linked to a question id."""
+
+    question_id: str = Field(min_length=1)
+    expected_behavior: ExpectedBehavior
+
+
+class GoldenBehaviorSet(BaseModel):
+    """Versioned golden behavior expectations for the evaluation question set."""
+
+    version: str = Field(min_length=1)
+    expectations: list[GoldenBehaviorExpectation] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_question_ids(self) -> GoldenBehaviorSet:
+        question_ids = [expectation.question_id for expectation in self.expectations]
+        if len(question_ids) != len(set(question_ids)):
+            raise ValueError("golden behavior question ids must be unique.")
+        return self

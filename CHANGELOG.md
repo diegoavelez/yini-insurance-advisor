@@ -2,6 +2,11 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 10` evaluation slice with a typed golden behavior
+  dataset for the 30-question curated set, deterministic question-to-outcome
+  linkage, explicit refusal and guardrail expectations, and local alignment
+  validation without drifting into retrieval/citation evidence annotations or
+  runner work.
 - Add the next `Phase 10` evaluation slice by completing the curated local
   question set to the 30-question roadmap target, preserving stable ids,
   balanced category coverage, and deterministic schema validation without
