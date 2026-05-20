@@ -34,6 +34,8 @@ CitationExpectationKind = Literal[
     "guardrail_citation_posture",
 ]
 
+EvaluationResultStatus = Literal["matched", "mismatched", "skipped"]
+
 
 class EvaluationQuestion(BaseModel):
     """One typed evaluation question entry."""
@@ -119,4 +121,30 @@ class CitationExpectationSet(BaseModel):
         question_ids = [expectation.question_id for expectation in self.expectations]
         if len(question_ids) != len(set(question_ids)):
             raise ValueError("citation expectation question ids must be unique.")
+        return self
+
+
+class EvaluationQuestionResult(BaseModel):
+    """Typed result for one evaluated question."""
+
+    question_id: str = Field(min_length=1)
+    status: EvaluationResultStatus
+    actual_behavior: ExpectedBehavior | None = None
+    expected_behavior: ExpectedBehavior
+    notes: str | None = None
+
+
+class EvaluationRunResult(BaseModel):
+    """Typed result for one local evaluation run."""
+
+    run_id: str = Field(min_length=1)
+    question_set_version: str = Field(min_length=1)
+    golden_behavior_version: str = Field(min_length=1)
+    results: list[EvaluationQuestionResult] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_question_ids(self) -> EvaluationRunResult:
+        question_ids = [result.question_id for result in self.results]
+        if len(question_ids) != len(set(question_ids)):
+            raise ValueError("evaluation run result question ids must be unique.")
         return self

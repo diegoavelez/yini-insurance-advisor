@@ -584,7 +584,11 @@ Initial narrow slices:
   - citation expectations where applicable;
   - explicit citation-oriented annotations over the existing retrieval-aware golden set;
   - no hosted-like regression execution yet.
-- `local-evaluation-runner` should cover:
+- `evaluation-runner-contract-and-result-schema` should cover:
+  - typed local evaluation result contracts;
+  - deterministic result-shape definitions over the curated evaluation assets;
+  - no runner execution yet.
+- `local-evaluation-runner-execution` should cover:
   - a repeatable local evaluation runner;
   - deterministic execution over the curated evaluation assets;
   - no hosted-like regression scenarios yet.
@@ -602,8 +606,9 @@ Current implementation status:
   - `golden-behavior-and-guardrail-outcomes`
   - `retrieval-expectation-annotations`
   - `citation-expectation-annotations`
+  - `evaluation-runner-contract-and-result-schema`
 - remaining in `Phase 10`:
-  - `local-evaluation-runner`
+  - `local-evaluation-runner-execution`
   - `hosted-regression-smoke-scenarios`
 
 ---

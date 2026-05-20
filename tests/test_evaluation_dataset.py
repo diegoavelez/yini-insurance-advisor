@@ -6,7 +6,9 @@ import pytest
 
 from contracts import (
     CitationExpectationSet,
+    EvaluationQuestionResult,
     EvaluationQuestionSet,
+    EvaluationRunResult,
     GoldenBehaviorSet,
     RetrievalExpectationSet,
 )
@@ -323,3 +325,58 @@ def test_invalid_citation_expectation_set_with_unknown_question_id_fails(
 
     with pytest.raises(ValueError, match="unknown question ids"):
         validate_citation_expectation_alignment(question_set, citation_expectation_set)
+
+
+def test_evaluation_question_result_contract_validates() -> None:
+    result = EvaluationQuestionResult(
+        question_id="qa-001",
+        status="matched",
+        actual_behavior="normal_answer",
+        expected_behavior="normal_answer",
+        notes="Behavior matched expected outcome.",
+    )
+
+    assert result.question_id == "qa-001"
+    assert result.status == "matched"
+
+
+def test_evaluation_run_result_contract_validates() -> None:
+    run_result = EvaluationRunResult(
+        run_id="eval-run-001",
+        question_set_version="2026-05-19-target-30-complete",
+        golden_behavior_version="2026-05-19-golden-behaviors-v1",
+        results=[
+            EvaluationQuestionResult(
+                question_id="qa-001",
+                status="matched",
+                actual_behavior="normal_answer",
+                expected_behavior="normal_answer",
+            )
+        ],
+    )
+
+    assert run_result.run_id == "eval-run-001"
+    assert run_result.results[0].question_id == "qa-001"
+
+
+def test_evaluation_run_result_requires_unique_question_ids() -> None:
+    with pytest.raises(ValueError, match="unique"):
+        EvaluationRunResult(
+            run_id="eval-run-002",
+            question_set_version="2026-05-19-target-30-complete",
+            golden_behavior_version="2026-05-19-golden-behaviors-v1",
+            results=[
+                EvaluationQuestionResult(
+                    question_id="qa-001",
+                    status="matched",
+                    actual_behavior="normal_answer",
+                    expected_behavior="normal_answer",
+                ),
+                EvaluationQuestionResult(
+                    question_id="qa-001",
+                    status="mismatched",
+                    actual_behavior="scope_refusal",
+                    expected_behavior="normal_answer",
+                ),
+            ],
+        )

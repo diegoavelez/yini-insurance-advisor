@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 10` evaluation slice with typed local evaluation
+  run-result contracts, deterministic per-question result linkage, and schema
+  validation for run-level and per-question outputs without drifting into
+  runner execution.
 - Add the next `Phase 10` evaluation slice with a typed citation-expectation
   dataset for the curated 30-question set, deterministic question linkage,
   explicit distinction between grounded, no-citation, and guardrail citation
