@@ -509,8 +509,14 @@ Initial narrow slices:
   - conservative refusal behavior when those signals trigger;
   - no abuse-case suite expansion yet.
 - `abuse-case-validation-and-refusal-telemetry` should cover:
-  - abuse-case validation scenarios for the implemented guardrails;
+  - this concern should be split further into narrower slices before implementation.
+- `guardrail-abuse-case-scenarios` should cover:
+  - abuse-case validation scenarios for the implemented guardrails only;
+  - regression-oriented tests for unsafe or boundary-seeking prompts;
+  - no telemetry aggregation changes yet.
+- `refusal-telemetry-and-guardrail-summary` should cover:
   - refusal telemetry for guardrail-triggered outcomes;
+  - a narrow summary surface for guardrail/refusal events;
   - no new injection-detection heuristics.
 
 Current implementation status:
@@ -520,8 +526,9 @@ Current implementation status:
   - `answer-citation-presence-guardrails`
   - `response-confidence-consistency-guardrails`
   - `prompt-injection-signals-and-refusal`
+  - `guardrail-abuse-case-scenarios`
 - remaining in `Phase 9`:
-  - `abuse-case-validation-and-refusal-telemetry`
+  - `refusal-telemetry-and-guardrail-summary`
 
 ---
 

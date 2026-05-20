@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 9` guardrail slice with deterministic abuse-case
+  regression scenarios over implemented guardrails, explicit assertions of the
+  expected refusal or downgrade outcomes, and benign supported control coverage
+  without drifting into telemetry-summary work.
 - Add the next `Phase 9` guardrail slice with deterministic prompt-injection
   signal detection, conservative typed refusal behavior at the workflow and UI
   boundary, and correlated guardrail observability without drifting into
