@@ -36,6 +36,10 @@ from contracts.evaluation import (
 )
 from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
+from contracts.optimization import (
+    QueryClassificationOptimizationInput,
+    QueryClassificationOptimizationOutput,
+)
 from contracts.responses import (
     AdvisorDraftResponse,
     Citation,
@@ -116,6 +120,8 @@ __all__ = [
     "PolicyComparisonResult",
     "PolicyComparisonToolResult",
     "ProcessedDocument",
+    "QueryClassificationOptimizationInput",
+    "QueryClassificationOptimizationOutput",
     "RetrievalQuery",
     "RetrievedChunk",
     "ResponseDraftToolResult",

@@ -665,17 +665,17 @@ Initial narrow slices:
   - selection of one optimization target from the recommended set;
   - explicit baseline metric definition for that target;
   - no DSPy module implementation yet.
-- `dspy-module-skeleton-for-selected-target` should cover:
-  - one minimal DSPy module for the selected target;
+- `dspy-query-classification-module-skeleton` should cover:
+  - one minimal DSPy module for query classification;
   - explicit input/output contract for local optimization work;
   - no optimization dataset subset yet.
-- `optimization-dataset-subset-for-selected-target` should cover:
-  - a narrow dataset subset for the selected target;
+- `query-classification-optimization-dataset-subset` should cover:
+  - a narrow dataset subset for query classification optimization;
   - stable linkage to the existing evaluation assets where relevant;
   - no before/after comparison yet.
-- `before-after-optimization-comparison` should cover:
-  - measurable baseline versus optimized comparison;
-  - explicit quality, latency, and cost reporting for the selected target;
+- `query-classification-before-after-comparison` should cover:
+  - measurable baseline versus optimized comparison for query classification;
+  - explicit quality, latency, and cost reporting;
   - no broader productionization yet.
 
 Selected first target and baseline:
@@ -706,10 +706,10 @@ Current implementation status:
 
 - completed:
   - `optimization-target-selection-and-baseline`
+  - `dspy-query-classification-module-skeleton`
 - remaining in `Phase 11`:
-  - `dspy-module-skeleton-for-selected-target`
-  - `optimization-dataset-subset-for-selected-target`
-  - `before-after-optimization-comparison`
+  - `query-classification-optimization-dataset-subset`
+  - `query-classification-before-after-comparison`
 
 ---
 

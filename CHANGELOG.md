@@ -2,6 +2,10 @@
 
 ## 2026-05-20
 
+- Add the next `Phase 11` optimization slice with a minimal DSPy
+  query-classification module skeleton, explicit typed optimization I/O
+  contracts, lazy DSPy runtime loading, and local validation without drifting
+  into optimization dataset or before/after comparison work.
 - Add the first `Phase 11` optimization slice by selecting `query
   classification` as the initial DSPy target, defining explicit baseline
   quality, latency, and zero-external-call cost surfaces, and documenting the
