@@ -519,8 +519,8 @@ Current implementation status:
   - `unsupported-query-scope-guardrails`
   - `answer-citation-presence-guardrails`
   - `response-confidence-consistency-guardrails`
-- remaining in `Phase 9`:
   - `prompt-injection-signals-and-refusal`
+- remaining in `Phase 9`:
   - `abuse-case-validation-and-refusal-telemetry`
 
 ---

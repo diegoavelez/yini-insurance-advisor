@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 9` guardrail slice with deterministic prompt-injection
+  signal detection, conservative typed refusal behavior at the workflow and UI
+  boundary, and correlated guardrail observability without drifting into
+  abuse-case-suite work.
 - Add the next `Phase 9` guardrail slice with explicit confidence-consistency
   enforcement, conservative typed downgrade behavior for overstated confidence,
   and correlated guardrail observability without drifting into prompt-injection

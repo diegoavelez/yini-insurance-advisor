@@ -35,6 +35,7 @@ from contracts import (
 )
 from core.config import Settings, get_settings, validate_startup_settings
 from core.logging import configure_logging
+from core.prompt_guardrails import detect_prompt_injection_signals
 from core.query_scope import classify_query_scope
 from ops.observability import (
     generate_request_id,
@@ -1196,6 +1197,42 @@ def build_unsupported_query_response(*, query: str) -> GroundedAnswerResult:
     )
 
 
+def build_prompt_injection_refusal_response(*, query: str) -> GroundedAnswerResult:
+    """Return a typed conservative refusal for prompt-injection-like queries."""
+
+    verification = GroundingVerification(
+        supported=False,
+        confidence="low",
+        unsupported_claims=[
+            (
+                "The query included instructions that conflict with the assistant's "
+                "grounded-use boundaries."
+            )
+        ],
+        missing_citations=["No citations are available for a prompt-injection refusal outcome."],
+    )
+    return GroundedAnswerResult(
+        query=query,
+        response=AdvisorDraftResponse(
+            suggested_answer=(
+                "I cannot follow instructions that attempt to override the assistant's "
+                "grounded-use rules or reveal hidden system behavior."
+            ),
+            documentary_basis=[],
+            citations=[],
+            confidence="low",
+            limitations=[
+                (
+                    "This request triggered a prompt-injection guardrail and was refused "
+                    "conservatively."
+                )
+            ],
+            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+        ),
+        verification=verification,
+    )
+
+
 def build_missing_citation_guardrail_response(
     *,
     query: str,
@@ -1254,6 +1291,18 @@ def generate_grounded_answer(
             "limitation_count": len(result.response.limitations),
         },
     ):
+        injection_decision = detect_prompt_injection_signals(retrieval_query.query)
+        if injection_decision.triggered:
+            log_event(
+                RAG_LOGGER,
+                event_type="prompt_injection_guardrail_triggered",
+                request_id=request_id,
+                guardrail_surface="grounded_answer_generation",
+                triggered_signals=injection_decision.signals,
+                refusal_reason=injection_decision.reason,
+            )
+            result = build_prompt_injection_refusal_response(query=retrieval_query.query)
+            return result
         scope_decision = classify_query_scope(retrieval_query.query)
         if scope_decision.scope == "unsupported":
             log_event(

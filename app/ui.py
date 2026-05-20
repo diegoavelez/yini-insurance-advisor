@@ -9,6 +9,7 @@ import logging
 from contracts import Citation, GroundedAnswerResult, RetrievalQuery
 from core.config import Settings, get_settings, validate_startup_settings
 from core.logging import configure_logging
+from core.prompt_guardrails import detect_prompt_injection_signals
 from core.query_scope import classify_query_scope
 from ops.observability import (
     generate_request_id,
@@ -18,6 +19,7 @@ from ops.observability import (
     maybe_activate_phoenix,
 )
 from rag.ingestion import (
+    build_prompt_injection_refusal_response,
     build_unsupported_query_response,
     embedding_backend_is_available,
     generate_grounded_answer,
@@ -101,6 +103,19 @@ def run_query(
         require_groq=True,
         require_qdrant=True,
     )
+    injection_decision = detect_prompt_injection_signals(normalized_query)
+    if injection_decision.triggered:
+        log_event(
+            UI_LOGGER,
+            event_type="prompt_injection_guardrail_triggered",
+            request_id=request_id,
+            runtime_surface="gradio_ui",
+            triggered_signals=injection_decision.signals,
+            refusal_reason=injection_decision.reason,
+        )
+        return render_grounded_result(
+            build_prompt_injection_refusal_response(query=normalized_query)
+        )
     scope_decision = classify_query_scope(normalized_query)
     if scope_decision.scope == "unsupported":
         log_event(
