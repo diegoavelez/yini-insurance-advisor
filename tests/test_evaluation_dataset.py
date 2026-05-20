@@ -12,8 +12,8 @@ def test_load_evaluation_question_set_returns_typed_dataset() -> None:
     question_set = load_evaluation_question_set()
 
     assert isinstance(question_set, EvaluationQuestionSet)
-    assert question_set.version == "2026-05-19-expanded-balanced"
-    assert len(question_set.questions) == 20
+    assert question_set.version == "2026-05-19-target-30-complete"
+    assert len(question_set.questions) == 30
 
 
 def test_evaluation_question_set_covers_required_categories() -> None:
@@ -35,11 +35,11 @@ def test_evaluation_question_set_balances_current_categories() -> None:
         category_counts[question.category] = category_counts.get(question.category, 0) + 1
 
     assert category_counts == {
-        "grounded_qa": 4,
-        "unsupported_query": 4,
-        "prompt_injection": 4,
-        "citation_guardrail": 4,
-        "confidence_guardrail": 4,
+        "grounded_qa": 6,
+        "unsupported_query": 6,
+        "prompt_injection": 6,
+        "citation_guardrail": 6,
+        "confidence_guardrail": 6,
     }
 
 

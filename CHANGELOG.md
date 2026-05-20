@@ -2,6 +2,10 @@
 
 ## 2026-05-19
 
+- Add the next `Phase 10` evaluation slice by completing the curated local
+  question set to the 30-question roadmap target, preserving stable ids,
+  balanced category coverage, and deterministic schema validation without
+  drifting into golden outputs or runner work.
 - Add the next `Phase 10` evaluation slice by expanding the local curated
   question set from the initial seed to a broader balanced dataset with stable
   ids, explicit expected-behavior metadata, and schema validation coverage
