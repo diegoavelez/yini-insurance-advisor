@@ -2,6 +2,10 @@
 
 ## 2026-05-21
 
+- Add the next `Phase 12` MCP slice with initial server-side tool
+  registration and exposure for `document_retrieval` and `clause_extraction`,
+  explicit MCP-visible tool metadata, and local validation without drifting
+  into MCP client integration.
 - Add the first `Phase 12` MCP slice with a minimal server seam, explicit
   typed transport request/response contracts, initialize/ping-only handling,
   and local validation without drifting into tool execution wiring.

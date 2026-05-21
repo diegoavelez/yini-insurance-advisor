@@ -43,6 +43,9 @@ from contracts.mcp import (
     MCPResponseEnvelope,
     MCPServerCapabilities,
     MCPServerMetadata,
+    MCPToolCallResult,
+    MCPToolDescriptor,
+    MCPToolListResult,
 )
 from contracts.optimization import (
     QueryClassificationCategoryQualityResult,
@@ -140,6 +143,9 @@ __all__ = [
     "LangGraphWorkflowToolResult",
     "MCPInitializeResult",
     "MCPPingResult",
+    "MCPToolCallResult",
+    "MCPToolDescriptor",
+    "MCPToolListResult",
     "MCPRequestEnvelope",
     "MCPResponseEnvelope",
     "MCPServerCapabilities",

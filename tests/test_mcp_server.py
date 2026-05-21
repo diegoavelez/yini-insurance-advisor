@@ -8,10 +8,15 @@ from contracts import (
     MCPRequestEnvelope,
     MCPResponseEnvelope,
     MCPServerMetadata,
+    MCPToolCallResult,
+    MCPToolDescriptor,
+    MCPToolListResult,
 )
 from core.mcp_server import (
     MCP_SERVER_NAME,
     MCP_SERVER_PROTOCOL_VERSION,
+    MCPRegisteredTool,
+    MinimalMCPServer,
     create_minimal_mcp_server,
 )
 
@@ -20,7 +25,7 @@ def test_mcp_request_envelope_rejects_unknown_method() -> None:
     try:
         MCPRequestEnvelope(
             request_id="req-1",
-            method="list_tools",
+            method="unknown_method",
             protocol_version=MCP_SERVER_PROTOCOL_VERSION,
         )
     except ValidationError:
@@ -37,7 +42,7 @@ def test_minimal_mcp_server_exposes_typed_metadata() -> None:
     assert isinstance(metadata, MCPServerMetadata)
     assert metadata.name == MCP_SERVER_NAME
     assert metadata.protocol_version == MCP_SERVER_PROTOCOL_VERSION
-    assert metadata.capabilities.tools_supported is False
+    assert metadata.capabilities.tools_supported is True
 
 
 def test_minimal_mcp_server_handles_initialize_request() -> None:
@@ -68,3 +73,46 @@ def test_minimal_mcp_server_handles_ping_request() -> None:
 
     assert isinstance(response.result, MCPPingResult)
     assert response.result.ok is True
+
+
+def test_minimal_mcp_server_lists_registered_tools() -> None:
+    server = create_minimal_mcp_server()
+    request = MCPRequestEnvelope(
+        request_id="req-3",
+        method="list_tools",
+        protocol_version=MCP_SERVER_PROTOCOL_VERSION,
+    )
+
+    response = server.handle_request(request)
+
+    assert isinstance(response.result, MCPToolListResult)
+    tool_names = [tool.name for tool in response.result.tools]
+    assert tool_names == ["document_retrieval", "clause_extraction"]
+
+
+def test_minimal_mcp_server_can_call_registered_tool_through_server_seam() -> None:
+    server = MinimalMCPServer(
+        tools={
+            "stub_tool": MCPRegisteredTool(
+                descriptor=MCPToolDescriptor(
+                    name="stub_tool",
+                    description="Stub MCP-visible tool.",
+                    input_schema={"type": "object"},
+                ),
+                handler=lambda arguments: {"echo": arguments["value"]},
+            )
+        }
+    )
+    request = MCPRequestEnvelope(
+        request_id="req-4",
+        method="call_tool",
+        protocol_version=MCP_SERVER_PROTOCOL_VERSION,
+        tool_name="stub_tool",
+        arguments={"value": "ok"},
+    )
+
+    response = server.handle_request(request)
+
+    assert isinstance(response.result, MCPToolCallResult)
+    assert response.result.tool_name == "stub_tool"
+    assert response.result.payload == {"echo": "ok"}
