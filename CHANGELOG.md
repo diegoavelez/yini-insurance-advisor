@@ -3,6 +3,10 @@
 ## 2026-05-21
 
 - Add the next `Phase 13` demo-hardening slice with a narrow user-visible
+  support-context surface, concise request-follow-up guidance tied to the
+  current request-correlation seams, and local validation without drifting
+  into broader debug-metadata or degraded-service work.
+- Add the next `Phase 13` demo-hardening slice with a narrow user-visible
   trace-summary surface, concise review-oriented trace rendering across
   success/refusal UI paths, and local validation without drifting into broader
   debug-context or degraded-service messaging work.

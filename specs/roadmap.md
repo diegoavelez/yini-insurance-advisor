@@ -873,9 +873,14 @@ Initial narrow slices:
   - a narrow user-visible trace summary surface;
   - reuse of current workflow and observability seams where available;
   - no support/debug context exposure yet.
-- `demo-debug-context-exposure` should cover:
-  - safe exposure of support/debug context tied to current observability seams;
-  - clear separation between user-facing explanation and operator-facing detail;
+- `demo-support-context-display` should cover:
+  - safe exposure of user-visible support context tied to current observability seams;
+  - concise support details that help follow up on a request without exposing
+    operator-only internals;
+  - no broader debug-metadata exposure yet.
+- `demo-debug-metadata-exposure` should cover:
+  - safe exposure of operator-facing debug metadata for the current demo path;
+  - clear separation from the user-visible support context already shown in the UI;
   - no degraded-service messaging yet.
 - `demo-loading-and-error-states` should cover:
   - explicit loading-state behavior for the public demo path;
@@ -891,8 +896,9 @@ Current implementation status:
 - completed:
   - `demo-layout-and-output-grouping`
   - `demo-trace-summary-display`
+  - `demo-support-context-display`
 - remaining in `Phase 13`:
-  - `demo-debug-context-exposure`
+  - `demo-debug-metadata-exposure`
   - `demo-loading-and-error-states`
   - `demo-degraded-service-messaging`
 

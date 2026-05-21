@@ -89,6 +89,45 @@ def format_trace_summary(result: GroundedAnswerResult) -> str:
     return " → ".join(steps)
 
 
+def infer_support_outcome(result: GroundedAnswerResult) -> str:
+    """Infer a concise support outcome label from the current grounded result."""
+
+    answer = result.response.suggested_answer.lower()
+    limitations = [limitation.lower() for limitation in result.response.limitations]
+
+    if any("prompt-injection guardrail" in limitation for limitation in limitations):
+        return "prompt_guardrail_refusal"
+    if any(
+        "outside the supported insurance-document scope" in limitation
+        for limitation in limitations
+    ):
+        return "unsupported_scope_refusal"
+    if "do not have enough grounded evidence" in answer:
+        return "limited_evidence_draft"
+    if result.verification.supported:
+        return "grounded_draft_ready"
+    return "review_required_draft"
+
+
+def format_support_context(
+    result: GroundedAnswerResult,
+    *,
+    request_id: str,
+    runtime_surface: str,
+) -> str:
+    """Render concise demo-safe support context for the current request."""
+
+    outcome = infer_support_outcome(result)
+    return "\n".join(
+        [
+            f"- Request ID: {request_id}",
+            f"- Runtime Surface: {runtime_surface}",
+            f"- Support Outcome: {outcome}",
+            "- Follow-up: share the request ID when asking for support review.",
+        ]
+    )
+
+
 def build_retrieval_query(query: str, settings: Settings) -> RetrievalQuery:
     """Build the typed retrieval query used by the UI backend seam."""
 
@@ -100,7 +139,7 @@ def run_query(
     *,
     settings: Settings | None = None,
     grounded_answer_fn=generate_grounded_answer,
-) -> tuple[str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str]:
     """Execute one grounded QA request for the UI."""
 
     request_id = generate_request_id("ui")
@@ -115,7 +154,7 @@ def run_query(
             error_type="ValidationError",
             error_message="Please enter a question.",
         )
-        return "", "", "", "", "", "Please enter a question."
+        return "", "", "", "", "", "", "Please enter a question."
 
     resolved_settings = validate_startup_settings(
         settings or get_settings(),
@@ -133,7 +172,9 @@ def run_query(
             refusal_reason=injection_decision.reason,
         )
         return render_grounded_result(
-            build_prompt_injection_refusal_response(query=normalized_query)
+            build_prompt_injection_refusal_response(query=normalized_query),
+            request_id=request_id,
+            runtime_surface="gradio_ui",
         )
     scope_decision = classify_query_scope(normalized_query)
     if scope_decision.scope == "unsupported":
@@ -146,7 +187,9 @@ def run_query(
             refusal_reason=scope_decision.reason,
         )
         return render_grounded_result(
-            build_unsupported_query_response(query=normalized_query)
+            build_unsupported_query_response(query=normalized_query),
+            request_id=request_id,
+            runtime_surface="gradio_ui",
         )
     retrieval_query = build_retrieval_query(normalized_query, resolved_settings)
     log_event(
@@ -174,7 +217,7 @@ def run_query(
             error_type=type(exc).__name__,
             error_message=str(exc),
         )
-        return "", "", "", "", "", f"{DEFAULT_ERROR_MESSAGE} Error: {exc}"
+        return "", "", "", "", "", "", f"{DEFAULT_ERROR_MESSAGE} Error: {exc}"
 
     log_event(
         UI_LOGGER,
@@ -185,12 +228,19 @@ def run_query(
         citation_count=len(result.response.citations),
         limitation_count=len(result.response.limitations),
     )
-    return render_grounded_result(result)
+    return render_grounded_result(
+        result,
+        request_id=request_id,
+        runtime_surface="gradio_ui",
+    )
 
 
 def render_grounded_result(
     result: GroundedAnswerResult,
-) -> tuple[str, str, str, str, str, str]:
+    *,
+    request_id: str,
+    runtime_surface: str,
+) -> tuple[str, str, str, str, str, str, str]:
     """Render the typed grounded result into UI output fields."""
 
     response = result.response
@@ -199,8 +249,13 @@ def render_grounded_result(
     confidence = response.confidence.upper()
     limitations = format_limitations(response.limitations)
     trace_summary = format_trace_summary(result)
+    support_context = format_support_context(
+        result,
+        request_id=request_id,
+        runtime_surface=runtime_surface,
+    )
     status = response.advisor_review_notice
-    return answer, citations, confidence, limitations, trace_summary, status
+    return answer, citations, confidence, limitations, trace_summary, support_context, status
 
 
 def build_query_handler(
@@ -210,7 +265,7 @@ def build_query_handler(
 ):
     """Return the UI handler bound to the current runtime settings."""
 
-    def handle_query(query: str) -> tuple[str, str, str, str, str, str]:
+    def handle_query(query: str) -> tuple[str, str, str, str, str, str, str]:
         return run_query(
             query,
             settings=settings,
@@ -252,6 +307,7 @@ def build_gradio_app(
                 confidence_output = gr.Textbox(label="Confidence")
                 limitations_output = gr.Markdown(label="Review Limitations")
                 trace_output = gr.Textbox(label="Trace Summary")
+                support_output = gr.Markdown(label="Support Context")
 
         citations_output = gr.Markdown(label="Citations")
 
@@ -264,6 +320,7 @@ def build_gradio_app(
                 confidence_output,
                 limitations_output,
                 trace_output,
+                support_output,
                 status_output,
             ],
         )
