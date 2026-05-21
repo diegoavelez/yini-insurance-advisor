@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 from contracts.evaluation import EvaluationQuestionCategory, ExpectedBehavior
@@ -128,3 +130,16 @@ class QueryClassificationCostComparisonResult(BaseModel):
     baseline_average_estimated_cost_units: float = Field(ge=0.0)
     optimized_average_estimated_cost_units: float = Field(ge=0.0)
     example_results: list[QueryClassificationExampleCostResult] = Field(min_length=1)
+
+
+QueryClassificationImprovementState = Literal["improved", "flat", "regressed"]
+
+
+class QueryClassificationQualityImprovementValidationResult(BaseModel):
+    """Typed validation result for query-classification quality improvement."""
+
+    dataset_version: str = Field(min_length=1)
+    baseline_accuracy: float = Field(ge=0.0, le=1.0)
+    optimized_accuracy: float = Field(ge=0.0, le=1.0)
+    improvement_state: QueryClassificationImprovementState
+    accuracy_delta: float

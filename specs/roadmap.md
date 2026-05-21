@@ -692,10 +692,15 @@ Initial narrow slices:
   - explicit wiring into the existing quality, latency, and cost comparison
     seams;
   - no claim of measurable improvement yet.
-- `query-classification-measurable-improvement-validation` should cover:
-  - documented before/after results from the real optimized predictor;
-  - explicit confirmation of whether quality improves and whether latency
-    remains within budget;
+- `query-classification-quality-improvement-validation` should cover:
+  - documented before/after quality results from the real optimized predictor;
+  - explicit confirmation of whether quality measurably improves over the
+    deterministic baseline;
+  - no latency-budget validation yet.
+- `query-classification-latency-budget-validation` should cover:
+  - explicit confirmation of whether the optimized query-classification path
+    remains within the documented latency budget;
+  - documented linkage to the existing latency-comparison seam;
   - no broader productionization yet.
 
 Selected first target and baseline:
@@ -732,8 +737,9 @@ Current implementation status:
   - `query-classification-latency-comparison`
   - `query-classification-cost-comparison`
   - `query-classification-optimized-predictor-wiring`
+  - `query-classification-quality-improvement-validation`
 - remaining in `Phase 11`:
-  - `query-classification-measurable-improvement-validation`
+  - `query-classification-latency-budget-validation`
 
 ---
 

@@ -2,6 +2,10 @@
 
 ## 2026-05-20
 
+- Add the next `Phase 11` optimization slice with a typed
+  query-classification quality-improvement validation seam, explicit improved /
+  flat / regressed reporting over the current optimized predictor and baseline,
+  and local validation without drifting into latency-budget validation.
 - Add the next `Phase 11` optimization slice with a real optimized
   query-classification callable, subset-backed predictor wiring, compatibility
   with the existing quality/latency/cost comparison seams, and local
