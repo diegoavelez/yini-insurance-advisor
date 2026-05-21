@@ -34,6 +34,21 @@ def build_mcp_tool_compatibility_boundary() -> MCPCompatibilityBoundary:
                 ],
             ),
             MCPCompatibilityExpectation(
+                surface_area="request_fields",
+                compatible_changes=[
+                    "adding optional request fields without changing existing field meaning",
+                    (
+                        "internal validation changes that preserve existing "
+                        "request-field names and semantics"
+                    ),
+                ],
+                breaking_changes=[
+                    "removing an exposed request field",
+                    "renaming an exposed request field",
+                    "changing an optional request field to required",
+                ],
+            ),
+            MCPCompatibilityExpectation(
                 surface_area="tool_registration",
                 compatible_changes=[
                     "preserving an existing tool name, purpose, and input contract",
@@ -41,6 +56,17 @@ def build_mcp_tool_compatibility_boundary() -> MCPCompatibilityBoundary:
                 breaking_changes=[
                     "removing an exposed tool",
                     "renaming an exposed tool",
+                ],
+            ),
+            MCPCompatibilityExpectation(
+                surface_area="tool_metadata",
+                compatible_changes=[
+                    "clarifying a tool description without changing the tool purpose",
+                    "adding optional metadata details without changing existing metadata meaning",
+                ],
+                breaking_changes=[
+                    "changing the meaning of existing tool metadata fields",
+                    "removing an exposed tool-metadata field relied on by clients",
                 ],
             ),
             MCPCompatibilityExpectation(

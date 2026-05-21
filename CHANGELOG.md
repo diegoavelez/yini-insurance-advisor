@@ -2,6 +2,10 @@
 
 ## 2026-05-21
 
+- Add the corrective `Phase 12` MCP slice that closes the remaining
+  compatibility-boundary gap by making request-field and MCP-visible
+  tool-metadata compatibility expectations explicit, aligning the implemented
+  MCP seam with the final phase requirements.
 - Add the final `Phase 12` MCP slice with explicit tool-compatibility
   boundaries for the current MCP-visible surface, operational forward/backward
   compatibility expectations aligned to the interface version policy, and local

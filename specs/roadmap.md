@@ -815,6 +815,12 @@ Initial narrow slices:
   - forward/backward-compatibility expectations for the current MCP-visible
     surface;
   - no broader deployment work yet.
+- `mcp-request-field-and-tool-metadata-compatibility-remediation` should cover:
+  - explicit compatibility expectations for MCP request fields and MCP-visible
+    tool metadata on the current surface;
+  - alignment of the implemented compatibility seam with the final `Phase 12`
+    boundary requirements;
+  - no broader error-contract hardening or deployment work yet.
 
 Current implementation status:
 
@@ -824,6 +830,7 @@ Current implementation status:
   - `mcp-client-seam-and-local-roundtrip`
   - `mcp-interface-version-policy`
   - `mcp-tool-compatibility-boundaries`
+  - `mcp-request-field-and-tool-metadata-compatibility-remediation`
 - remaining in `Phase 12`:
   - none
 
@@ -851,6 +858,39 @@ Improve public demo usability.
 - outputs are easy to review;
 - failures are visible;
 - support/debug context is exposed safely.
+
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `demo-layout-and-output-grouping` should cover:
+  - improved Gradio layout for the current MVP surface;
+  - clearer grouping of answer, citations, confidence, and limitations;
+  - no trace-summary or degraded-service messaging yet.
+- `demo-trace-summary-and-debug-context` should cover:
+  - a narrow user-visible trace summary surface;
+  - safe exposure of support/debug context tied to current observability seams;
+  - no degraded-service messaging yet.
+- `demo-loading-and-error-states` should cover:
+  - explicit loading-state behavior for the public demo path;
+  - clearer user-visible error states for current failures;
+  - no degraded-service messaging yet.
+- `demo-degraded-service-messaging` should cover:
+  - explicit degraded-service messaging for known partial-availability cases;
+  - alignment with current guardrails and readiness semantics;
+  - no broader deployment work yet.
+
+Current implementation status:
+
+- completed:
+  - none
+- remaining in `Phase 13`:
+  - `demo-layout-and-output-grouping`
+  - `demo-trace-summary-and-debug-context`
+  - `demo-loading-and-error-states`
+  - `demo-degraded-service-messaging`
 
 ---
 
