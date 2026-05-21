@@ -143,3 +143,18 @@ class QueryClassificationQualityImprovementValidationResult(BaseModel):
     optimized_accuracy: float = Field(ge=0.0, le=1.0)
     improvement_state: QueryClassificationImprovementState
     accuracy_delta: float
+
+
+QueryClassificationLatencyBudgetState = Literal["within_budget", "over_budget"]
+
+
+class QueryClassificationLatencyBudgetValidationResult(BaseModel):
+    """Typed validation result for query-classification latency budget."""
+
+    dataset_version: str = Field(min_length=1)
+    example_count: int = Field(ge=1)
+    latency_budget_ms: float = Field(ge=0.0)
+    baseline_average_latency_ms: float = Field(ge=0.0)
+    optimized_average_latency_ms: float = Field(ge=0.0)
+    budget_state: QueryClassificationLatencyBudgetState
+    within_budget: bool

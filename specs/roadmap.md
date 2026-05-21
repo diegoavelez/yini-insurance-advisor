@@ -738,8 +738,9 @@ Current implementation status:
   - `query-classification-cost-comparison`
   - `query-classification-optimized-predictor-wiring`
   - `query-classification-quality-improvement-validation`
-- remaining in `Phase 11`:
   - `query-classification-latency-budget-validation`
+- remaining in `Phase 11`:
+  - none
 
 ---
 

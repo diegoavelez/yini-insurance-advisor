@@ -2,6 +2,11 @@
 
 ## 2026-05-20
 
+- Add the final `Phase 11` optimization slice with typed
+  query-classification latency-budget validation, explicit within-budget /
+  over-budget reporting over the current optimized predictor and latency
+  comparison seam, and local validation that closes the remaining `Phase 11`
+  work.
 - Add the next `Phase 11` optimization slice with a typed
   query-classification quality-improvement validation seam, explicit improved /
   flat / regressed reporting over the current optimized predictor and baseline,
