@@ -2,6 +2,10 @@
 
 ## 2026-05-21
 
+- Add the next `Phase 13` demo-hardening slice with a narrow user-visible
+  trace-summary surface, concise review-oriented trace rendering across
+  success/refusal UI paths, and local validation without drifting into broader
+  debug-context or degraded-service messaging work.
 - Add the first `Phase 13` demo-hardening slice with a grouped Gradio `Blocks`
   layout, clearer review-oriented output organization for answer/citations/
   confidence/limitations/status, and local validation without drifting into

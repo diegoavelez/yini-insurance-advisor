@@ -109,7 +109,7 @@ def test_build_health_status_returns_alive_signal() -> None:
 def test_ui_run_query_emits_correlated_success_events(caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(logging.INFO)
 
-    answer, _citations, confidence, _limitations, _status = app_ui.run_query(
+    answer, _citations, confidence, _limitations, trace_summary, _status = app_ui.run_query(
         "What is covered?",
         settings=make_settings(),
         grounded_answer_fn=lambda *_args, **_kwargs: make_grounded_result(),
@@ -117,6 +117,7 @@ def test_ui_run_query_emits_correlated_success_events(caplog: pytest.LogCaptureF
 
     assert "Coverage applies" in answer
     assert confidence == "HIGH"
+    assert trace_summary
     event_types = [record.event_type for record in caplog.records if hasattr(record, "event_type")]
     assert "request_started" in event_types
     assert "request_succeeded" in event_types
@@ -149,12 +150,18 @@ def test_ui_blank_query_emits_correlated_failure_event(
 ) -> None:
     caplog.set_level(logging.INFO)
 
-    answer, citations, confidence, limitations, status = app_ui.run_query(
+    answer, citations, confidence, limitations, trace_summary, status = app_ui.run_query(
         "   ",
         settings=make_settings(),
     )
 
-    assert (answer, citations, confidence, limitations) == ("", "", "", "")
+    assert (answer, citations, confidence, limitations, trace_summary) == (
+        "",
+        "",
+        "",
+        "",
+        "",
+    )
     assert status == "Please enter a question."
     failure_records = [
         record

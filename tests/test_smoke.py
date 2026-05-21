@@ -214,12 +214,15 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
         grounded_answer_fn=grounded_answer_fn,
     )
 
-    answer, citations, confidence, limitations, status = handler("What is covered?")
+    answer, citations, confidence, limitations, trace_summary, status = handler(
+        "What is covered?"
+    )
 
     assert "Coverage applies" in answer
     assert citations == "No citations available."
     assert confidence == "HIGH"
     assert limitations == "No additional limitations noted."
+    assert "query_received" in trace_summary
     assert status == "Advisor review required before external use."
 
 

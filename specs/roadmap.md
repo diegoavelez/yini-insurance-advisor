@@ -890,8 +890,8 @@ Current implementation status:
 
 - completed:
   - `demo-layout-and-output-grouping`
-- remaining in `Phase 13`:
   - `demo-trace-summary-display`
+- remaining in `Phase 13`:
   - `demo-debug-context-exposure`
   - `demo-loading-and-error-states`
   - `demo-degraded-service-messaging`
