@@ -823,8 +823,9 @@ Current implementation status:
   - `mcp-tool-registration-and-exposure`
   - `mcp-client-seam-and-local-roundtrip`
   - `mcp-interface-version-policy`
-- remaining in `Phase 12`:
   - `mcp-tool-compatibility-boundaries`
+- remaining in `Phase 12`:
+  - none
 
 ---
 

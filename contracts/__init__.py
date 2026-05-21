@@ -37,6 +37,8 @@ from contracts.evaluation import (
 from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.mcp import (
+    MCPCompatibilityBoundary,
+    MCPCompatibilityExpectation,
     MCPInitializeResult,
     MCPInterfaceVersionPolicy,
     MCPPingResult,
@@ -143,6 +145,8 @@ __all__ = [
     "GroundingVerificationResult",
     "IngestionStatus",
     "LangGraphWorkflowToolResult",
+    "MCPCompatibilityBoundary",
+    "MCPCompatibilityExpectation",
     "MCPInterfaceVersionPolicy",
     "MCPInitializeResult",
     "MCPPingResult",

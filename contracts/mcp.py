@@ -36,6 +36,26 @@ class MCPInterfaceVersionPolicy(BaseModel):
     rules: list[MCPVersionChangeRule] = Field(min_length=1)
 
 
+
+class MCPCompatibilityExpectation(BaseModel):
+    """One operational compatibility expectation for a visible MCP surface area."""
+
+    surface_area: str = Field(min_length=1)
+    compatible_changes: list[str] = Field(min_length=1)
+    breaking_changes: list[str] = Field(min_length=1)
+
+
+class MCPCompatibilityBoundary(BaseModel):
+    """Explicit compatibility boundary for the current MCP-visible surface."""
+
+    protocol_version: MCPProtocolVersion
+    surface: str = Field(min_length=1)
+    methods: list[MCPRequestMethod] = Field(min_length=1)
+    tool_names: list[str] = Field(min_length=1)
+    expectations: list[MCPCompatibilityExpectation] = Field(min_length=1)
+    alignment_note: str = Field(min_length=1)
+
+
 class MCPServerCapabilities(BaseModel):
     """Minimal server capability advertisement for the MCP seam."""
 

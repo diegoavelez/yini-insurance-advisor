@@ -2,6 +2,10 @@
 
 ## 2026-05-21
 
+- Add the final `Phase 12` MCP slice with explicit tool-compatibility
+  boundaries for the current MCP-visible surface, operational forward/backward
+  compatibility expectations aligned to the interface version policy, and local
+  validation that closes the remaining MCP integration work.
 - Add the next `Phase 12` MCP slice with an explicit interface version policy,
   date-based version naming, operational bump rules for additive and breaking
   MCP-surface changes, and local validation without drifting into detailed
