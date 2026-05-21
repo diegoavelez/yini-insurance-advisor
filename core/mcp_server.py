@@ -49,7 +49,7 @@ class MinimalMCPServer:
             protocol_version=MCP_SERVER_PROTOCOL_VERSION,
             capabilities=MCPServerCapabilities(
                 tools_supported=True,
-                client_roundtrip_supported=False,
+                client_roundtrip_supported=True,
             ),
         )
 

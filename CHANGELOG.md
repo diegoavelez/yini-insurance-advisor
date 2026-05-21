@@ -2,6 +2,9 @@
 
 ## 2026-05-21
 
+- Add the next `Phase 12` MCP slice with a narrow local client seam, end-to-end
+  initialize/list/call roundtrip over the current registered MCP tool surface,
+  and local validation without drifting into interface versioning work.
 - Add the next `Phase 12` MCP slice with initial server-side tool
   registration and exposure for `document_retrieval` and `clause_extraction`,
   explicit MCP-visible tool metadata, and local validation without drifting

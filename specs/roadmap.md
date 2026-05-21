@@ -816,8 +816,8 @@ Current implementation status:
 - completed:
   - `mcp-transport-and-server-contract-skeleton`
   - `mcp-tool-registration-and-exposure`
-- remaining in `Phase 12`:
   - `mcp-client-seam-and-local-roundtrip`
+- remaining in `Phase 12`:
   - `mcp-interface-versioning-plan`
 
 ---

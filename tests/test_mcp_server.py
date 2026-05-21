@@ -43,6 +43,7 @@ def test_minimal_mcp_server_exposes_typed_metadata() -> None:
     assert metadata.name == MCP_SERVER_NAME
     assert metadata.protocol_version == MCP_SERVER_PROTOCOL_VERSION
     assert metadata.capabilities.tools_supported is True
+    assert metadata.capabilities.client_roundtrip_supported is True
 
 
 def test_minimal_mcp_server_handles_initialize_request() -> None:
