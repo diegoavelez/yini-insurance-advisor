@@ -222,6 +222,7 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
         trace_summary,
         support_context,
         debug_metadata,
+        error_state,
         status,
     ) = handler(
         "What is covered?"
@@ -234,6 +235,7 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
     assert "query_received" in trace_summary
     assert "Request ID: ui-" in support_context
     assert "Debug Outcome: grounded_draft_ready" in debug_metadata
+    assert error_state == "No active errors."
     assert status == "Advisor review required before external use."
 
 

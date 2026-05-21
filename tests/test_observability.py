@@ -117,6 +117,7 @@ def test_ui_run_query_emits_correlated_success_events(caplog: pytest.LogCaptureF
         trace_summary,
         support_context,
         debug_metadata,
+        error_state,
         _status,
     ) = app_ui.run_query(
         "What is covered?",
@@ -129,6 +130,7 @@ def test_ui_run_query_emits_correlated_success_events(caplog: pytest.LogCaptureF
     assert trace_summary
     assert support_context
     assert debug_metadata
+    assert error_state == "No active errors."
     event_types = [record.event_type for record in caplog.records if hasattr(record, "event_type")]
     assert "request_started" in event_types
     assert "request_succeeded" in event_types
@@ -169,6 +171,7 @@ def test_ui_blank_query_emits_correlated_failure_event(
         trace_summary,
         support_context,
         debug_metadata,
+        error_state,
         status,
     ) = app_ui.run_query(
         "   ",
@@ -192,6 +195,7 @@ def test_ui_blank_query_emits_correlated_failure_event(
         "",
         "",
     )
+    assert error_state == "Input Error — Please enter a question."
     assert status == "Please enter a question."
     failure_records = [
         record

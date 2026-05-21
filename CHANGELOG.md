@@ -3,6 +3,10 @@
 ## 2026-05-21
 
 - Add the next `Phase 13` demo-hardening slice with a narrow user-visible
+  error-state surface, explicit distinction between input-validation and
+  runtime-processing failures, and local validation without drifting into
+  degraded-service messaging work.
+- Add the next `Phase 13` demo-hardening slice with a narrow user-visible
   loading-state surface, explicit in-flight and ready feedback through the
   current Gradio UI handler, and local validation without drifting into
   error-state redesign or degraded-service work.

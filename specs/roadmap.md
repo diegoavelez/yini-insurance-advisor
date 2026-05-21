@@ -903,8 +903,8 @@ Current implementation status:
   - `demo-support-context-display`
   - `demo-debug-metadata-exposure`
   - `demo-loading-state-feedback`
-- remaining in `Phase 13`:
   - `demo-error-state-clarity`
+- remaining in `Phase 13`:
   - `demo-degraded-service-messaging`
 
 ---

@@ -162,6 +162,25 @@ def format_loading_state(*, is_loading: bool) -> str:
     return "Draft answer ready for review."
 
 
+def format_error_state(
+    *,
+    error_kind: str | None,
+    detail: str | None = None,
+) -> str:
+    """Render a concise user-visible error-state message."""
+
+    if error_kind is None:
+        return "No active errors."
+    if error_kind == "input":
+        return f"Input Error — {detail or 'Please review the question and try again.'}"
+    if error_kind == "runtime":
+        return (
+            "Runtime Error — "
+            + (detail or "The request could not be processed right now.")
+        )
+    return detail or "Unknown error state."
+
+
 def build_retrieval_query(query: str, settings: Settings) -> RetrievalQuery:
     """Build the typed retrieval query used by the UI backend seam."""
 
@@ -173,7 +192,7 @@ def run_query(
     *,
     settings: Settings | None = None,
     grounded_answer_fn=generate_grounded_answer,
-) -> tuple[str, str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str, str, str]:
     """Execute one grounded QA request for the UI."""
 
     request_id = generate_request_id("ui")
@@ -188,7 +207,17 @@ def run_query(
             error_type="ValidationError",
             error_message="Please enter a question.",
         )
-        return "", "", "", "", "", "", "", "Please enter a question."
+        return (
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            format_error_state(error_kind="input", detail="Please enter a question."),
+            "Please enter a question.",
+        )
 
     resolved_settings = validate_startup_settings(
         settings or get_settings(),
@@ -255,7 +284,20 @@ def run_query(
             error_type=type(exc).__name__,
             error_message=str(exc),
         )
-        return "", "", "", "", "", "", "", f"{DEFAULT_ERROR_MESSAGE} Error: {exc}"
+        return (
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            format_error_state(
+                error_kind="runtime",
+                detail="Unable to process the query right now. Please try again.",
+            ),
+            f"{DEFAULT_ERROR_MESSAGE} Error: {exc}",
+        )
 
     log_event(
         UI_LOGGER,
@@ -282,7 +324,7 @@ def render_grounded_result(
     runtime_surface: str,
     query_length: int,
     top_k: int | None,
-) -> tuple[str, str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str, str, str]:
     """Render the typed grounded result into UI output fields."""
 
     response = result.response
@@ -303,6 +345,7 @@ def render_grounded_result(
         query_length=query_length,
         top_k=top_k,
     )
+    error_state = format_error_state(error_kind=None)
     status = response.advisor_review_notice
     return (
         answer,
@@ -312,6 +355,7 @@ def render_grounded_result(
         trace_summary,
         support_context,
         debug_metadata,
+        error_state,
         status,
     )
 
@@ -323,7 +367,7 @@ def build_query_handler(
 ):
     """Return the UI handler bound to the current runtime settings."""
 
-    def handle_query(query: str) -> tuple[str, str, str, str, str, str, str, str]:
+    def handle_query(query: str) -> tuple[str, str, str, str, str, str, str, str, str]:
         return run_query(
             query,
             settings=settings,
@@ -354,6 +398,7 @@ def build_loading_query_handler(
             "",
             "",
             "",
+            "No active errors.",
             format_loading_state(is_loading=True),
             "",
         )
@@ -365,6 +410,7 @@ def build_loading_query_handler(
             trace_summary,
             support_context,
             debug_metadata,
+            error_state,
             status,
         ) = sync_handler(query)
         yield (
@@ -375,6 +421,7 @@ def build_loading_query_handler(
             trace_summary,
             support_context,
             debug_metadata,
+            error_state,
             format_loading_state(is_loading=False),
             status,
         )
@@ -416,6 +463,10 @@ def build_gradio_app(
                 trace_output = gr.Textbox(label="Trace Summary")
                 support_output = gr.Markdown(label="Support Context")
                 debug_output = gr.Markdown(label="Debug Metadata")
+                error_output = gr.Textbox(
+                    label="Error State",
+                    value=format_error_state(error_kind=None),
+                )
                 loading_output = gr.Textbox(
                     label="Loading Status",
                     value=format_loading_state(is_loading=False),
@@ -434,6 +485,7 @@ def build_gradio_app(
                 trace_output,
                 support_output,
                 debug_output,
+                error_output,
                 loading_output,
                 status_output,
             ],
