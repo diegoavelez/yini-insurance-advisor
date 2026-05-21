@@ -2,6 +2,10 @@
 
 ## 2026-05-21
 
+- Add the next `Phase 12` MCP slice with an explicit interface version policy,
+  date-based version naming, operational bump rules for additive and breaking
+  MCP-surface changes, and local validation without drifting into detailed
+  compatibility-boundary work.
 - Add the next `Phase 12` MCP slice with a narrow local client seam, end-to-end
   initialize/list/call roundtrip over the current registered MCP tool surface,
   and local validation without drifting into interface versioning work.

@@ -38,6 +38,7 @@ from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.mcp import (
     MCPInitializeResult,
+    MCPInterfaceVersionPolicy,
     MCPPingResult,
     MCPRequestEnvelope,
     MCPResponseEnvelope,
@@ -46,6 +47,7 @@ from contracts.mcp import (
     MCPToolCallResult,
     MCPToolDescriptor,
     MCPToolListResult,
+    MCPVersionChangeRule,
 )
 from contracts.optimization import (
     QueryClassificationCategoryQualityResult,
@@ -141,11 +143,13 @@ __all__ = [
     "GroundingVerificationResult",
     "IngestionStatus",
     "LangGraphWorkflowToolResult",
+    "MCPInterfaceVersionPolicy",
     "MCPInitializeResult",
     "MCPPingResult",
     "MCPToolCallResult",
     "MCPToolDescriptor",
     "MCPToolListResult",
+    "MCPVersionChangeRule",
     "MCPRequestEnvelope",
     "MCPResponseEnvelope",
     "MCPServerCapabilities",

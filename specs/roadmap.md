@@ -806,9 +806,14 @@ Initial narrow slices:
   - one narrow local MCP client seam;
   - end-to-end roundtrip validation against the registered tool surface;
   - no interface versioning plan yet.
-- `mcp-interface-versioning-plan` should cover:
-  - an explicit versioning plan for the exposed MCP interface;
-  - compatibility boundaries for future tool evolution;
+- `mcp-interface-version-policy` should cover:
+  - an explicit versioning policy for the exposed MCP interface;
+  - naming and bump rules for future MCP-surface changes;
+  - no compatibility-boundary matrix yet.
+- `mcp-tool-compatibility-boundaries` should cover:
+  - explicit compatibility boundaries for future tool evolution;
+  - forward/backward-compatibility expectations for the current MCP-visible
+    surface;
   - no broader deployment work yet.
 
 Current implementation status:
@@ -817,8 +822,9 @@ Current implementation status:
   - `mcp-transport-and-server-contract-skeleton`
   - `mcp-tool-registration-and-exposure`
   - `mcp-client-seam-and-local-roundtrip`
+  - `mcp-interface-version-policy`
 - remaining in `Phase 12`:
-  - `mcp-interface-versioning-plan`
+  - `mcp-tool-compatibility-boundaries`
 
 ---
 

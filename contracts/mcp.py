@@ -10,6 +10,32 @@ MCPProtocolVersion = Literal["2026-05-21"]
 MCPRequestMethod = Literal["initialize", "ping", "list_tools", "call_tool"]
 
 
+
+MCPVersionFormat = Literal["date_based"]
+MCPVersionChangeClass = Literal[
+    "internal_only",
+    "additive_mcp_surface",
+    "breaking_mcp_surface",
+]
+
+
+class MCPVersionChangeRule(BaseModel):
+    """One operational MCP interface versioning rule."""
+
+    change_class: MCPVersionChangeClass
+    requires_version_bump: bool
+    rationale: str = Field(min_length=1)
+
+
+class MCPInterfaceVersionPolicy(BaseModel):
+    """Explicit MCP interface version policy for the current repository."""
+
+    current_version: MCPProtocolVersion
+    version_format: MCPVersionFormat
+    version_source: str = Field(min_length=1)
+    rules: list[MCPVersionChangeRule] = Field(min_length=1)
+
+
 class MCPServerCapabilities(BaseModel):
     """Minimal server capability advertisement for the MCP seam."""
 
