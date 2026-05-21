@@ -788,6 +788,38 @@ Expose tools through MCP.
 - contracts remain stable;
 - MCP boundaries are operationally explicit.
 
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `mcp-transport-and-server-contract-skeleton` should cover:
+  - one minimal MCP server boundary for the current tool surface;
+  - explicit request/response contract shape for the server seam;
+  - no tool execution wiring yet.
+- `mcp-tool-registration-and-exposure` should cover:
+  - registration of the initial callable tools through the MCP server;
+  - explicit mapping from current local tool seams into MCP-visible tools;
+  - no client integration yet.
+- `mcp-client-seam-and-local-roundtrip` should cover:
+  - one narrow local MCP client seam;
+  - end-to-end roundtrip validation against the registered tool surface;
+  - no interface versioning plan yet.
+- `mcp-interface-versioning-plan` should cover:
+  - an explicit versioning plan for the exposed MCP interface;
+  - compatibility boundaries for future tool evolution;
+  - no broader deployment work yet.
+
+Current implementation status:
+
+- completed:
+  - `mcp-transport-and-server-contract-skeleton`
+- remaining in `Phase 12`:
+  - `mcp-tool-registration-and-exposure`
+  - `mcp-client-seam-and-local-roundtrip`
+  - `mcp-interface-versioning-plan`
+
 ---
 
 # Phase 13 — Demo UI Hardening

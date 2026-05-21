@@ -36,6 +36,14 @@ from contracts.evaluation import (
 )
 from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
+from contracts.mcp import (
+    MCPInitializeResult,
+    MCPPingResult,
+    MCPRequestEnvelope,
+    MCPResponseEnvelope,
+    MCPServerCapabilities,
+    MCPServerMetadata,
+)
 from contracts.optimization import (
     QueryClassificationCategoryQualityResult,
     QueryClassificationCostComparisonResult,
@@ -130,6 +138,12 @@ __all__ = [
     "GroundingVerificationResult",
     "IngestionStatus",
     "LangGraphWorkflowToolResult",
+    "MCPInitializeResult",
+    "MCPPingResult",
+    "MCPRequestEnvelope",
+    "MCPResponseEnvelope",
+    "MCPServerCapabilities",
+    "MCPServerMetadata",
     "PlannerDecision",
     "PlannerRoute",
     "PolicyComparisonResult",

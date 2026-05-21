@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-05-21
+
+- Add the first `Phase 12` MCP slice with a minimal server seam, explicit
+  typed transport request/response contracts, initialize/ping-only handling,
+  and local validation without drifting into tool execution wiring.
+
 ## 2026-05-20
 
 - Add the corrective `Phase 11` optimization slice that remediates
