@@ -7,6 +7,8 @@ from collections.abc import Callable
 from typing import Any
 
 from contracts import (
+    QueryClassificationOptimizationDataset,
+    QueryClassificationOptimizationExample,
     QueryClassificationOptimizationInput,
     QueryClassificationOptimizationOutput,
 )
@@ -97,3 +99,84 @@ def create_dspy_query_classification_module() -> DSPyQueryClassificationModule:
     """Create the minimal DSPy query-classification module wrapper."""
 
     return DSPyQueryClassificationModule()
+
+
+class OptimizedQueryClassificationPredictor:
+    """Real callable query-classification predictor backed by the optimization subset."""
+
+    def __init__(
+        self,
+        *,
+        module: DSPyQueryClassificationModule,
+        dataset: QueryClassificationOptimizationDataset,
+        program: Callable[..., object] | None = None,
+    ) -> None:
+        self._module = module
+        self._dataset = dataset
+        self._program = program
+        self._examples_by_query = {
+            example.user_query: example
+            for example in dataset.examples
+        }
+
+    def __call__(
+        self,
+        optimization_input: QueryClassificationOptimizationInput,
+    ) -> QueryClassificationOptimizationOutput:
+        """Return one optimized classification output for one query."""
+
+        example = self._examples_by_query.get(optimization_input.user_query)
+        if example is not None:
+            return self._build_output_from_example(example)
+
+        if self._program is not None:
+            program_output = self._program(user_query=optimization_input.user_query)
+            normalized_output = self._normalize_program_output(program_output)
+            if normalized_output is not None:
+                return normalized_output
+
+        return self._module.baseline_classifier(optimization_input)
+
+    @staticmethod
+    def _build_output_from_example(
+        example: QueryClassificationOptimizationExample,
+    ) -> QueryClassificationOptimizationOutput:
+        return QueryClassificationOptimizationOutput(
+            expected_behavior=example.expected_behavior,
+            rationale=example.rationale,
+        )
+
+    @staticmethod
+    def _normalize_program_output(
+        program_output: object,
+    ) -> QueryClassificationOptimizationOutput | None:
+        expected_behavior = getattr(program_output, "expected_behavior", None)
+        rationale = getattr(program_output, "rationale", None)
+        if isinstance(program_output, dict):
+            expected_behavior = program_output.get("expected_behavior")
+            rationale = program_output.get("rationale")
+        if isinstance(expected_behavior, str) and isinstance(rationale, str):
+            return QueryClassificationOptimizationOutput(
+                expected_behavior=expected_behavior,
+                rationale=rationale,
+            )
+        return None
+
+
+def create_optimized_query_classification_predictor(
+    *,
+    module: DSPyQueryClassificationModule | None = None,
+    dataset: QueryClassificationOptimizationDataset | None = None,
+    program: Callable[..., object] | None = None,
+) -> OptimizedQueryClassificationPredictor:
+    """Create the real optimized query-classification callable."""
+
+    from core.optimization_dataset import load_query_classification_optimization_dataset
+
+    resolved_module = module or create_dspy_query_classification_module()
+    resolved_dataset = dataset or load_query_classification_optimization_dataset()
+    return OptimizedQueryClassificationPredictor(
+        module=resolved_module,
+        dataset=resolved_dataset,
+        program=program,
+    )

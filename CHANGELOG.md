@@ -2,6 +2,10 @@
 
 ## 2026-05-20
 
+- Add the next `Phase 11` optimization slice with a real optimized
+  query-classification callable, subset-backed predictor wiring, compatibility
+  with the existing quality/latency/cost comparison seams, and local
+  validation without yet claiming measurable improvement.
 - Add the final `Phase 11` optimization slice with a measurable
   query-classification cost-comparison seam, typed baseline-versus-optimized
   external-call and estimated-cost reporting over the current optimization

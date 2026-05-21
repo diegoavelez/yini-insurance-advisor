@@ -686,6 +686,17 @@ Initial narrow slices:
   - cost comparison for the optimized query-classification path;
   - explicit comparison against the documented zero-external-call baseline;
   - no broader productionization yet.
+- `query-classification-optimized-predictor-wiring` should cover:
+  - one real optimized query-classification callable built from the DSPy
+    module and current optimization subset;
+  - explicit wiring into the existing quality, latency, and cost comparison
+    seams;
+  - no claim of measurable improvement yet.
+- `query-classification-measurable-improvement-validation` should cover:
+  - documented before/after results from the real optimized predictor;
+  - explicit confirmation of whether quality improves and whether latency
+    remains within budget;
+  - no broader productionization yet.
 
 Selected first target and baseline:
 
@@ -720,8 +731,9 @@ Current implementation status:
   - `query-classification-quality-comparison`
   - `query-classification-latency-comparison`
   - `query-classification-cost-comparison`
+  - `query-classification-optimized-predictor-wiring`
 - remaining in `Phase 11`:
-  - none
+  - `query-classification-measurable-improvement-validation`
 
 ---
 
