@@ -103,3 +103,28 @@ class QueryClassificationLatencyComparisonResult(BaseModel):
     baseline_average_latency_ms: float = Field(ge=0.0)
     optimized_average_latency_ms: float = Field(ge=0.0)
     example_results: list[QueryClassificationExampleLatencyResult] = Field(min_length=1)
+
+
+class QueryClassificationExampleCostResult(BaseModel):
+    """One baseline-versus-optimized cost result for one optimization example."""
+
+    example_id: str = Field(min_length=1)
+    source_question_id: str = Field(min_length=1)
+    baseline_external_call_count: int = Field(ge=0)
+    optimized_external_call_count: int = Field(ge=0)
+    baseline_estimated_cost_units: float = Field(ge=0.0)
+    optimized_estimated_cost_units: float = Field(ge=0.0)
+
+
+class QueryClassificationCostComparisonResult(BaseModel):
+    """Typed cost comparison result for query classification optimization."""
+
+    dataset_version: str = Field(min_length=1)
+    example_count: int = Field(ge=1)
+    baseline_total_external_call_count: int = Field(ge=0)
+    optimized_total_external_call_count: int = Field(ge=0)
+    baseline_total_estimated_cost_units: float = Field(ge=0.0)
+    optimized_total_estimated_cost_units: float = Field(ge=0.0)
+    baseline_average_estimated_cost_units: float = Field(ge=0.0)
+    optimized_average_estimated_cost_units: float = Field(ge=0.0)
+    example_results: list[QueryClassificationExampleCostResult] = Field(min_length=1)

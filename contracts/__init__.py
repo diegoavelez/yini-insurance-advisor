@@ -38,6 +38,8 @@ from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.optimization import (
     QueryClassificationCategoryQualityResult,
+    QueryClassificationCostComparisonResult,
+    QueryClassificationExampleCostResult,
     QueryClassificationExampleLatencyResult,
     QueryClassificationExampleQualityResult,
     QueryClassificationLatencyComparisonResult,
@@ -129,6 +131,8 @@ __all__ = [
     "ProcessedDocument",
     "QueryClassificationOptimizationDataset",
     "QueryClassificationCategoryQualityResult",
+    "QueryClassificationCostComparisonResult",
+    "QueryClassificationExampleCostResult",
     "QueryClassificationExampleLatencyResult",
     "QueryClassificationExampleQualityResult",
     "QueryClassificationLatencyComparisonResult",

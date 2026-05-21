@@ -719,8 +719,9 @@ Current implementation status:
   - `query-classification-optimization-dataset-subset`
   - `query-classification-quality-comparison`
   - `query-classification-latency-comparison`
-- remaining in `Phase 11`:
   - `query-classification-cost-comparison`
+- remaining in `Phase 11`:
+  - none
 
 ---
 
