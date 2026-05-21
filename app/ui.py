@@ -211,24 +211,44 @@ def build_gradio_app(
         settings=settings,
         grounded_answer_fn=grounded_answer_fn,
     )
-    return gr.Interface(
-        fn=handler,
-        inputs=gr.Textbox(
+    with gr.Blocks(title=APP_TITLE) as app:
+        gr.Markdown(f"# {APP_TITLE}")
+        gr.Markdown(APP_DESCRIPTION)
+
+        query_input = gr.Textbox(
             label="Advisor Question",
             lines=3,
             placeholder="Ask about coverage, exclusions, procedures, or requirements.",
-        ),
-        outputs=[
-            gr.Markdown(label="Suggested Answer"),
-            gr.Markdown(label="Citations"),
-            gr.Textbox(label="Confidence"),
-            gr.Markdown(label="Limitations"),
-            gr.Textbox(label="Status"),
-        ],
-        title=APP_TITLE,
-        description=APP_DESCRIPTION,
-        flagging_mode="never",
-    )
+        )
+        submit_button = gr.Button("Generate Draft Answer")
+
+        with gr.Row():
+            with gr.Column():
+                answer_output = gr.Markdown(label="Suggested Answer")
+                status_output = gr.Textbox(label="Review Status")
+            with gr.Column():
+                confidence_output = gr.Textbox(label="Confidence")
+                limitations_output = gr.Markdown(label="Review Limitations")
+
+        citations_output = gr.Markdown(label="Citations")
+
+        submit_button.click(
+            fn=handler,
+            inputs=[query_input],
+            outputs=[
+                answer_output,
+                citations_output,
+                confidence_output,
+                limitations_output,
+                status_output,
+            ],
+        )
+
+        app.title = APP_TITLE
+        app.description = APP_DESCRIPTION
+        app.flagging_mode = "never"
+
+    return app
 
 
 def gradio_backend_is_available() -> bool:

@@ -2,6 +2,10 @@
 
 ## 2026-05-21
 
+- Add the first `Phase 13` demo-hardening slice with a grouped Gradio `Blocks`
+  layout, clearer review-oriented output organization for answer/citations/
+  confidence/limitations/status, and local validation without drifting into
+  trace-summary or degraded-service messaging work.
 - Add the corrective `Phase 12` MCP slice that closes the remaining
   compatibility-boundary gap by making request-field and MCP-visible
   tool-metadata compatibility expectations explicit, aligning the implemented

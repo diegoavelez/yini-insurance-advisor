@@ -869,9 +869,13 @@ Initial narrow slices:
   - improved Gradio layout for the current MVP surface;
   - clearer grouping of answer, citations, confidence, and limitations;
   - no trace-summary or degraded-service messaging yet.
-- `demo-trace-summary-and-debug-context` should cover:
+- `demo-trace-summary-display` should cover:
   - a narrow user-visible trace summary surface;
+  - reuse of current workflow and observability seams where available;
+  - no support/debug context exposure yet.
+- `demo-debug-context-exposure` should cover:
   - safe exposure of support/debug context tied to current observability seams;
+  - clear separation between user-facing explanation and operator-facing detail;
   - no degraded-service messaging yet.
 - `demo-loading-and-error-states` should cover:
   - explicit loading-state behavior for the public demo path;
@@ -885,10 +889,10 @@ Initial narrow slices:
 Current implementation status:
 
 - completed:
-  - none
-- remaining in `Phase 13`:
   - `demo-layout-and-output-grouping`
-  - `demo-trace-summary-and-debug-context`
+- remaining in `Phase 13`:
+  - `demo-trace-summary-display`
+  - `demo-debug-context-exposure`
   - `demo-loading-and-error-states`
   - `demo-degraded-service-messaging`
 

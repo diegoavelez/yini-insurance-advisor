@@ -272,41 +272,113 @@ def test_run_query_surfaces_runtime_failures_as_explicit_errors() -> None:
 class FakeComponent:
     kind: str
     kwargs: dict
+    click_calls: list[dict] | None = None
+
+    def click(self, **kwargs):
+        if self.click_calls is None:
+            self.click_calls = []
+        self.click_calls.append(kwargs)
 
 
-class FakeInterface:
+class FakeBlocks:
     def __init__(self, **kwargs) -> None:
         self.kwargs = kwargs
+        self.children: list[FakeComponent] = []
+        self.title = None
+        self.description = None
+        self.flagging_mode = None
 
     def launch(self) -> None:
         self.launched = True
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class FakeLayoutContext:
+    def __init__(self, parent: FakeBlocks, kind: str) -> None:
+        self.parent = parent
+        self.kind = kind
+
+    def __enter__(self):
+        return self.parent
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
 
 class FakeGradioModule:
-    def Textbox(self, **kwargs):
-        return FakeComponent("Textbox", kwargs)
+    def __init__(self) -> None:
+        self.current_app: FakeBlocks | None = None
 
-    def Markdown(self, **kwargs):
-        return FakeComponent("Markdown", kwargs)
+    def Blocks(self, **kwargs):
+        self.current_app = FakeBlocks(**kwargs)
+        return self.current_app
 
-    def Interface(self, **kwargs):
-        return FakeInterface(**kwargs)
+    def Row(self):
+        assert self.current_app is not None
+        return FakeLayoutContext(self.current_app, "Row")
+
+    def Column(self):
+        assert self.current_app is not None
+        return FakeLayoutContext(self.current_app, "Column")
+
+    def Textbox(self, *args, **kwargs):
+        if args:
+            kwargs["value"] = args[0]
+        component = FakeComponent("Textbox", kwargs)
+        assert self.current_app is not None
+        self.current_app.children.append(component)
+        return component
+
+    def Markdown(self, *args, **kwargs):
+        if args:
+            kwargs["value"] = args[0]
+        component = FakeComponent("Markdown", kwargs)
+        assert self.current_app is not None
+        self.current_app.children.append(component)
+        return component
+
+    def Button(self, value):
+        component = FakeComponent("Button", {"value": value})
+        assert self.current_app is not None
+        self.current_app.children.append(component)
+        return component
 
 
-def test_build_gradio_app_creates_expected_interface_contract() -> None:
+def test_build_gradio_app_creates_expected_blocks_layout() -> None:
+    fake_gradio = FakeGradioModule()
     app = build_gradio_app(
         settings=make_settings(),
         grounded_answer_fn=lambda *_args, **_kwargs: make_grounded_result(),
-        gradio_module=FakeGradioModule(),
+        gradio_module=fake_gradio,
     )
 
     assert app.kwargs["title"] == APP_TITLE
-    assert app.kwargs["description"] == APP_DESCRIPTION
-    assert app.kwargs["inputs"].kind == "Textbox"
-    assert len(app.kwargs["outputs"]) == 5
-    assert app.kwargs["flagging_mode"] == "never"
+    assert app.title == APP_TITLE
+    assert app.description == APP_DESCRIPTION
+    assert app.flagging_mode == "never"
 
-    handler = app.kwargs["fn"]
+    component_labels = [
+        component.kwargs.get("label")
+        for component in app.children
+        if "label" in component.kwargs
+    ]
+    assert "Advisor Question" in component_labels
+    assert "Suggested Answer" in component_labels
+    assert "Review Status" in component_labels
+    assert "Confidence" in component_labels
+    assert "Review Limitations" in component_labels
+    assert "Citations" in component_labels
+
+    submit_button = next(
+        component for component in app.children if component.kind == "Button"
+    )
+    click_call = submit_button.click_calls[0]
+    handler = click_call["fn"]
     answer, citations, confidence, limitations, status = handler("What is covered?")
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
