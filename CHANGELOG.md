@@ -2,6 +2,11 @@
 
 ## 2026-05-20
 
+- Add the next `Phase 11` optimization slice with a measurable
+  query-classification quality-comparison seam, typed overall and per-category
+  reporting, deterministic baseline-versus-optimized evaluation over the
+  current optimization subset, and local validation without drifting into
+  latency or cost comparison work.
 - Add the next `Phase 11` optimization slice with a narrow query-classification
   optimization dataset subset, typed optimization-example contracts, explicit
   linkage to the 30-question evaluation and golden-behavior assets, and local

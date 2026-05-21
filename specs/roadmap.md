@@ -673,9 +673,14 @@ Initial narrow slices:
   - a narrow dataset subset for query classification optimization;
   - stable linkage to the existing evaluation assets where relevant;
   - no before/after comparison yet.
-- `query-classification-before-after-comparison` should cover:
-  - measurable baseline versus optimized comparison for query classification;
-  - explicit quality, latency, and cost reporting;
+- `query-classification-quality-comparison` should cover:
+  - measurable baseline versus optimized quality comparison for query
+    classification;
+  - explicit per-category and overall evaluation reporting;
+  - no latency or cost comparison yet.
+- `query-classification-latency-and-cost-comparison` should cover:
+  - latency and cost comparison for the optimized query-classification path;
+  - explicit comparison against the documented deterministic baseline;
   - no broader productionization yet.
 
 Selected first target and baseline:
@@ -708,8 +713,9 @@ Current implementation status:
   - `optimization-target-selection-and-baseline`
   - `dspy-query-classification-module-skeleton`
   - `query-classification-optimization-dataset-subset`
+  - `query-classification-quality-comparison`
 - remaining in `Phase 11`:
-  - `query-classification-before-after-comparison`
+  - `query-classification-latency-and-cost-comparison`
 
 ---
 

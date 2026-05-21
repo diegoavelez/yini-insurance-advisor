@@ -47,3 +47,38 @@ class QueryClassificationOptimizationDataset(BaseModel):
         if len(source_question_ids) != len(set(source_question_ids)):
             raise ValueError("optimization source question ids must be unique.")
         return self
+
+
+class QueryClassificationExampleQualityResult(BaseModel):
+    """One baseline-versus-optimized quality result for one optimization example."""
+
+    example_id: str = Field(min_length=1)
+    source_question_id: str = Field(min_length=1)
+    category: EvaluationQuestionCategory
+    expected_behavior: ExpectedBehavior
+    baseline_behavior: ExpectedBehavior
+    optimized_behavior: ExpectedBehavior
+    baseline_matched: bool
+    optimized_matched: bool
+
+
+class QueryClassificationCategoryQualityResult(BaseModel):
+    """Aggregated quality result for one query-classification category."""
+
+    category: EvaluationQuestionCategory
+    example_count: int = Field(ge=1)
+    baseline_matched_count: int = Field(ge=0)
+    optimized_matched_count: int = Field(ge=0)
+    baseline_accuracy: float = Field(ge=0.0, le=1.0)
+    optimized_accuracy: float = Field(ge=0.0, le=1.0)
+
+
+class QueryClassificationQualityComparisonResult(BaseModel):
+    """Typed quality comparison result for query classification optimization."""
+
+    dataset_version: str = Field(min_length=1)
+    example_count: int = Field(ge=1)
+    baseline_accuracy: float = Field(ge=0.0, le=1.0)
+    optimized_accuracy: float = Field(ge=0.0, le=1.0)
+    category_results: list[QueryClassificationCategoryQualityResult] = Field(min_length=1)
+    example_results: list[QueryClassificationExampleQualityResult] = Field(min_length=1)
