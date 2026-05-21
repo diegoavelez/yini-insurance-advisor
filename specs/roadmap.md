@@ -678,9 +678,13 @@ Initial narrow slices:
     classification;
   - explicit per-category and overall evaluation reporting;
   - no latency or cost comparison yet.
-- `query-classification-latency-and-cost-comparison` should cover:
-  - latency and cost comparison for the optimized query-classification path;
+- `query-classification-latency-comparison` should cover:
+  - latency comparison for the optimized query-classification path;
   - explicit comparison against the documented deterministic baseline;
+  - no cost comparison yet.
+- `query-classification-cost-comparison` should cover:
+  - cost comparison for the optimized query-classification path;
+  - explicit comparison against the documented zero-external-call baseline;
   - no broader productionization yet.
 
 Selected first target and baseline:
@@ -714,8 +718,9 @@ Current implementation status:
   - `dspy-query-classification-module-skeleton`
   - `query-classification-optimization-dataset-subset`
   - `query-classification-quality-comparison`
+  - `query-classification-latency-comparison`
 - remaining in `Phase 11`:
-  - `query-classification-latency-and-cost-comparison`
+  - `query-classification-cost-comparison`
 
 ---
 

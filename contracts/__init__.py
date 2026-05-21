@@ -38,7 +38,9 @@ from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
 from contracts.ingestion import IngestionStatus, ProcessedDocument
 from contracts.optimization import (
     QueryClassificationCategoryQualityResult,
+    QueryClassificationExampleLatencyResult,
     QueryClassificationExampleQualityResult,
+    QueryClassificationLatencyComparisonResult,
     QueryClassificationOptimizationDataset,
     QueryClassificationOptimizationExample,
     QueryClassificationOptimizationInput,
@@ -127,7 +129,9 @@ __all__ = [
     "ProcessedDocument",
     "QueryClassificationOptimizationDataset",
     "QueryClassificationCategoryQualityResult",
+    "QueryClassificationExampleLatencyResult",
     "QueryClassificationExampleQualityResult",
+    "QueryClassificationLatencyComparisonResult",
     "QueryClassificationOptimizationExample",
     "QueryClassificationOptimizationInput",
     "QueryClassificationOptimizationOutput",

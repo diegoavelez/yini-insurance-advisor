@@ -3,6 +3,10 @@
 ## 2026-05-20
 
 - Add the next `Phase 11` optimization slice with a measurable
+  query-classification latency-comparison seam, typed baseline-versus-optimized
+  latency reporting over the current optimization subset, and local validation
+  without drifting into cost comparison work.
+- Add the next `Phase 11` optimization slice with a measurable
   query-classification quality-comparison seam, typed overall and per-category
   reporting, deterministic baseline-versus-optimized evaluation over the
   current optimization subset, and local validation without drifting into
