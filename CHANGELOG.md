@@ -2,6 +2,10 @@
 
 ## 2026-05-21
 
+- Add the next `Phase 13` demo-hardening slice with a narrow operator-facing
+  debug-metadata surface, compact request/runtime/retrieval metadata tied to
+  the current UI seams, and local validation without drifting into
+  loading/error-state or degraded-service work.
 - Add the next `Phase 13` demo-hardening slice with a narrow user-visible
   support-context surface, concise request-follow-up guidance tied to the
   current request-correlation seams, and local validation without drifting

@@ -128,6 +128,31 @@ def format_support_context(
     )
 
 
+def format_debug_metadata(
+    result: GroundedAnswerResult,
+    *,
+    request_id: str,
+    runtime_surface: str,
+    query_length: int,
+    top_k: int | None,
+) -> str:
+    """Render compact operator-facing debug metadata for the current request."""
+
+    response = result.response
+    return "\n".join(
+        [
+            f"- Request ID: {request_id}",
+            f"- Runtime Surface: {runtime_surface}",
+            f"- Query Length: {query_length}",
+            f"- Retrieval Top K: {top_k if top_k is not None else 'n/a'}",
+            f"- Confidence Level: {response.confidence}",
+            f"- Citation Count: {len(response.citations)}",
+            f"- Limitation Count: {len(response.limitations)}",
+            f"- Debug Outcome: {infer_support_outcome(result)}",
+        ]
+    )
+
+
 def build_retrieval_query(query: str, settings: Settings) -> RetrievalQuery:
     """Build the typed retrieval query used by the UI backend seam."""
 
@@ -139,7 +164,7 @@ def run_query(
     *,
     settings: Settings | None = None,
     grounded_answer_fn=generate_grounded_answer,
-) -> tuple[str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str, str]:
     """Execute one grounded QA request for the UI."""
 
     request_id = generate_request_id("ui")
@@ -154,7 +179,7 @@ def run_query(
             error_type="ValidationError",
             error_message="Please enter a question.",
         )
-        return "", "", "", "", "", "", "Please enter a question."
+        return "", "", "", "", "", "", "", "Please enter a question."
 
     resolved_settings = validate_startup_settings(
         settings or get_settings(),
@@ -175,6 +200,8 @@ def run_query(
             build_prompt_injection_refusal_response(query=normalized_query),
             request_id=request_id,
             runtime_surface="gradio_ui",
+            query_length=len(normalized_query),
+            top_k=None,
         )
     scope_decision = classify_query_scope(normalized_query)
     if scope_decision.scope == "unsupported":
@@ -190,6 +217,8 @@ def run_query(
             build_unsupported_query_response(query=normalized_query),
             request_id=request_id,
             runtime_surface="gradio_ui",
+            query_length=len(normalized_query),
+            top_k=None,
         )
     retrieval_query = build_retrieval_query(normalized_query, resolved_settings)
     log_event(
@@ -217,7 +246,7 @@ def run_query(
             error_type=type(exc).__name__,
             error_message=str(exc),
         )
-        return "", "", "", "", "", "", f"{DEFAULT_ERROR_MESSAGE} Error: {exc}"
+        return "", "", "", "", "", "", "", f"{DEFAULT_ERROR_MESSAGE} Error: {exc}"
 
     log_event(
         UI_LOGGER,
@@ -232,6 +261,8 @@ def run_query(
         result,
         request_id=request_id,
         runtime_surface="gradio_ui",
+        query_length=len(normalized_query),
+        top_k=retrieval_query.top_k,
     )
 
 
@@ -240,7 +271,9 @@ def render_grounded_result(
     *,
     request_id: str,
     runtime_surface: str,
-) -> tuple[str, str, str, str, str, str, str]:
+    query_length: int,
+    top_k: int | None,
+) -> tuple[str, str, str, str, str, str, str, str]:
     """Render the typed grounded result into UI output fields."""
 
     response = result.response
@@ -254,8 +287,24 @@ def render_grounded_result(
         request_id=request_id,
         runtime_surface=runtime_surface,
     )
+    debug_metadata = format_debug_metadata(
+        result,
+        request_id=request_id,
+        runtime_surface=runtime_surface,
+        query_length=query_length,
+        top_k=top_k,
+    )
     status = response.advisor_review_notice
-    return answer, citations, confidence, limitations, trace_summary, support_context, status
+    return (
+        answer,
+        citations,
+        confidence,
+        limitations,
+        trace_summary,
+        support_context,
+        debug_metadata,
+        status,
+    )
 
 
 def build_query_handler(
@@ -265,7 +314,7 @@ def build_query_handler(
 ):
     """Return the UI handler bound to the current runtime settings."""
 
-    def handle_query(query: str) -> tuple[str, str, str, str, str, str, str]:
+    def handle_query(query: str) -> tuple[str, str, str, str, str, str, str, str]:
         return run_query(
             query,
             settings=settings,
@@ -308,6 +357,7 @@ def build_gradio_app(
                 limitations_output = gr.Markdown(label="Review Limitations")
                 trace_output = gr.Textbox(label="Trace Summary")
                 support_output = gr.Markdown(label="Support Context")
+                debug_output = gr.Markdown(label="Debug Metadata")
 
         citations_output = gr.Markdown(label="Citations")
 
@@ -321,6 +371,7 @@ def build_gradio_app(
                 limitations_output,
                 trace_output,
                 support_output,
+                debug_output,
                 status_output,
             ],
         )

@@ -214,7 +214,16 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
         grounded_answer_fn=grounded_answer_fn,
     )
 
-    answer, citations, confidence, limitations, trace_summary, support_context, status = handler(
+    (
+        answer,
+        citations,
+        confidence,
+        limitations,
+        trace_summary,
+        support_context,
+        debug_metadata,
+        status,
+    ) = handler(
         "What is covered?"
     )
 
@@ -224,6 +233,7 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
     assert limitations == "No additional limitations noted."
     assert "query_received" in trace_summary
     assert "Request ID: ui-" in support_context
+    assert "Debug Outcome: grounded_draft_ready" in debug_metadata
     assert status == "Advisor review required before external use."
 
 
