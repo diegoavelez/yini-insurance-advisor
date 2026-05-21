@@ -34,6 +34,7 @@ APP_DESCRIPTION = (
     "must remain tied to cited evidence."
 )
 DEFAULT_ERROR_MESSAGE = "Unable to process the query right now."
+DEFAULT_LOADING_MESSAGE = "Generating draft answer..."
 UI_LOGGER = logging.getLogger("yini.ui")
 APP_LOGGER = logging.getLogger("yini.app")
 
@@ -151,6 +152,14 @@ def format_debug_metadata(
             f"- Debug Outcome: {infer_support_outcome(result)}",
         ]
     )
+
+
+def format_loading_state(*, is_loading: bool) -> str:
+    """Render concise loading-state feedback for the current demo UI."""
+
+    if is_loading:
+        return DEFAULT_LOADING_MESSAGE
+    return "Draft answer ready for review."
 
 
 def build_retrieval_query(query: str, settings: Settings) -> RetrievalQuery:
@@ -324,6 +333,55 @@ def build_query_handler(
     return handle_query
 
 
+def build_loading_query_handler(
+    *,
+    settings: Settings | None = None,
+    grounded_answer_fn=generate_grounded_answer,
+):
+    """Return the streaming UI handler with explicit loading-state feedback."""
+
+    sync_handler = build_query_handler(
+        settings=settings,
+        grounded_answer_fn=grounded_answer_fn,
+    )
+
+    def handle_query(query: str):
+        yield (
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            format_loading_state(is_loading=True),
+            "",
+        )
+        (
+            answer,
+            citations,
+            confidence,
+            limitations,
+            trace_summary,
+            support_context,
+            debug_metadata,
+            status,
+        ) = sync_handler(query)
+        yield (
+            answer,
+            citations,
+            confidence,
+            limitations,
+            trace_summary,
+            support_context,
+            debug_metadata,
+            format_loading_state(is_loading=False),
+            status,
+        )
+
+    return handle_query
+
+
 def build_gradio_app(
     *,
     settings: Settings | None = None,
@@ -333,7 +391,7 @@ def build_gradio_app(
     """Build the MVP Gradio query UI."""
 
     gr = gradio_module or importlib.import_module("gradio")
-    handler = build_query_handler(
+    handler = build_loading_query_handler(
         settings=settings,
         grounded_answer_fn=grounded_answer_fn,
     )
@@ -358,6 +416,10 @@ def build_gradio_app(
                 trace_output = gr.Textbox(label="Trace Summary")
                 support_output = gr.Markdown(label="Support Context")
                 debug_output = gr.Markdown(label="Debug Metadata")
+                loading_output = gr.Textbox(
+                    label="Loading Status",
+                    value=format_loading_state(is_loading=False),
+                )
 
         citations_output = gr.Markdown(label="Citations")
 
@@ -372,8 +434,10 @@ def build_gradio_app(
                 trace_output,
                 support_output,
                 debug_output,
+                loading_output,
                 status_output,
             ],
+            show_progress="full",
         )
 
         app.title = APP_TITLE

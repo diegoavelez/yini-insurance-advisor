@@ -882,9 +882,13 @@ Initial narrow slices:
   - safe exposure of operator-facing debug metadata for the current demo path;
   - clear separation from the user-visible support context already shown in the UI;
   - no degraded-service messaging yet.
-- `demo-loading-and-error-states` should cover:
+- `demo-loading-state-feedback` should cover:
   - explicit loading-state behavior for the public demo path;
+  - user-visible in-flight feedback during request execution;
+  - no user-visible error-state redesign yet.
+- `demo-error-state-clarity` should cover:
   - clearer user-visible error states for current failures;
+  - alignment with the existing request failure surface;
   - no degraded-service messaging yet.
 - `demo-degraded-service-messaging` should cover:
   - explicit degraded-service messaging for known partial-availability cases;
@@ -898,8 +902,9 @@ Current implementation status:
   - `demo-trace-summary-display`
   - `demo-support-context-display`
   - `demo-debug-metadata-exposure`
+  - `demo-loading-state-feedback`
 - remaining in `Phase 13`:
-  - `demo-loading-and-error-states`
+  - `demo-error-state-clarity`
   - `demo-degraded-service-messaging`
 
 ---

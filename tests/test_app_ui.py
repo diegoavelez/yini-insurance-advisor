@@ -13,6 +13,7 @@ from app.ui import (
     format_citations,
     format_debug_metadata,
     format_limitations,
+    format_loading_state,
     format_support_context,
     format_trace_summary,
     render_grounded_result,
@@ -458,6 +459,11 @@ def test_format_debug_metadata_renders_compact_operator_fields() -> None:
     assert "Debug Outcome: grounded_draft_ready" in rendered
 
 
+def test_format_loading_state_renders_loading_and_ready_messages() -> None:
+    assert format_loading_state(is_loading=True) == "Generating draft answer..."
+    assert format_loading_state(is_loading=False) == "Draft answer ready for review."
+
+
 @dataclass
 class FakeComponent:
     kind: str
@@ -565,13 +571,22 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Trace Summary" in component_labels
     assert "Support Context" in component_labels
     assert "Debug Metadata" in component_labels
+    assert "Loading Status" in component_labels
     assert "Citations" in component_labels
 
     submit_button = next(
         component for component in app.children if component.kind == "Button"
     )
     click_call = submit_button.click_calls[0]
+    assert click_call["show_progress"] == "full"
     handler = click_call["fn"]
+    updates = list(handler("What is covered?"))
+
+    assert len(updates) == 2
+    loading_update = updates[0]
+    final_update = updates[1]
+    assert loading_update[7] == "Generating draft answer..."
+
     (
         answer,
         citations,
@@ -580,10 +595,9 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
         trace_summary,
         support_context,
         debug_metadata,
+        loading_status,
         status,
-    ) = handler(
-        "What is covered?"
-    )
+    ) = final_update
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert confidence == "HIGH"
@@ -591,4 +605,5 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "query_received" in trace_summary
     assert "Request ID: ui-" in support_context
     assert "Debug Outcome: grounded_draft_ready" in debug_metadata
+    assert loading_status == "Draft answer ready for review."
     assert status == "Advisor review required before external use."

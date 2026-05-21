@@ -2,6 +2,10 @@
 
 ## 2026-05-21
 
+- Add the next `Phase 13` demo-hardening slice with a narrow user-visible
+  loading-state surface, explicit in-flight and ready feedback through the
+  current Gradio UI handler, and local validation without drifting into
+  error-state redesign or degraded-service work.
 - Add the next `Phase 13` demo-hardening slice with a narrow operator-facing
   debug-metadata surface, compact request/runtime/retrieval metadata tied to
   the current UI seams, and local validation without drifting into
