@@ -2,6 +2,15 @@
 
 ## 2026-05-20
 
+- Add the corrective `Phase 11` optimization slice that remediates
+  query-classification measurable-improvement semantics by making the current
+  optimization-subset evaluation surface explicit, reporting when improvement
+  is not actually validated, and removing overstated optimization claims from
+  the roadmap.
+- Add the final corrective `Phase 11` optimization slice with hosted-like
+  query-classification latency-budget validation over the product-facing
+  classification path, explicit distinction from the local comparison seam, and
+  local validation that truthfully closes the remaining `Phase 11` gap.
 - Add the final `Phase 11` optimization slice with typed
   query-classification latency-budget validation, explicit within-budget /
   over-budget reporting over the current optimized predictor and latency

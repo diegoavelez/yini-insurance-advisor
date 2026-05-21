@@ -651,9 +651,11 @@ Optimize one targeted component programmatically.
 
 ## Success Criteria
 
-- measurable improvement exists;
+- the optimization outcome is truthfully reported on the documented evaluation
+  surface;
 - optimization process is documented;
-- hosted latency remains within budget.
+- hosted-like latency remains within budget on the product-facing
+  classification path.
 
 Implementation note:
 
@@ -702,6 +704,20 @@ Initial narrow slices:
     remains within the documented latency budget;
   - documented linkage to the existing latency-comparison seam;
   - no broader productionization yet.
+- `query-classification-measurable-improvement-remediation` should cover:
+  - replacement of the current optimization-infrastructure-only closure with a
+    real optimized predictor path that can demonstrate measurable improvement,
+    or an explicit downgrade of the success claim if such improvement is not
+    defensible yet;
+  - alignment of the comparison surface with the documented `Phase 11`
+    baseline;
+  - no hosted-latency validation yet.
+- `hosted-query-classification-latency-budget-validation` should cover:
+  - validation that the product-facing optimized classification path remains
+    within the documented latency budget;
+  - explicit distinction between local seam timing and hosted-like request-path
+    timing;
+  - no broader productionization yet.
 
 Selected first target and baseline:
 
@@ -718,6 +734,12 @@ Selected first target and baseline:
     set;
   - per-category exact-match rate across grounded QA, unsupported, prompt
     injection, citation guardrail, and confidence guardrail scenarios.
+- current narrow comparison surface for `Phase 11` implementation:
+  - the 10-example query-classification optimization subset;
+  - this subset is the current defensible surface for baseline-versus-optimized
+    comparison and improvement reporting;
+  - it is narrower than the 30-question evaluation set and should be treated as
+    such in validation claims.
 - baseline latency surface:
   - wall-clock duration of `run_local_evaluation()`;
   - derived per-question average duration from the local evaluation run.
@@ -739,6 +761,8 @@ Current implementation status:
   - `query-classification-optimized-predictor-wiring`
   - `query-classification-quality-improvement-validation`
   - `query-classification-latency-budget-validation`
+  - `query-classification-measurable-improvement-remediation`
+  - `hosted-query-classification-latency-budget-validation`
 - remaining in `Phase 11`:
   - none
 

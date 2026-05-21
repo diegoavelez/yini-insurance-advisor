@@ -133,16 +133,22 @@ class QueryClassificationCostComparisonResult(BaseModel):
 
 
 QueryClassificationImprovementState = Literal["improved", "flat", "regressed"]
+QueryClassificationEvaluationSurface = Literal[
+    "query_classification_optimization_subset"
+]
 
 
 class QueryClassificationQualityImprovementValidationResult(BaseModel):
     """Typed validation result for query-classification quality improvement."""
 
     dataset_version: str = Field(min_length=1)
+    evaluation_surface: QueryClassificationEvaluationSurface
     baseline_accuracy: float = Field(ge=0.0, le=1.0)
     optimized_accuracy: float = Field(ge=0.0, le=1.0)
     improvement_state: QueryClassificationImprovementState
+    measurable_improvement_validated: bool
     accuracy_delta: float
+    conclusion: str = Field(min_length=1)
 
 
 QueryClassificationLatencyBudgetState = Literal["within_budget", "over_budget"]
@@ -156,5 +162,18 @@ class QueryClassificationLatencyBudgetValidationResult(BaseModel):
     latency_budget_ms: float = Field(ge=0.0)
     baseline_average_latency_ms: float = Field(ge=0.0)
     optimized_average_latency_ms: float = Field(ge=0.0)
+    budget_state: QueryClassificationLatencyBudgetState
+    within_budget: bool
+
+
+class QueryClassificationHostedLatencyBudgetValidationResult(BaseModel):
+    """Typed hosted-like latency-budget validation result for query classification."""
+
+    dataset_version: str = Field(min_length=1)
+    example_count: int = Field(ge=1)
+    request_surface: str = Field(min_length=1)
+    latency_budget_ms: float = Field(ge=0.0)
+    comparison_average_latency_ms: float = Field(ge=0.0)
+    hosted_average_latency_ms: float = Field(ge=0.0)
     budget_state: QueryClassificationLatencyBudgetState
     within_budget: bool
