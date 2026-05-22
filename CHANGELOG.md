@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-05-22
+
+- Add the final `Phase 13` demo-hardening slice with a narrow `Answer Quality`
+  surface, explicit degraded messaging for lower-confidence and limited-evidence
+  drafts, and local validation that closes the remaining demo UI hardening work.
+
 ## 2026-05-21
 
 - Add the next `Phase 13` demo-hardening slice with a narrow user-visible

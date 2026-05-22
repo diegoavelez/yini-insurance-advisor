@@ -11,6 +11,7 @@ from app.ui import (
     APP_TITLE,
     build_demo_readiness_message,
     build_gradio_app,
+    format_answer_quality_state,
     format_citations,
     format_debug_metadata,
     format_error_state,
@@ -29,6 +30,11 @@ from contracts import (
     GroundingVerification,
 )
 from core.config import Settings, clear_settings_cache
+
+DEGRADED_ANSWER_QUALITY_MESSAGE = (
+    "Answer Quality — Degraded. This draft has lower confidence or limited "
+    "grounded support and requires extra advisor review."
+)
 
 
 @pytest.fixture(autouse=True)
@@ -118,6 +124,7 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         status,
     ) = render_grounded_result(
@@ -138,6 +145,7 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
     assert "Support Outcome: grounded_draft_ready" in support_context
     assert "Query Length: 16" in debug_metadata
     assert "Retrieval Top K: 8" in debug_metadata
+    assert answer_quality_state == "Answer Quality — Standard draft quality."
     assert error_state == "No active errors."
     assert status == "Advisor review required before external use."
 
@@ -156,6 +164,7 @@ def test_run_query_returns_successful_grounded_output() -> None:
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         status,
     ) = run_query(
@@ -172,6 +181,7 @@ def test_run_query_returns_successful_grounded_output() -> None:
     assert "Request ID: ui-" in support_context
     assert "Support Outcome: grounded_draft_ready" in support_context
     assert f"Retrieval Top K: {settings.top_k}" in debug_metadata
+    assert answer_quality_state == "Answer Quality — Standard draft quality."
     assert error_state == "No active errors."
     assert status == "Advisor review required before external use."
 
@@ -192,6 +202,7 @@ def test_run_query_returns_scope_refusal_without_backend_call() -> None:
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         status,
     ) = run_query(
@@ -207,6 +218,7 @@ def test_run_query_returns_scope_refusal_without_backend_call() -> None:
     assert "grounding:limited" in trace_summary
     assert "Support Outcome: unsupported_scope_refusal" in support_context
     assert "Retrieval Top K: n/a" in debug_metadata
+    assert answer_quality_state == DEGRADED_ANSWER_QUALITY_MESSAGE
     assert error_state == "No active errors."
     assert status == "This response is a draft for advisor review."
     assert called is False
@@ -228,6 +240,7 @@ def test_run_query_returns_prompt_injection_refusal_without_backend_call() -> No
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         status,
     ) = run_query(
@@ -243,6 +256,7 @@ def test_run_query_returns_prompt_injection_refusal_without_backend_call() -> No
     assert "grounding:limited" in trace_summary
     assert "Support Outcome: prompt_guardrail_refusal" in support_context
     assert "Retrieval Top K: n/a" in debug_metadata
+    assert answer_quality_state == DEGRADED_ANSWER_QUALITY_MESSAGE
     assert error_state == "No active errors."
     assert status == "This response is a draft for advisor review."
     assert called is False
@@ -259,6 +273,7 @@ def test_run_query_emits_scope_refusal_event(caplog: pytest.LogCaptureFixture) -
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         _status,
     ) = run_query(
@@ -272,6 +287,7 @@ def test_run_query_emits_scope_refusal_event(caplog: pytest.LogCaptureFixture) -
     assert trace_summary
     assert support_context
     assert debug_metadata
+    assert answer_quality_state
     assert error_state == "No active errors."
     refusal_event = next(
         record
@@ -295,6 +311,7 @@ def test_run_query_emits_prompt_injection_guardrail_event(
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         _status,
     ) = run_query(
@@ -308,6 +325,7 @@ def test_run_query_emits_prompt_injection_guardrail_event(
     assert trace_summary
     assert support_context
     assert debug_metadata
+    assert answer_quality_state
     assert error_state == "No active errors."
     guardrail_event = next(
         record
@@ -334,6 +352,7 @@ def test_run_query_returns_blank_query_error_without_backend_call() -> None:
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         status,
     ) = run_query(
@@ -359,6 +378,7 @@ def test_run_query_returns_blank_query_error_without_backend_call() -> None:
         "",
         "",
     )
+    assert answer_quality_state == ""
     assert error_state == "Input Error — Please enter a question."
     assert status == "Please enter a question."
     assert called is False
@@ -383,6 +403,7 @@ def test_run_query_distinguishes_insufficient_evidence_from_runtime_failure() ->
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         status,
     ) = run_query(
@@ -397,6 +418,7 @@ def test_run_query_distinguishes_insufficient_evidence_from_runtime_failure() ->
     assert "grounding:limited" in trace_summary
     assert "Support Outcome: limited_evidence_draft" in support_context
     assert "Debug Outcome: limited_evidence_draft" in debug_metadata
+    assert answer_quality_state == DEGRADED_ANSWER_QUALITY_MESSAGE
     assert error_state == "No active errors."
     assert "Error:" not in status
 
@@ -413,6 +435,7 @@ def test_run_query_surfaces_runtime_failures_as_explicit_errors() -> None:
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         status,
     ) = run_query(
@@ -438,6 +461,7 @@ def test_run_query_surfaces_runtime_failures_as_explicit_errors() -> None:
         "",
         "",
     )
+    assert answer_quality_state == ""
     assert error_state == "Runtime Error — Unable to process the query right now. Please try again."
     assert "Unable to process the query right now." in status
     assert "backend offline" in status
@@ -513,6 +537,28 @@ def test_format_readiness_state_renders_ready_and_degraded_messages() -> None:
     assert (
         format_readiness_state(status="degraded", detail="qdrant-client is unavailable.")
         == "Service Readiness — Degraded. qdrant-client is unavailable."
+    )
+
+
+def test_format_answer_quality_state_renders_standard_and_degraded_messages() -> None:
+    assert (
+        format_answer_quality_state(make_grounded_result())
+        == "Answer Quality — Standard draft quality."
+    )
+    assert (
+        format_answer_quality_state(
+            make_grounded_result(
+                answer=(
+                    "I do not have enough grounded evidence in the retrieved documents "
+                    "to answer this confidently."
+                ),
+                confidence="low",
+                limitations=[
+                    "Retrieved evidence is insufficient for a strong grounded answer."
+                ],
+            )
+        )
+        == DEGRADED_ANSWER_QUALITY_MESSAGE
     )
 
 
@@ -651,6 +697,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Trace Summary" in component_labels
     assert "Support Context" in component_labels
     assert "Debug Metadata" in component_labels
+    assert "Answer Quality" in component_labels
     assert "Error State" in component_labels
     assert "Loading Status" in component_labels
     assert "Citations" in component_labels
@@ -666,8 +713,9 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert len(updates) == 2
     loading_update = updates[0]
     final_update = updates[1]
-    assert loading_update[7] == "No active errors."
-    assert loading_update[8] == "Generating draft answer..."
+    assert loading_update[7] == ""
+    assert loading_update[8] == "No active errors."
+    assert loading_update[9] == "Generating draft answer..."
 
     (
         answer,
@@ -677,6 +725,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         loading_status,
         status,
@@ -688,6 +737,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "query_received" in trace_summary
     assert "Request ID: ui-" in support_context
     assert "Debug Outcome: grounded_draft_ready" in debug_metadata
+    assert answer_quality_state == "Answer Quality — Standard draft quality."
     assert error_state == "No active errors."
     assert loading_status == "Draft answer ready for review."
     assert status == "Advisor review required before external use."

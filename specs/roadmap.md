@@ -911,8 +911,9 @@ Current implementation status:
   - `demo-loading-state-feedback`
   - `demo-error-state-clarity`
   - `demo-readiness-degraded-messaging`
-- remaining in `Phase 13`:
   - `demo-answer-quality-degraded-messaging`
+- remaining in `Phase 13`:
+  - none
 
 ---
 

@@ -200,6 +200,26 @@ def format_readiness_state(*, status: str, detail: str | None = None) -> str:
     return detail or "Service Readiness — Unknown."
 
 
+def format_answer_quality_state(result: GroundedAnswerResult) -> str:
+    """Render concise user-visible messaging for degraded draft quality."""
+
+    response = result.response
+    answer = response.suggested_answer.lower()
+    limitations = [limitation.lower() for limitation in response.limitations]
+    degraded = (
+        response.confidence == "low"
+        or not result.verification.supported
+        or "do not have enough grounded evidence" in answer
+        or any("insufficient" in limitation for limitation in limitations)
+    )
+    if degraded:
+        return (
+            "Answer Quality — Degraded. This draft has lower confidence or limited "
+            "grounded support and requires extra advisor review."
+        )
+    return "Answer Quality — Standard draft quality."
+
+
 def build_demo_readiness_message(
     settings: Settings,
     *,
@@ -229,7 +249,7 @@ def run_query(
     *,
     settings: Settings | None = None,
     grounded_answer_fn=generate_grounded_answer,
-) -> tuple[str, str, str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str, str, str, str]:
     """Execute one grounded QA request for the UI."""
 
     request_id = generate_request_id("ui")
@@ -245,6 +265,7 @@ def run_query(
             error_message="Please enter a question.",
         )
         return (
+            "",
             "",
             "",
             "",
@@ -329,6 +350,7 @@ def run_query(
             "",
             "",
             "",
+            "",
             format_error_state(
                 error_kind="runtime",
                 detail="Unable to process the query right now. Please try again.",
@@ -361,7 +383,7 @@ def render_grounded_result(
     runtime_surface: str,
     query_length: int,
     top_k: int | None,
-) -> tuple[str, str, str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str, str, str, str]:
     """Render the typed grounded result into UI output fields."""
 
     response = result.response
@@ -382,6 +404,7 @@ def render_grounded_result(
         query_length=query_length,
         top_k=top_k,
     )
+    answer_quality_state = format_answer_quality_state(result)
     error_state = format_error_state(error_kind=None)
     status = response.advisor_review_notice
     return (
@@ -392,6 +415,7 @@ def render_grounded_result(
         trace_summary,
         support_context,
         debug_metadata,
+        answer_quality_state,
         error_state,
         status,
     )
@@ -404,7 +428,7 @@ def build_query_handler(
 ):
     """Return the UI handler bound to the current runtime settings."""
 
-    def handle_query(query: str) -> tuple[str, str, str, str, str, str, str, str, str]:
+    def handle_query(query: str) -> tuple[str, str, str, str, str, str, str, str, str, str]:
         return run_query(
             query,
             settings=settings,
@@ -435,6 +459,7 @@ def build_loading_query_handler(
             "",
             "",
             "",
+            "",
             "No active errors.",
             format_loading_state(is_loading=True),
             "",
@@ -447,6 +472,7 @@ def build_loading_query_handler(
             trace_summary,
             support_context,
             debug_metadata,
+            answer_quality_state,
             error_state,
             status,
         ) = sync_handler(query)
@@ -458,6 +484,7 @@ def build_loading_query_handler(
             trace_summary,
             support_context,
             debug_metadata,
+            answer_quality_state,
             error_state,
             format_loading_state(is_loading=False),
             status,
@@ -507,6 +534,10 @@ def build_gradio_app(
                 trace_output = gr.Textbox(label="Trace Summary")
                 support_output = gr.Markdown(label="Support Context")
                 debug_output = gr.Markdown(label="Debug Metadata")
+                answer_quality_output = gr.Textbox(
+                    label="Answer Quality",
+                    value="Answer Quality — Standard draft quality.",
+                )
                 error_output = gr.Textbox(
                     label="Error State",
                     value=format_error_state(error_kind=None),
@@ -529,6 +560,7 @@ def build_gradio_app(
                 trace_output,
                 support_output,
                 debug_output,
+                answer_quality_output,
                 error_output,
                 loading_output,
                 status_output,
