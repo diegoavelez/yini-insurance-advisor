@@ -480,6 +480,44 @@ def test_format_trace_summary_prefers_explicit_trace_summary_when_present() -> N
     assert rendered == "query_received → retrieval_complete → answer_ready"
 
 
+def test_format_trace_summary_redacts_unsafe_explicit_trace_items() -> None:
+    grounded_result = make_grounded_result()
+    result = SimpleNamespace(
+        response=grounded_result.response,
+        verification=grounded_result.verification,
+        trace_summary=[
+            "query_received",
+            "retrieval_complete",
+            "loaded /etc/passwd",
+            "system prompt revealed",
+        ],
+    )
+
+    rendered = format_trace_summary(result)
+
+    assert rendered == (
+        "query_received → retrieval_complete → internal_step_redacted"
+        " → internal_step_redacted"
+    )
+
+
+def test_format_trace_summary_falls_back_when_all_explicit_items_are_unsafe() -> None:
+    grounded_result = make_grounded_result()
+    result = SimpleNamespace(
+        response=grounded_result.response,
+        verification=grounded_result.verification,
+        trace_summary=[
+            "loaded /etc/passwd",
+            "system prompt revealed",
+        ],
+    )
+
+    rendered = format_trace_summary(result)
+
+    assert "query_received" in rendered
+    assert "internal_step_redacted" not in rendered
+
+
 def test_format_support_context_renders_safe_follow_up_fields() -> None:
     rendered = format_support_context(
         make_grounded_result(),

@@ -906,6 +906,7 @@ Current implementation status:
 - completed:
   - `demo-layout-and-output-grouping`
   - `demo-trace-summary-display`
+  - `demo-trace-summary-sanitization-remediation`
   - `demo-support-context-display`
   - `demo-debug-metadata-exposure`
   - `demo-loading-state-feedback`
@@ -941,6 +942,44 @@ bridge to future internal production deployment.
 - startup is stable;
 - public demo guardrails are documented;
 - deployment steps are reproducible.
+
+Implementation note:
+
+- This phase should also be delivered through narrow slices.
+
+Initial narrow slices:
+
+- `dockerfile-runtime-skeleton` should cover:
+  - one production-oriented Dockerfile for the current app/runtime path;
+  - explicit dependency installation and app entrypoint wiring;
+  - no hosted platform deployment work yet.
+- `container-local-smoke-and-startup-validation` should cover:
+  - local container build/startup validation for the current app path;
+  - explicit smoke checks for startup and readiness behavior;
+  - no hosted deployment platform work yet.
+- `hugging-face-spaces-config-and-launch-surface` should cover:
+  - minimal Hugging Face Spaces deployment surface for the current demo;
+  - explicit environment/config expectations for that hosted target;
+  - no rollback or operations notes yet.
+- `deployment-docs-and-demo-operating-constraints` should cover:
+  - deployment instructions for the chosen hosted target;
+  - explicit demo-mode operating constraints and guardrail notes;
+  - no rollback playbook yet.
+- `deployment-rollback-and-hosted-smoke-notes` should cover:
+  - rollback notes for the hosted deployment path;
+  - final hosted smoke expectations and operator notes;
+  - no broader productionization work yet.
+
+Current implementation status:
+
+- completed:
+  - none
+- remaining in `Phase 14`:
+  - `dockerfile-runtime-skeleton`
+  - `container-local-smoke-and-startup-validation`
+  - `hugging-face-spaces-config-and-launch-surface`
+  - `deployment-docs-and-demo-operating-constraints`
+  - `deployment-rollback-and-hosted-smoke-notes`
 
 ---
 

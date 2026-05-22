@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import logging
+import re
 
 from contracts import Citation, GroundedAnswerResult, RetrievalQuery
 from core.config import Settings, get_settings, validate_startup_settings
@@ -37,6 +38,7 @@ DEFAULT_ERROR_MESSAGE = "Unable to process the query right now."
 DEFAULT_LOADING_MESSAGE = "Generating draft answer..."
 UI_LOGGER = logging.getLogger("yini.ui")
 APP_LOGGER = logging.getLogger("yini.app")
+SAFE_TRACE_ITEM_PATTERN = re.compile(r"^[a-z0-9_:-]{1,40}$")
 
 
 def format_citations(citations: list[Citation]) -> str:
@@ -76,7 +78,9 @@ def format_trace_summary(result: GroundedAnswerResult) -> str:
 
     explicit_trace = getattr(result, "trace_summary", None)
     if isinstance(explicit_trace, list) and explicit_trace:
-        return " → ".join(str(item) for item in explicit_trace)
+        sanitized_items = sanitize_trace_items(explicit_trace)
+        if sanitized_items:
+            return " → ".join(sanitized_items)
 
     response = result.response
     verification = result.verification
@@ -88,6 +92,21 @@ def format_trace_summary(result: GroundedAnswerResult) -> str:
     steps.append(f"confidence:{response.confidence}")
     steps.append("grounding:supported" if verification.supported else "grounding:limited")
     return " → ".join(steps)
+
+
+def sanitize_trace_items(items: list[object]) -> list[str]:
+    """Keep only concise public-safe trace items for the demo UI."""
+
+    sanitized: list[str] = []
+    for item in items[:5]:
+        normalized = str(item).strip().lower()
+        if SAFE_TRACE_ITEM_PATTERN.fullmatch(normalized):
+            sanitized.append(normalized)
+        else:
+            sanitized.append("internal_step_redacted")
+    if sanitized and all(item == "internal_step_redacted" for item in sanitized):
+        return []
+    return sanitized
 
 
 def infer_support_outcome(result: GroundedAnswerResult) -> str:

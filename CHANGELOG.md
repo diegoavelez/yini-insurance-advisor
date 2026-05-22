@@ -2,6 +2,10 @@
 
 ## 2026-05-22
 
+- Add the corrective `Phase 13` demo-hardening slice that sanitizes explicit
+  public trace summaries, preserves safe concise trace labels, redacts unsafe
+  internal trace items, and falls back to the derived review-oriented trace
+  when explicit trace data is not safe to show.
 - Add the final `Phase 13` demo-hardening slice with a narrow `Answer Quality`
   surface, explicit degraded messaging for lower-confidence and limited-evidence
   drafts, and local validation that closes the remaining demo UI hardening work.
