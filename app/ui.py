@@ -181,6 +181,43 @@ def format_error_state(
     return detail or "Unknown error state."
 
 
+def format_readiness_state(*, status: str, detail: str | None = None) -> str:
+    """Render concise demo-safe readiness messaging for the public UI."""
+
+    if status == "ready":
+        return "Service Readiness — Ready for grounded draft generation."
+    if status == "degraded":
+        return (
+            "Service Readiness — Degraded. "
+            + (
+                detail
+                or (
+                    "Required runtime dependencies are unavailable. "
+                    "Draft generation may not work until the service is restored."
+                )
+            )
+        )
+    return detail or "Service Readiness — Unknown."
+
+
+def build_demo_readiness_message(
+    settings: Settings,
+    *,
+    readiness_status_builder=None,
+) -> str:
+    """Build the user-visible readiness message for the current demo UI."""
+
+    builder = readiness_status_builder or build_readiness_status
+    try:
+        builder(settings, runtime_surface="gradio_ui")
+    except Exception as exc:
+        return format_readiness_state(
+            status="degraded",
+            detail=str(exc),
+        )
+    return format_readiness_state(status="ready")
+
+
 def build_retrieval_query(query: str, settings: Settings) -> RetrievalQuery:
     """Build the typed retrieval query used by the UI backend seam."""
 
@@ -434,17 +471,24 @@ def build_gradio_app(
     settings: Settings | None = None,
     grounded_answer_fn=generate_grounded_answer,
     gradio_module=None,
+    readiness_status_builder=None,
 ):
     """Build the MVP Gradio query UI."""
 
     gr = gradio_module or importlib.import_module("gradio")
+    resolved_settings = settings or get_settings()
+    readiness_message = build_demo_readiness_message(
+        resolved_settings,
+        readiness_status_builder=readiness_status_builder,
+    )
     handler = build_loading_query_handler(
-        settings=settings,
+        settings=resolved_settings,
         grounded_answer_fn=grounded_answer_fn,
     )
     with gr.Blocks(title=APP_TITLE) as app:
         gr.Markdown(f"# {APP_TITLE}")
         gr.Markdown(APP_DESCRIPTION)
+        gr.Markdown(readiness_message, label="Service Readiness")
 
         query_input = gr.Textbox(
             label="Advisor Question",

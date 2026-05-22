@@ -3,6 +3,10 @@
 ## 2026-05-21
 
 - Add the next `Phase 13` demo-hardening slice with a narrow user-visible
+  readiness surface, explicit degraded messaging for runtime/dependency
+  readiness failures, and local validation without drifting into
+  answer-quality degradation work.
+- Add the next `Phase 13` demo-hardening slice with a narrow user-visible
   error-state surface, explicit distinction between input-validation and
   runtime-processing failures, and local validation without drifting into
   degraded-service messaging work.

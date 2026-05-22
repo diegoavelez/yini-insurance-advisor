@@ -9,18 +9,25 @@ import pytest
 from app.ui import (
     APP_DESCRIPTION,
     APP_TITLE,
+    build_demo_readiness_message,
     build_gradio_app,
     format_citations,
     format_debug_metadata,
     format_error_state,
     format_limitations,
     format_loading_state,
+    format_readiness_state,
     format_support_context,
     format_trace_summary,
     render_grounded_result,
     run_query,
 )
-from contracts import AdvisorDraftResponse, Citation, GroundedAnswerResult, GroundingVerification
+from contracts import (
+    AdvisorDraftResponse,
+    Citation,
+    GroundedAnswerResult,
+    GroundingVerification,
+)
 from core.config import Settings, clear_settings_cache
 
 
@@ -498,6 +505,40 @@ def test_format_error_state_renders_input_runtime_and_clear_messages() -> None:
     )
 
 
+def test_format_readiness_state_renders_ready_and_degraded_messages() -> None:
+    assert (
+        format_readiness_state(status="ready")
+        == "Service Readiness — Ready for grounded draft generation."
+    )
+    assert (
+        format_readiness_state(status="degraded", detail="qdrant-client is unavailable.")
+        == "Service Readiness — Degraded. qdrant-client is unavailable."
+    )
+
+
+def test_build_demo_readiness_message_returns_ready_when_runtime_is_ready() -> None:
+    rendered = build_demo_readiness_message(
+        make_settings(),
+        readiness_status_builder=lambda *_args, **_kwargs: {
+            "status": "ready",
+            "event_type": "readiness_check_succeeded",
+        },
+    )
+
+    assert rendered == "Service Readiness — Ready for grounded draft generation."
+
+
+def test_build_demo_readiness_message_returns_degraded_when_readiness_fails() -> None:
+    rendered = build_demo_readiness_message(
+        make_settings(),
+        readiness_status_builder=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            RuntimeError("qdrant-client is unavailable.")
+        ),
+    )
+
+    assert rendered == "Service Readiness — Degraded. qdrant-client is unavailable."
+
+
 @dataclass
 class FakeComponent:
     kind: str
@@ -585,6 +626,10 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
         settings=make_settings(),
         grounded_answer_fn=lambda *_args, **_kwargs: make_grounded_result(),
         gradio_module=fake_gradio,
+        readiness_status_builder=lambda *_args, **_kwargs: {
+            "status": "ready",
+            "event_type": "readiness_check_succeeded",
+        },
     )
 
     assert app.kwargs["title"] == APP_TITLE
@@ -598,6 +643,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
         if "label" in component.kwargs
     ]
     assert "Advisor Question" in component_labels
+    assert "Service Readiness" in component_labels
     assert "Suggested Answer" in component_labels
     assert "Review Status" in component_labels
     assert "Confidence" in component_labels

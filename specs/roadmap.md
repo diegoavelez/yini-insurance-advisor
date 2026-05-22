@@ -890,9 +890,15 @@ Initial narrow slices:
   - clearer user-visible error states for current failures;
   - alignment with the existing request failure surface;
   - no degraded-service messaging yet.
-- `demo-degraded-service-messaging` should cover:
-  - explicit degraded-service messaging for known partial-availability cases;
-  - alignment with current guardrails and readiness semantics;
+- `demo-readiness-degraded-messaging` should cover:
+  - explicit degraded-service messaging for known runtime-readiness and
+    dependency-availability problems;
+  - alignment with the current readiness semantics already exposed by the app;
+  - no answer-quality degradation messaging yet.
+- `demo-answer-quality-degraded-messaging` should cover:
+  - explicit degraded-service messaging for partial-answer or reduced-quality
+    response conditions that still return a draft;
+  - alignment with current guardrails and review-oriented output semantics;
   - no broader deployment work yet.
 
 Current implementation status:
@@ -904,8 +910,9 @@ Current implementation status:
   - `demo-debug-metadata-exposure`
   - `demo-loading-state-feedback`
   - `demo-error-state-clarity`
+  - `demo-readiness-degraded-messaging`
 - remaining in `Phase 13`:
-  - `demo-degraded-service-messaging`
+  - `demo-answer-quality-degraded-messaging`
 
 ---
 
