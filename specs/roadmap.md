@@ -973,9 +973,8 @@ Initial narrow slices:
 Current implementation status:
 
 - completed:
-  - none
-- remaining in `Phase 14`:
   - `dockerfile-runtime-skeleton`
+- remaining in `Phase 14`:
   - `container-local-smoke-and-startup-validation`
   - `hugging-face-spaces-config-and-launch-surface`
   - `deployment-docs-and-demo-operating-constraints`

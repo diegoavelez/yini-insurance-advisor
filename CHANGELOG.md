@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-25
+
+- Add the first `Phase 14` deployment slice with a root Docker runtime
+  skeleton, explicit dependency installation from `pyproject.toml`, explicit
+  Gradio bind/port runtime wiring, and the current app entrypoint without
+  drifting into container smoke validation or hosted deployment work.
+
 ## 2026-05-22
 
 - Add the corrective `Phase 13` demo-hardening slice that sanitizes explicit
