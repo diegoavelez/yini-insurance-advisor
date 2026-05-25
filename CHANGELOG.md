@@ -2,6 +2,11 @@
 
 ## 2026-05-25
 
+- Add the next `Phase 14` deployment slice with one successful local Docker
+  image build for the current runtime skeleton, explicit capture of the build
+  command, and validation that dependency installation and app packaging
+  complete from current repo state without drifting into container startup or
+  readiness checks.
 - Add the first `Phase 14` deployment slice with a root Docker runtime
   skeleton, explicit dependency installation from `pyproject.toml`, explicit
   Gradio bind/port runtime wiring, and the current app entrypoint without
