@@ -2,6 +2,10 @@
 
 ## 2026-05-25
 
+- Add the next `Phase 14` deployment slice with one successful local container
+  startup from the validated image, explicit capture of the startup command and
+  required runtime env surface, and confirmation that the current app
+  entrypoint can launch without immediate failure before readiness probing.
 - Add the next `Phase 14` deployment slice with one successful local Docker
   image build for the current runtime skeleton, explicit capture of the build
   command, and validation that dependency installation and app packaging

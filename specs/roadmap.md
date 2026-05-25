@@ -957,9 +957,13 @@ Initial narrow slices:
   - local container build validation for the current app path;
   - explicit confirmation that the Docker runtime skeleton can be built locally;
   - no startup or readiness smoke execution yet.
-- `container-local-startup-and-readiness-validation` should cover:
+- `container-local-startup-validation` should cover:
   - local container startup validation for the current app path;
-  - explicit smoke checks for startup and readiness behavior after a successful build;
+  - explicit confirmation that the built image can launch the current app entrypoint;
+  - no readiness probing or hosted deployment work yet.
+- `container-local-readiness-validation` should cover:
+  - explicit readiness validation after successful local container startup;
+  - smoke checks for the current readiness surface only;
   - no hosted deployment platform work yet.
 - `hugging-face-spaces-config-and-launch-surface` should cover:
   - minimal Hugging Face Spaces deployment surface for the current demo;
@@ -979,8 +983,9 @@ Current implementation status:
 - completed:
   - `dockerfile-runtime-skeleton`
   - `container-local-build-validation`
+  - `container-local-startup-validation`
 - remaining in `Phase 14`:
-  - `container-local-startup-and-readiness-validation`
+  - `container-local-readiness-validation`
   - `hugging-face-spaces-config-and-launch-surface`
   - `deployment-docs-and-demo-operating-constraints`
   - `deployment-rollback-and-hosted-smoke-notes`
