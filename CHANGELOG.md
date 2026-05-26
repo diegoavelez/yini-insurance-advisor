@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-26
+
+- Add the next `Phase 14` deployment slice with one successful local container
+  readiness validation against the running app surface, explicit capture of the
+  startup and readiness probe commands, and confirmation that the containerized
+  Gradio surface responds with `HTTP 200` before any hosted deployment work.
+
 ## 2026-05-25
 
 - Add the next `Phase 14` deployment slice with one successful local container

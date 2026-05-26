@@ -984,8 +984,8 @@ Current implementation status:
   - `dockerfile-runtime-skeleton`
   - `container-local-build-validation`
   - `container-local-startup-validation`
-- remaining in `Phase 14`:
   - `container-local-readiness-validation`
+- remaining in `Phase 14`:
   - `hugging-face-spaces-config-and-launch-surface`
   - `deployment-docs-and-demo-operating-constraints`
   - `deployment-rollback-and-hosted-smoke-notes`
