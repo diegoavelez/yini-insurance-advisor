@@ -966,8 +966,12 @@ Initial narrow slices:
   - smoke checks for the current readiness surface only;
   - no hosted deployment platform work yet.
 - `hugging-face-spaces-config-and-launch-surface` should cover:
-  - minimal Hugging Face Spaces deployment surface for the current demo;
-  - explicit environment/config expectations for that hosted target;
+  - minimal Hugging Face Spaces configuration surface for the current demo;
+  - explicit environment/runtime expectations for that hosted target;
+  - no launch artifact wiring yet.
+- `hugging-face-spaces-launch-artifacts` should cover:
+  - the minimal repository-side launch artifacts needed by the configured Spaces target;
+  - alignment between the chosen Spaces runtime config and the current app entrypoint;
   - no rollback or operations notes yet.
 - `deployment-docs-and-demo-operating-constraints` should cover:
   - deployment instructions for the chosen hosted target;
@@ -985,8 +989,9 @@ Current implementation status:
   - `container-local-build-validation`
   - `container-local-startup-validation`
   - `container-local-readiness-validation`
+  - `hugging-face-spaces-runtime-config`
 - remaining in `Phase 14`:
-  - `hugging-face-spaces-config-and-launch-surface`
+  - `hugging-face-spaces-launch-artifacts`
   - `deployment-docs-and-demo-operating-constraints`
   - `deployment-rollback-and-hosted-smoke-notes`
 

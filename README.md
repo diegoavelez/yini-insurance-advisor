@@ -1,3 +1,12 @@
+---
+title: Yini Insurance Advisor
+emoji: 🛡️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
+
 # Yini
 
 Yini is an internal assistant designed to help senior insurance advisors

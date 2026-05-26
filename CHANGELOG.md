@@ -2,6 +2,10 @@
 
 ## 2026-05-26
 
+- Add the next `Phase 14` deployment slice with a minimal Hugging Face Spaces
+  runtime configuration in the root `README.md`, explicitly targeting the
+  Docker SDK and `app_port: 7860` to match the current containerized Gradio
+  app path before any launch-artifact or hosted-smoke work.
 - Add the next `Phase 14` deployment slice with one successful local container
   readiness validation against the running app surface, explicit capture of the
   startup and readiness probe commands, and confirmation that the containerized
