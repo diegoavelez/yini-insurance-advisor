@@ -980,9 +980,13 @@ Initial narrow slices:
   - final alignment between the selected Spaces Docker launch artifact and the current app entrypoint;
   - any minimal start script or command normalization required by the Spaces target after stale artifact cleanup;
   - no rollback or operations notes yet.
-- `deployment-docs-and-demo-operating-constraints` should cover:
-  - deployment instructions for the chosen hosted target;
-  - explicit demo-mode operating constraints and guardrail notes;
+- `deployment-docs-for-spaces` should cover:
+  - deployment instructions for the chosen Hugging Face Spaces target;
+  - the minimal operator steps needed to publish the current repo state there;
+  - no operating-constraints or rollback notes yet.
+- `demo-operating-constraints-notes` should cover:
+  - explicit demo-mode operating constraints and guardrail notes for the hosted demo;
+  - narrow documentation of known runtime and dependency constraints;
   - no rollback playbook yet.
 - `deployment-rollback-and-hosted-smoke-notes` should cover:
   - rollback notes for the hosted deployment path;
@@ -999,9 +1003,10 @@ Current implementation status:
   - `hugging-face-spaces-runtime-config`
   - `hugging-face-spaces-dockerfile-alignment`
   - `hugging-face-spaces-start-artifact-cleanup`
-- remaining in `Phase 14`:
   - `hugging-face-spaces-entrypoint-normalization`
-  - `deployment-docs-and-demo-operating-constraints`
+  - `deployment-docs-for-spaces`
+- remaining in `Phase 14`:
+  - `demo-operating-constraints-notes`
   - `deployment-rollback-and-hosted-smoke-notes`
 
 ---

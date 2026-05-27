@@ -2,6 +2,10 @@
 
 ## 2026-05-27
 
+- Add the next `Phase 14` deployment slice with a concise Hugging Face Spaces
+  deployment procedure in `README.md`, aligned to the configured `sdk: docker`
+  runtime, the authoritative root `Dockerfile`, and the minimum startup
+  variables required by the current app contract.
 - Add the next `Phase 14` deployment slice that removes the stale
   `deploy/start.sh`, leaving the validated root `Dockerfile` and its direct
   `python -m app.ui` launch path as the only remaining Hugging Face Spaces

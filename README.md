@@ -60,6 +60,39 @@ make test
 make app
 ```
 
+## Hugging Face Spaces Deployment
+
+This repo is currently configured for a Docker-based Hugging Face Space.
+
+Authoritative deployment surfaces:
+
+- root `README.md` YAML block:
+  - `sdk: docker`
+  - `app_port: 7860`
+- root `Dockerfile`
+
+Minimal operator procedure:
+
+1. Create a new Hugging Face Space and choose the `Docker` SDK.
+2. Push this repository to the Space repository, preserving the root
+   `README.md` YAML block and root `Dockerfile`.
+3. In the Space settings, configure the runtime secrets or variables required
+   by the current startup contract:
+   - `GROQ_API_KEY`
+   - `QDRANT_URL`
+   - `QDRANT_API_KEY`
+4. Let the Space rebuild automatically after the push completes.
+5. Confirm the Space serves the app on port `7860`, matching `app_port` in the
+   root `README.md`.
+
+Notes:
+
+- The Space runtime uses the root `Dockerfile` as the authoritative build
+  artifact.
+- Each new commit pushed to the Space repository triggers a rebuild and restart.
+- This section is intentionally limited to deployment procedure only; demo
+  operating constraints and rollback notes are documented in later slices.
+
 ## Gradio MVP UI
 
 The current app entrypoint is a thin Gradio layer over the grounded QA backend.
@@ -137,7 +170,6 @@ agents/     Future LangGraph agents
 contracts/  Shared typed contracts across ingestion, retrieval, and answers
 core/       Settings and logging bootstrap
 data/       Raw, markdown, processed, and eval data
-deploy/     Container and startup files
 docs/       Supporting durable documentation
 mcp/        Future MCP server/client modules
 ops/        Guardrails and observability modules
