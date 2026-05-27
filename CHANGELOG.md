@@ -2,6 +2,11 @@
 
 ## 2026-05-27
 
+- Add the next `Phase 14` deployment slice with dedicated hosted-deployment
+  rollback notes in `README.md`, explicitly documenting the current Spaces
+  rollback posture, the minimum operator procedure for restoring a known-good
+  repo state, and the required runtime variables that must remain configured
+  after rollback, without mixing in hosted smoke expectations.
 - Add the next `Phase 14` deployment slice with a dedicated hosted-demo
   supported-scope constraints section in `README.md`, explicitly documenting
   the current supported insurance-document posture, unsupported-scope refusal

@@ -996,9 +996,13 @@ Initial narrow slices:
   - explicit supported-scope notes for the hosted demo;
   - narrow documentation of user-visible scope limitations tied to the current advisor surface;
   - no rollback playbook yet.
-- `deployment-rollback-and-hosted-smoke-notes` should cover:
+- `deployment-rollback-notes` should cover:
   - rollback notes for the hosted deployment path;
-  - final hosted smoke expectations and operator notes;
+  - the minimum operator guidance for reverting the current hosted demo state;
+  - no hosted smoke expectations or broader productionization work yet.
+- `hosted-smoke-expectations-and-operator-notes` should cover:
+  - final hosted smoke expectations for the deployed demo;
+  - narrow operator notes for checking the hosted surface after deployment;
   - no broader productionization work yet.
 
 Current implementation status:
@@ -1016,8 +1020,9 @@ Current implementation status:
   - `demo-runtime-and-dependency-constraints-notes`
   - `demo-guardrail-and-refusal-constraints-notes`
   - `demo-supported-scope-constraints-notes`
+  - `deployment-rollback-notes`
 - remaining in `Phase 14`:
-  - `deployment-rollback-and-hosted-smoke-notes`
+  - `hosted-smoke-expectations-and-operator-notes`
 
 ---
 

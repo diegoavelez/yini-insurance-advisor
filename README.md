@@ -93,6 +93,39 @@ Notes:
 - This section is intentionally limited to deployment procedure only; demo
   operating constraints and rollback notes are documented in later slices.
 
+## Deployment Rollback Notes
+
+These notes cover only the minimum rollback guidance for the current hosted
+demo deployment path.
+
+Current rollback posture:
+
+- the hosted target remains a Hugging Face Space configured with:
+  - `sdk: docker`
+  - root `Dockerfile`
+- the practical rollback unit is a previously known-good repo state
+- restoring that known-good repo state to the Space repository triggers a new
+  rebuild of the hosted demo
+
+Minimum rollback procedure:
+
+1. Identify the last known-good commit for the Space repository.
+2. Restore or re-push that repo state to the Space repository.
+3. Preserve the authoritative deployment surfaces in the restored state:
+   - root `README.md` YAML block
+   - root `Dockerfile`
+4. Confirm the required runtime variables are still configured in the Space:
+   - `GROQ_API_KEY`
+   - `QDRANT_URL`
+   - `QDRANT_API_KEY`
+5. Let the Space rebuild from the restored repo state.
+
+Boundary for this section:
+
+- this section is intentionally limited to rollback guidance
+- hosted smoke expectations, runtime/dependency notes, and demo constraint
+  notes are documented in separate slices
+
 ## Demo Runtime and Dependency Constraints
 
 These notes cover only the hosted demo runtime/dependency posture for the
