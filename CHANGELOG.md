@@ -2,6 +2,10 @@
 
 ## 2026-05-26
 
+- Add the next `Phase 14` deployment slice that removes the stale
+  `deploy/Dockerfile`, leaving the validated root `Dockerfile` as the single
+  authoritative Hugging Face Spaces Docker launch artifact for the configured
+  `sdk: docker` runtime before any start-command normalization work.
 - Add the next `Phase 14` deployment slice with a minimal Hugging Face Spaces
   runtime configuration in the root `README.md`, explicitly targeting the
   Docker SDK and `app_port: 7860` to match the current containerized Gradio

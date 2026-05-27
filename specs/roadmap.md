@@ -970,8 +970,12 @@ Initial narrow slices:
   - explicit environment/runtime expectations for that hosted target;
   - no launch artifact wiring yet.
 - `hugging-face-spaces-launch-artifacts` should cover:
-  - the minimal repository-side launch artifacts needed by the configured Spaces target;
-  - alignment between the chosen Spaces runtime config and the current app entrypoint;
+  - the minimal repository-side Docker launch artifact expected by the configured Spaces target;
+  - explicit alignment between the chosen Spaces runtime config and the selected Docker build file;
+  - no start-command normalization yet.
+- `hugging-face-spaces-start-command-alignment` should cover:
+  - alignment between the selected Spaces Docker launch artifact and the current app entrypoint;
+  - any minimal start script or command normalization required by the Spaces target;
   - no rollback or operations notes yet.
 - `deployment-docs-and-demo-operating-constraints` should cover:
   - deployment instructions for the chosen hosted target;
@@ -990,8 +994,9 @@ Current implementation status:
   - `container-local-startup-validation`
   - `container-local-readiness-validation`
   - `hugging-face-spaces-runtime-config`
+  - `hugging-face-spaces-dockerfile-alignment`
 - remaining in `Phase 14`:
-  - `hugging-face-spaces-launch-artifacts`
+  - `hugging-face-spaces-start-command-alignment`
   - `deployment-docs-and-demo-operating-constraints`
   - `deployment-rollback-and-hosted-smoke-notes`
 
