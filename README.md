@@ -130,6 +130,37 @@ Boundary for this section:
 - demo guardrail/supported-scope notes and rollback notes are documented in
   later slices
 
+## Demo Guardrail and Refusal Constraints
+
+These notes cover only the hosted demo guardrail/refusal posture for the
+current public advisor surface.
+
+Current guardrail/refusal behavior:
+
+- prompt-injection-style queries are refused conservatively before the normal
+  grounded-answer path runs
+- answer-generation paths that lose citation traceability are downgraded to a
+  lower-confidence draft instead of being presented as normal grounded output
+- overstated confidence is downgraded before the final draft is surfaced in
+  the demo UI
+
+Current user-visible effect:
+
+- conservative guardrail paths remain draft-oriented and review-oriented rather
+  than presenting themselves as fully grounded final answers
+- the demo surfaces these outcomes through:
+  - limitations
+  - trace summary
+  - support context
+  - debug metadata
+  - answer-quality messaging
+
+Boundary for this section:
+
+- this section is intentionally limited to guardrail/refusal constraints
+- supported-scope notes, runtime/dependency constraints, and rollback notes
+  are documented in separate slices
+
 ## Gradio MVP UI
 
 The current app entrypoint is a thin Gradio layer over the grounded QA backend.

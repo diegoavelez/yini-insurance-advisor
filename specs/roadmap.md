@@ -988,9 +988,13 @@ Initial narrow slices:
   - explicit demo-mode runtime and dependency constraints for the hosted demo;
   - narrow documentation of required environment variables and hosted runtime assumptions;
   - no guardrail/scope notes or rollback playbook yet.
-- `demo-guardrail-and-scope-constraints-notes` should cover:
-  - explicit demo-mode guardrail, refusal, and supported-scope notes for the hosted demo;
-  - narrow documentation of user-visible limitations tied to the current advisor surface;
+- `demo-guardrail-and-refusal-constraints-notes` should cover:
+  - explicit demo-mode guardrail and refusal notes for the hosted demo;
+  - narrow documentation of user-visible guardrail behavior tied to the current advisor surface;
+  - no supported-scope notes or rollback playbook yet.
+- `demo-supported-scope-constraints-notes` should cover:
+  - explicit supported-scope notes for the hosted demo;
+  - narrow documentation of user-visible scope limitations tied to the current advisor surface;
   - no rollback playbook yet.
 - `deployment-rollback-and-hosted-smoke-notes` should cover:
   - rollback notes for the hosted deployment path;
@@ -1010,8 +1014,9 @@ Current implementation status:
   - `hugging-face-spaces-entrypoint-normalization`
   - `deployment-docs-for-spaces`
   - `demo-runtime-and-dependency-constraints-notes`
+  - `demo-guardrail-and-refusal-constraints-notes`
 - remaining in `Phase 14`:
-  - `demo-guardrail-and-scope-constraints-notes`
+  - `demo-supported-scope-constraints-notes`
   - `deployment-rollback-and-hosted-smoke-notes`
 
 ---
