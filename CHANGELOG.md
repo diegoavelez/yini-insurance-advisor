@@ -3,6 +3,11 @@
 ## 2026-05-27
 
 - Add the next `Phase 14` deployment slice with a dedicated hosted-demo
+  supported-scope constraints section in `README.md`, explicitly documenting
+  the current supported insurance-document posture, unsupported-scope refusal
+  behavior, and the user-visible demo surfaces where unsupported requests are
+  surfaced, without mixing in guardrail/refusal or rollback notes.
+- Add the next `Phase 14` deployment slice with a dedicated hosted-demo
   guardrail/refusal constraints section in `README.md`, explicitly documenting
   the current prompt-injection refusal posture, conservative citation and
   confidence downgrade behavior, and the user-visible demo surfaces where

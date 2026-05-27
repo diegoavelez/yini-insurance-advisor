@@ -161,6 +161,37 @@ Boundary for this section:
 - supported-scope notes, runtime/dependency constraints, and rollback notes
   are documented in separate slices
 
+## Demo Supported-Scope Constraints
+
+These notes cover only the hosted demo supported-scope boundary for the
+current public advisor surface.
+
+Current supported-scope posture:
+
+- the demo is intended for grounded questions about supported insurance-policy
+  and procedure documents in the current advisor surface
+- requests outside that supported insurance-document scope are refused before
+  the normal grounded-answer path runs
+- unsupported requests are surfaced as low-confidence draft-oriented responses,
+  not as normal grounded answers
+
+Current user-visible effect:
+
+- unsupported-scope outcomes appear through:
+  - limitations
+  - trace summary
+  - support context
+  - debug metadata
+  - answer-quality messaging
+- unsupported requests do not proceed into the normal grounded-answer
+  generation path
+
+Boundary for this section:
+
+- this section is intentionally limited to supported-scope constraints
+- runtime/dependency notes, guardrail/refusal notes, and rollback notes are
+  documented in separate slices
+
 ## Gradio MVP UI
 
 The current app entrypoint is a thin Gradio layer over the grounded QA backend.

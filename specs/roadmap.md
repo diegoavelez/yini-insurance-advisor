@@ -1015,8 +1015,8 @@ Current implementation status:
   - `deployment-docs-for-spaces`
   - `demo-runtime-and-dependency-constraints-notes`
   - `demo-guardrail-and-refusal-constraints-notes`
-- remaining in `Phase 14`:
   - `demo-supported-scope-constraints-notes`
+- remaining in `Phase 14`:
   - `deployment-rollback-and-hosted-smoke-notes`
 
 ---
