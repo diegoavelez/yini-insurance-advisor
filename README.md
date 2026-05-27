@@ -93,6 +93,43 @@ Notes:
 - This section is intentionally limited to deployment procedure only; demo
   operating constraints and rollback notes are documented in later slices.
 
+## Demo Runtime and Dependency Constraints
+
+These notes cover only the hosted demo runtime/dependency posture for the
+current Docker-based Hugging Face Space.
+
+Current runtime assumptions:
+
+- hosted target remains a Hugging Face Space configured with:
+  - `sdk: docker`
+  - `app_port: 7860`
+- the authoritative build artifact is the root `Dockerfile`
+- the authoritative app entrypoint is:
+  - `python -m app.ui`
+
+Current startup-variable contract:
+
+- `GROQ_API_KEY` must be present at runtime
+- `QDRANT_URL` must be present at runtime
+- `QDRANT_API_KEY` must be present at runtime
+
+Current dependency/runtime constraints:
+
+- the container runtime must expose port `7860`, matching the root `README.md`
+  Spaces config and the root `Dockerfile`
+- the current image is dependency-heavy and includes ML/document-processing
+  packages pulled during `pip install .`; build times and image size should be
+  expected to be non-trivial
+- local container validation used dummy provider values only for startup and
+  readiness checks; a hosted demo still requires real provider configuration
+  to support live retrieval and answer generation
+
+Boundary for this section:
+
+- this section is intentionally limited to runtime and dependency constraints
+- demo guardrail/supported-scope notes and rollback notes are documented in
+  later slices
+
 ## Gradio MVP UI
 
 The current app entrypoint is a thin Gradio layer over the grounded QA backend.

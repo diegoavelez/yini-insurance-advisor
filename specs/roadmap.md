@@ -984,9 +984,13 @@ Initial narrow slices:
   - deployment instructions for the chosen Hugging Face Spaces target;
   - the minimal operator steps needed to publish the current repo state there;
   - no operating-constraints or rollback notes yet.
-- `demo-operating-constraints-notes` should cover:
-  - explicit demo-mode operating constraints and guardrail notes for the hosted demo;
-  - narrow documentation of known runtime and dependency constraints;
+- `demo-runtime-and-dependency-constraints-notes` should cover:
+  - explicit demo-mode runtime and dependency constraints for the hosted demo;
+  - narrow documentation of required environment variables and hosted runtime assumptions;
+  - no guardrail/scope notes or rollback playbook yet.
+- `demo-guardrail-and-scope-constraints-notes` should cover:
+  - explicit demo-mode guardrail, refusal, and supported-scope notes for the hosted demo;
+  - narrow documentation of user-visible limitations tied to the current advisor surface;
   - no rollback playbook yet.
 - `deployment-rollback-and-hosted-smoke-notes` should cover:
   - rollback notes for the hosted deployment path;
@@ -1005,8 +1009,9 @@ Current implementation status:
   - `hugging-face-spaces-start-artifact-cleanup`
   - `hugging-face-spaces-entrypoint-normalization`
   - `deployment-docs-for-spaces`
+  - `demo-runtime-and-dependency-constraints-notes`
 - remaining in `Phase 14`:
-  - `demo-operating-constraints-notes`
+  - `demo-guardrail-and-scope-constraints-notes`
   - `deployment-rollback-and-hosted-smoke-notes`
 
 ---

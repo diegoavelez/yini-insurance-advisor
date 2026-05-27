@@ -2,6 +2,11 @@
 
 ## 2026-05-27
 
+- Add the next `Phase 14` deployment slice with a dedicated hosted-demo
+  runtime/dependency constraints section in `README.md`, explicitly documenting
+  the current Hugging Face Spaces Docker posture, required startup variables,
+  and evidenced container/runtime constraints without mixing in guardrail or
+  rollback notes.
 - Add the next `Phase 14` deployment slice with a concise Hugging Face Spaces
   deployment procedure in `README.md`, aligned to the configured `sdk: docker`
   runtime, the authoritative root `Dockerfile`, and the minimum startup
