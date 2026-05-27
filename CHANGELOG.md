@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-05-27
+
+- Add the next `Phase 14` deployment slice that removes the stale
+  `deploy/start.sh`, leaving the validated root `Dockerfile` and its direct
+  `python -m app.ui` launch path as the only remaining Hugging Face Spaces
+  startup surface before any entrypoint normalization work.
+
 ## 2026-05-26
 
 - Add the next `Phase 14` deployment slice that removes the stale

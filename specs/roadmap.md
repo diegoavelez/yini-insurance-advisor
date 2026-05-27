@@ -974,8 +974,11 @@ Initial narrow slices:
   - explicit alignment between the chosen Spaces runtime config and the selected Docker build file;
   - no start-command normalization yet.
 - `hugging-face-spaces-start-command-alignment` should cover:
-  - alignment between the selected Spaces Docker launch artifact and the current app entrypoint;
-  - any minimal start script or command normalization required by the Spaces target;
+  - removal or explicit resolution of stale start-command artifacts that still imply a second Spaces launch path;
+  - no Dockerfile or broader deployment-doc work yet.
+- `hugging-face-spaces-entrypoint-normalization` should cover:
+  - final alignment between the selected Spaces Docker launch artifact and the current app entrypoint;
+  - any minimal start script or command normalization required by the Spaces target after stale artifact cleanup;
   - no rollback or operations notes yet.
 - `deployment-docs-and-demo-operating-constraints` should cover:
   - deployment instructions for the chosen hosted target;
@@ -995,8 +998,9 @@ Current implementation status:
   - `container-local-readiness-validation`
   - `hugging-face-spaces-runtime-config`
   - `hugging-face-spaces-dockerfile-alignment`
+  - `hugging-face-spaces-start-artifact-cleanup`
 - remaining in `Phase 14`:
-  - `hugging-face-spaces-start-command-alignment`
+  - `hugging-face-spaces-entrypoint-normalization`
   - `deployment-docs-and-demo-operating-constraints`
   - `deployment-rollback-and-hosted-smoke-notes`
 
