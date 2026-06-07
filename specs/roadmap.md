@@ -1033,8 +1033,8 @@ Current implementation status:
   - `demo-supported-scope-constraints-notes`
   - `deployment-rollback-notes`
   - `hosted-smoke-expectations-and-operator-notes`
-- remaining in `Phase 14`:
   - `hosted-spaces-deployment-validation-and-evidence`
+- remaining in `Phase 14`:
   - `spaces-entrypoint-normalization-traceability-remediation`
   - `readme-phase-status-sync`
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-07
+
+- Advance the corrective `Phase 14` hosted deployment-evidence slice by
+  recording real Hugging Face Spaces startup, readiness, and public
+  accessibility evidence, and update the roadmap to reflect that hosted
+  deployment validation is now complete while the remaining traceability and
+  README-status follow-ups stay open.
+
 ## 2026-05-27
 
 - Add the final documented `Phase 14` hosted-smoke expectations slice in

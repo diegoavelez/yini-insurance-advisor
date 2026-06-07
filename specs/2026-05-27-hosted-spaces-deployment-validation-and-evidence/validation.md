@@ -9,18 +9,18 @@
 
 ## Executed Checks
 
-- Searched the repository for a Hugging Face Space URL or equivalent hosted
-  deployment target reference.
-- Verified the current git remote points only to GitHub.
-
-## Blocking Condition
-
-- A real hosted validation run cannot be executed from the current repo state
-  because no concrete Hugging Face Space URL or target repository is recorded
-  locally.
-- A successful implementation of this slice requires an actual Space target and
-  operator access to it.
+- Recorded real hosted deployment evidence from the Hugging Face Space
+  container log at `2026-06-07 22:57:11`, including:
+  - `startup_diagnostics`
+  - `health_check_succeeded`
+  - `readiness_check_succeeded`
+  - internal `GET /gradio_api/startup-events` → `200 OK`
+  - internal `HEAD /` → `200 OK`
+- Confirmed the hosted runtime bound successfully on `0.0.0.0:7860`.
+- Confirmed public accessibility with external checks:
+  - `https://huggingface.co/spaces/Diegoavelez/Yini-insurance-advisor` → `HTTP 200`
+  - `https://diegoavelez-yini-insurance-advisor.hf.space` → `HTTP 200`
 
 ## Status
 
-- Blocked pending hosted deployment target details.
+- Completed.

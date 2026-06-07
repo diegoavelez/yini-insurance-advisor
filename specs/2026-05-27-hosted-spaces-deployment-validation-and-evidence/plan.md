@@ -31,11 +31,12 @@ smoke evidence.
 
 ## Status
 
-- Pending implementation.
+- Completed.
 
-## Blocker Notes
+## Completion Notes
 
-- No Hugging Face Space URL is currently recorded in the repository.
-- The current git remote points only to GitHub, not to a Hugging Face Space
-  repository.
-- No local deployment target reference was found for a hosted validation run.
+- Recorded real hosted startup evidence from the Hugging Face Space container
+  log, including startup diagnostics, health success, readiness success, and
+  successful local port checks inside the Space runtime.
+- Confirmed the public Space repo page and public `hf.space` app endpoint both
+  return `HTTP 200`.
