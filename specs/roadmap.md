@@ -1034,9 +1034,10 @@ Current implementation status:
   - `deployment-rollback-notes`
   - `hosted-smoke-expectations-and-operator-notes`
   - `hosted-spaces-deployment-validation-and-evidence`
-- remaining in `Phase 14`:
   - `spaces-entrypoint-normalization-traceability-remediation`
   - `readme-phase-status-sync`
+- remaining in `Phase 14`:
+  - none
 
 ---
 

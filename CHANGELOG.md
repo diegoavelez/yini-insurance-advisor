@@ -2,6 +2,10 @@
 
 ## 2026-06-07
 
+- Close the remaining `Phase 14` documentation follow-ups by adding the dated
+  traceability remediation bundle for the Spaces entrypoint-normalization claim
+  and synchronizing the top-level `README.md` phase-status summary so the repo
+  status now matches the roadmap-complete state for `Phase 14`.
 - Advance the corrective `Phase 14` hosted deployment-evidence slice by
   recording real Hugging Face Spaces startup, readiness, and public
   accessibility evidence, and update the roadmap to reflect that hosted

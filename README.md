@@ -19,7 +19,10 @@ and `Phase 3` ingestion/chunking pipeline, the full `Phase 4` embedding and
 indexing pipeline, the completed `Phase 5` MVP QA layer, the completed
 `Phase 6` observability foundation, the completed `Phase 7` reusable tooling
 layer, the completed `Phase 8` workflow orchestration layer, the completed
-`Phase 9` guardrail layer, and the first `Phase 10` evaluation slice.
+`Phase 9` guardrail layer, the implemented `Phase 10` evaluation foundation,
+the completed `Phase 11` optimization foundation, the completed `Phase 12`
+MCP foundation, the completed `Phase 13` demo hardening work, and the
+completed `Phase 14` deployment hardening work.
 
 ## Source Documents
 
@@ -31,9 +34,8 @@ layer, the completed `Phase 8` workflow orchestration layer, the completed
 
 ## Current Status
 
-- `Phase 0` through `Phase 9` are complete.
-- `Phase 10` has started with evaluation schemas and the initial curated
-  question set.
+- `Phase 0` through `Phase 14` are complete.
+- `Phase 15` remains open for final evaluation and cleanup.
 - Detailed implementation status lives in `specs/roadmap.md`.
 
 ## Local Setup
