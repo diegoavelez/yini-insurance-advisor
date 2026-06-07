@@ -225,6 +225,46 @@ Boundary for this section:
 - runtime/dependency notes, guardrail/refusal notes, and rollback notes are
   documented in separate slices
 
+## Hosted Smoke Expectations and Operator Notes
+
+These notes cover only the minimum hosted smoke expectations for the deployed
+demo and the narrow operator checks to run after a deployment or rebuild.
+
+Current hosted smoke expectations:
+
+- the Space should serve the app on port `7860`
+- the public UI should render the current demo surfaces, including:
+  - `Service Readiness`
+  - `Answer Quality`
+  - `Error State`
+- the hosted readiness surface is expected to report:
+  - `Service Readiness — Ready for grounded draft generation.`
+- a benign in-scope query is expected to keep:
+  - `Answer Quality — Standard draft quality.`
+  - `No active errors.`
+  - `This response is a draft for advisor review.`
+
+Minimum operator checks after deploy/rebuild:
+
+1. Open the hosted Space and confirm the app loads successfully.
+2. Confirm the page renders the current demo UI sections, especially:
+   - `Service Readiness`
+   - `Answer Quality`
+   - `Error State`
+3. Confirm the readiness surface reports the ready state rather than a degraded
+   runtime message.
+4. Submit one benign in-scope insurance-document query and confirm:
+   - the response returns as a draft;
+   - no active error state is shown;
+   - answer quality remains the standard draft state.
+
+Boundary for this section:
+
+- this section is intentionally limited to hosted smoke expectations and
+  operator checks
+- rollback guidance, runtime/dependency notes, and demo constraint notes are
+  documented in separate slices
+
 ## Gradio MVP UI
 
 The current app entrypoint is a thin Gradio layer over the grounded QA backend.

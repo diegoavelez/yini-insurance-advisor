@@ -1004,6 +1004,17 @@ Initial narrow slices:
   - final hosted smoke expectations for the deployed demo;
   - narrow operator notes for checking the hosted surface after deployment;
   - no broader productionization work yet.
+- `hosted-spaces-deployment-validation-and-evidence` should cover:
+  - one real Hugging Face Spaces deployment validation for the current demo;
+  - durable recording of the deployed Space URL, deployed commit SHA, and actual hosted smoke results;
+  - no broader productionization work yet.
+- `spaces-entrypoint-normalization-traceability-remediation` should cover:
+  - either a dated spec/validation artifact for the roadmap-claimed entrypoint normalization slice;
+  - or explicit removal/correction of that completion claim if traceability cannot be shown;
+  - no hosted deployment execution work yet.
+- `readme-phase-status-sync` should cover:
+  - synchronization of the top-level README phase-status summary with the actual implemented roadmap state;
+  - no deployment behavior changes or broader documentation rewrite.
 
 Current implementation status:
 
@@ -1021,8 +1032,11 @@ Current implementation status:
   - `demo-guardrail-and-refusal-constraints-notes`
   - `demo-supported-scope-constraints-notes`
   - `deployment-rollback-notes`
-- remaining in `Phase 14`:
   - `hosted-smoke-expectations-and-operator-notes`
+- remaining in `Phase 14`:
+  - `hosted-spaces-deployment-validation-and-evidence`
+  - `spaces-entrypoint-normalization-traceability-remediation`
+  - `readme-phase-status-sync`
 
 ---
 

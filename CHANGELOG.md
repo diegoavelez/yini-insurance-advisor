@@ -2,6 +2,11 @@
 
 ## 2026-05-27
 
+- Add the final documented `Phase 14` hosted-smoke expectations slice in
+  `README.md`, then reopen `Phase 14` truthfully by recording the remaining
+  hosted deployment-evidence, traceability, and README-status gaps surfaced by
+  the audit, including a blocked evidence bundle for real Hugging Face Spaces
+  deployment validation.
 - Add the next `Phase 14` deployment slice with dedicated hosted-deployment
   rollback notes in `README.md`, explicitly documenting the current Spaces
   rollback posture, the minimum operator procedure for restoring a known-good
