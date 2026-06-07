@@ -40,3 +40,5 @@ smoke evidence.
   successful local port checks inside the Space runtime.
 - Confirmed the public Space repo page and public `hf.space` app endpoint both
   return `HTTP 200`.
+- Recorded the deployed Space git SHA from the public remote ref:
+  - `8501842f85f274710d0a62a2fe2147614e1d629b`

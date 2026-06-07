@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Finish the remaining `Phase 14` closure work by recording the deployed
+  Hugging Face Space git SHA in the hosted deployment evidence slice, adding a
+  dated `readme-phase-status-sync` bundle, and updating the README `Next
+  Milestones` section so it points to `Phase 15` instead of stale `Phase 8`
+  work.
 - Close the remaining `Phase 14` documentation follow-ups by adding the dated
   traceability remediation bundle for the Spaces entrypoint-normalization claim
   and synchronizing the top-level `README.md` phase-status summary so the repo

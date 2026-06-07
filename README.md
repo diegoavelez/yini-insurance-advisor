@@ -354,10 +354,11 @@ tests/      Smoke tests and future test coverage
 
 ## Next Milestones
 
-The next implementation work continues `Phase 8` from
+The next implementation work moves into `Phase 15` from
 `/Users/diegovelez/Documents/PROJECTS/codex/yini-insurance-advisor/specs/roadmap.md`,
-starting with:
+focused on:
 
-- `planner-and-tool-routing-agent`
-- `policy-analyst-and-verifier-workflow-pass`
-- `workflow-fallbacks-and-retry-policies`
+- README completion
+- architecture diagrams
+- evaluation report
+- final tests and cleanup

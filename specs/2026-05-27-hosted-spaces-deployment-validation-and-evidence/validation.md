@@ -20,6 +20,8 @@
 - Confirmed public accessibility with external checks:
   - `https://huggingface.co/spaces/Diegoavelez/Yini-insurance-advisor` → `HTTP 200`
   - `https://diegoavelez-yini-insurance-advisor.hf.space` → `HTTP 200`
+- Recorded the deployed Hugging Face Space git ref as:
+  - `8501842f85f274710d0a62a2fe2147614e1d629b` on `refs/heads/main`
 
 ## Status
 
