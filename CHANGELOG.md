@@ -2,6 +2,10 @@
 
 ## 2026-06-08
 
+- Add the third `Phase 15` Spanish-alignment slice by extending deterministic
+  supported-scope matching and prompt-injection detection to common Spanish
+  insurance and override/reveal phrasing, while preserving the current typed
+  refusal contracts, event surfaces, and baseline query-classification path.
 - Add the second `Phase 15` Spanish-alignment slice by switching the default
   embedding model from the English-only `BAAI/bge-small-en-v1.5` to the
   multilingual `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,

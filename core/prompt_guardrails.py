@@ -9,15 +9,23 @@ from pydantic import BaseModel, Field
 INJECTION_SIGNAL_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "ignore_previous_instructions",
-        re.compile(r"(?i)\bignore\b.{0,40}\b(previous|prior|above)\b.{0,40}\binstructions?\b"),
+        re.compile(
+            r"(?i)\b(ignore|ignora|ignorar)\b.{0,40}\b((previous|prior|above|previas?|anteriores?)\b.{0,40}\b(instructions?|instrucciones?)|(instrucciones?|instructions?)\b.{0,40}\b(previas?|anteriores?|previous|prior|above))\b"
+        ),
     ),
     (
         "reveal_system_prompt",
-        re.compile(r"(?i)\b(reveal|show|print|display)\b.{0,40}\b(system prompt|hidden prompt)\b"),
+        re.compile(
+            r"(?i)\b(reveal|show|print|display|revela|muestra|imprime)\b.{0,40}\b("
+            r"system prompt|hidden prompt|prompt del sistema|prompt oculto"
+            r")\b"
+        ),
     ),
     (
         "bypass_guardrails",
-        re.compile(r"(?i)\b(bypass|disable|override)\b.{0,40}\b(guardrails|safety|policies)\b"),
+        re.compile(
+            r"(?i)\b(bypass|disable|override|omite|desactiva|anula)\b.{0,40}\b(guardrails|safety|policies|seguridad|pol[ií]ticas)\b"
+        ),
     ),
 )
 
