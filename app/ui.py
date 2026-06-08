@@ -31,33 +31,108 @@ from rag.ingestion import (
 
 APP_TITLE = "Yini"
 APP_DESCRIPTION = (
-    "Grounded insurance document assistant for advisor review. Answers are drafts and "
-    "must remain tied to cited evidence."
+    "Asistente fundamentado sobre documentos de seguros para revisión del asesor. "
+    "Las respuestas son borradores y deben mantenerse vinculadas a evidencia citada."
 )
-DEFAULT_ERROR_MESSAGE = "Unable to process the query right now."
-DEFAULT_LOADING_MESSAGE = "Generating draft answer..."
+DEFAULT_ERROR_MESSAGE = "No es posible procesar la consulta en este momento."
+DEFAULT_LOADING_MESSAGE = "Generando borrador de respuesta..."
 UI_LOGGER = logging.getLogger("yini.ui")
 APP_LOGGER = logging.getLogger("yini.app")
 SAFE_TRACE_ITEM_PATTERN = re.compile(r"^[a-z0-9_:-]{1,40}$")
+PUBLIC_TEXT_TRANSLATIONS = {
+    "Please enter a question.": "Por favor, ingresa una pregunta.",
+    "Advisor review required before external use.": (
+        "Se requiere revisión del asesor antes del uso externo."
+    ),
+    "This response is a draft for advisor review.": (
+        "Esta respuesta es un borrador para revisión del asesor."
+    ),
+    "Advisor review is still required.": "La revisión del asesor sigue siendo obligatoria.",
+    (
+        "I cannot answer that request within the supported insurance-document scope "
+        "of this assistant."
+    ): (
+        "No puedo responder esa solicitud dentro del alcance soportado de documentos "
+        "de seguros de este asistente."
+    ),
+    "This request is outside the supported insurance-document scope.": (
+        "Esta solicitud está fuera del alcance soportado de documentos de seguros."
+    ),
+    (
+        "I cannot follow instructions that attempt to override the assistant's "
+        "grounded-use rules or reveal hidden system behavior."
+    ): (
+        "No puedo seguir instrucciones que intenten anular las reglas de uso "
+        "fundamentado del asistente ni revelar comportamiento interno oculto."
+    ),
+    "This request triggered a prompt-injection guardrail and was refused conservatively.": (
+        "Esta solicitud activó un guardrail de prompt injection y fue rechazada "
+        "de forma conservadora."
+    ),
+}
+SUPPORT_OUTCOME_TRANSLATIONS = {
+    "prompt_guardrail_refusal": "rechazo por guardrail de prompt",
+    "unsupported_scope_refusal": "rechazo por alcance no soportado",
+    "limited_evidence_draft": "borrador con evidencia limitada",
+    "grounded_draft_ready": "borrador fundamentado listo",
+    "review_required_draft": "borrador que requiere revisión",
+}
+TRACE_ITEM_TRANSLATIONS = {
+    "query_received": "consulta_recibida",
+    "grounded_answer_drafted": "borrador_fundamentado_generado",
+    "internal_step_redacted": "paso_interno_redactado",
+    "grounding:supported": "fundamentacion:soportada",
+    "grounding:limited": "fundamentacion:limitada",
+}
+CONFIDENCE_TRANSLATIONS = {
+    "high": "alta",
+    "medium": "media",
+    "low": "baja",
+}
+
+
+def localize_public_text(text: str) -> str:
+    """Translate stable user-visible public strings without changing backend seams."""
+
+    return PUBLIC_TEXT_TRANSLATIONS.get(text.strip(), text)
+
+
+def localize_support_outcome(outcome: str) -> str:
+    """Translate support/debug outcome labels for the public UI."""
+
+    return SUPPORT_OUTCOME_TRANSLATIONS.get(outcome, outcome)
+
+
+def localize_trace_item(item: str) -> str:
+    """Translate concise trace-summary tokens for the public UI."""
+
+    if item in TRACE_ITEM_TRANSLATIONS:
+        return TRACE_ITEM_TRANSLATIONS[item]
+    if item.startswith("citations:"):
+        return item.replace("citations:", "citas:", 1)
+    if item.startswith("confidence:"):
+        confidence = item.split(":", 1)[1]
+        return f"confianza:{CONFIDENCE_TRANSLATIONS.get(confidence, confidence)}"
+    return item
 
 
 def format_citations(citations: list[Citation]) -> str:
     """Render citations into a stable markdown block for the MVP UI."""
 
     if not citations:
-        return "No citations available."
+        return "No hay citas disponibles."
 
     lines: list[str] = []
     for citation in citations:
         parts = [citation.document_name]
         if citation.section:
-            parts.append(f"section: {citation.section}")
+            parts.append(f"sección: {citation.section}")
         if citation.page is not None:
-            parts.append(f"page: {citation.page}")
+            parts.append(f"página: {citation.page}")
         if citation.clause_id:
-            parts.append(f"clause: {citation.clause_id}")
+            parts.append(f"cláusula: {citation.clause_id}")
         if citation.chunk_id:
-            parts.append(f"chunk: {citation.chunk_id}")
+            parts.append(f"fragmento: {citation.chunk_id}")
         line = "- " + " | ".join(parts)
         if citation.quote:
             line += f"\n  > {citation.quote}"
@@ -69,8 +144,8 @@ def format_limitations(limitations: list[str]) -> str:
     """Render limitations into a stable markdown block for the MVP UI."""
 
     if not limitations:
-        return "No additional limitations noted."
-    return "\n".join(f"- {limitation}" for limitation in limitations)
+        return "No se registraron limitaciones adicionales."
+    return "\n".join(f"- {localize_public_text(limitation)}" for limitation in limitations)
 
 
 def format_trace_summary(result: GroundedAnswerResult) -> str:
@@ -80,7 +155,7 @@ def format_trace_summary(result: GroundedAnswerResult) -> str:
     if isinstance(explicit_trace, list) and explicit_trace:
         sanitized_items = sanitize_trace_items(explicit_trace)
         if sanitized_items:
-            return " → ".join(sanitized_items)
+            return " → ".join(localize_trace_item(item) for item in sanitized_items)
 
     response = result.response
     verification = result.verification
@@ -91,7 +166,7 @@ def format_trace_summary(result: GroundedAnswerResult) -> str:
         steps.append("citations:0")
     steps.append(f"confidence:{response.confidence}")
     steps.append("grounding:supported" if verification.supported else "grounding:limited")
-    return " → ".join(steps)
+    return " → ".join(localize_trace_item(step) for step in steps)
 
 
 def sanitize_trace_items(items: list[object]) -> list[str]:
@@ -140,10 +215,10 @@ def format_support_context(
     outcome = infer_support_outcome(result)
     return "\n".join(
         [
-            f"- Request ID: {request_id}",
-            f"- Runtime Surface: {runtime_surface}",
-            f"- Support Outcome: {outcome}",
-            "- Follow-up: share the request ID when asking for support review.",
+            f"- ID de solicitud: {request_id}",
+            f"- Superficie de ejecución: {runtime_surface}",
+            f"- Resultado de soporte: {localize_support_outcome(outcome)}",
+            "- Seguimiento: comparte el ID de solicitud al pedir revisión de soporte.",
         ]
     )
 
@@ -161,14 +236,15 @@ def format_debug_metadata(
     response = result.response
     return "\n".join(
         [
-            f"- Request ID: {request_id}",
-            f"- Runtime Surface: {runtime_surface}",
-            f"- Query Length: {query_length}",
-            f"- Retrieval Top K: {top_k if top_k is not None else 'n/a'}",
-            f"- Confidence Level: {response.confidence}",
-            f"- Citation Count: {len(response.citations)}",
-            f"- Limitation Count: {len(response.limitations)}",
-            f"- Debug Outcome: {infer_support_outcome(result)}",
+            f"- ID de solicitud: {request_id}",
+            f"- Superficie de ejecución: {runtime_surface}",
+            f"- Longitud de la consulta: {query_length}",
+            f"- Top K de recuperación: {top_k if top_k is not None else 'n/a'}",
+            "- Nivel de confianza: "
+            + CONFIDENCE_TRANSLATIONS.get(response.confidence, response.confidence),
+            f"- Cantidad de citas: {len(response.citations)}",
+            f"- Cantidad de limitaciones: {len(response.limitations)}",
+            f"- Resultado de depuración: {localize_support_outcome(infer_support_outcome(result))}",
         ]
     )
 
@@ -178,7 +254,7 @@ def format_loading_state(*, is_loading: bool) -> str:
 
     if is_loading:
         return DEFAULT_LOADING_MESSAGE
-    return "Draft answer ready for review."
+    return "Borrador listo para revisión."
 
 
 def format_error_state(
@@ -189,34 +265,37 @@ def format_error_state(
     """Render a concise user-visible error-state message."""
 
     if error_kind is None:
-        return "No active errors."
+        return "No hay errores activos."
     if error_kind == "input":
-        return f"Input Error — {detail or 'Please review the question and try again.'}"
+        return (
+            "Error de entrada — "
+            + (detail or "Revisa la pregunta e inténtalo de nuevo.")
+        )
     if error_kind == "runtime":
         return (
-            "Runtime Error — "
-            + (detail or "The request could not be processed right now.")
+            "Error de ejecución — "
+            + (detail or "La solicitud no se puede procesar en este momento.")
         )
-    return detail or "Unknown error state."
+    return detail or "Estado de error desconocido."
 
 
 def format_readiness_state(*, status: str, detail: str | None = None) -> str:
     """Render concise demo-safe readiness messaging for the public UI."""
 
     if status == "ready":
-        return "Service Readiness — Ready for grounded draft generation."
+        return "Estado del servicio — Listo para generar borradores fundamentados."
     if status == "degraded":
         return (
-            "Service Readiness — Degraded. "
+            "Estado del servicio — Degradado. "
             + (
                 detail
                 or (
-                    "Required runtime dependencies are unavailable. "
-                    "Draft generation may not work until the service is restored."
+                    "Las dependencias de ejecución requeridas no están disponibles. "
+                    "La generación del borrador puede fallar hasta que el servicio se restablezca."
                 )
             )
         )
-    return detail or "Service Readiness — Unknown."
+    return detail or "Estado del servicio — Desconocido."
 
 
 def format_answer_quality_state(result: GroundedAnswerResult) -> str:
@@ -233,10 +312,10 @@ def format_answer_quality_state(result: GroundedAnswerResult) -> str:
     )
     if degraded:
         return (
-            "Answer Quality — Degraded. This draft has lower confidence or limited "
-            "grounded support and requires extra advisor review."
+            "Calidad de la respuesta — Degradada. Este borrador tiene menor "
+            "confianza o soporte fundamentado limitado y requiere revisión adicional del asesor."
         )
-    return "Answer Quality — Standard draft quality."
+    return "Calidad de la respuesta — Calidad estándar del borrador."
 
 
 def build_demo_readiness_message(
@@ -292,8 +371,11 @@ def run_query(
             "",
             "",
             "",
-            format_error_state(error_kind="input", detail="Please enter a question."),
-            "Please enter a question.",
+            format_error_state(
+                error_kind="input",
+                detail=localize_public_text("Please enter a question."),
+            ),
+            localize_public_text("Please enter a question."),
         )
 
     resolved_settings = validate_startup_settings(
@@ -372,7 +454,7 @@ def run_query(
             "",
             format_error_state(
                 error_kind="runtime",
-                detail="Unable to process the query right now. Please try again.",
+                detail="No es posible procesar la consulta en este momento. Inténtalo de nuevo.",
             ),
             f"{DEFAULT_ERROR_MESSAGE} Error: {exc}",
         )
@@ -406,7 +488,7 @@ def render_grounded_result(
     """Render the typed grounded result into UI output fields."""
 
     response = result.response
-    answer = response.suggested_answer
+    answer = localize_public_text(response.suggested_answer)
     citations = format_citations(response.citations)
     confidence = response.confidence.upper()
     limitations = format_limitations(response.limitations)
@@ -425,7 +507,7 @@ def render_grounded_result(
     )
     answer_quality_state = format_answer_quality_state(result)
     error_state = format_error_state(error_kind=None)
-    status = response.advisor_review_notice
+    status = localize_public_text(response.advisor_review_notice)
     return (
         answer,
         citations,
@@ -479,7 +561,7 @@ def build_loading_query_handler(
             "",
             "",
             "",
-            "No active errors.",
+            "No hay errores activos.",
             format_loading_state(is_loading=True),
             "",
         )
@@ -534,39 +616,39 @@ def build_gradio_app(
     with gr.Blocks(title=APP_TITLE) as app:
         gr.Markdown(f"# {APP_TITLE}")
         gr.Markdown(APP_DESCRIPTION)
-        gr.Markdown(readiness_message, label="Service Readiness")
+        gr.Markdown(readiness_message, label="Estado del servicio")
 
         query_input = gr.Textbox(
-            label="Advisor Question",
+            label="Pregunta del asesor",
             lines=3,
-            placeholder="Ask about coverage, exclusions, procedures, or requirements.",
+            placeholder="Pregunta por coberturas, exclusiones, procedimientos o requisitos.",
         )
-        submit_button = gr.Button("Generate Draft Answer")
+        submit_button = gr.Button("Generar borrador de respuesta")
 
         with gr.Row():
             with gr.Column():
-                answer_output = gr.Markdown(label="Suggested Answer")
-                status_output = gr.Textbox(label="Review Status")
+                answer_output = gr.Markdown(label="Respuesta sugerida")
+                status_output = gr.Textbox(label="Estado de revisión")
             with gr.Column():
-                confidence_output = gr.Textbox(label="Confidence")
-                limitations_output = gr.Markdown(label="Review Limitations")
-                trace_output = gr.Textbox(label="Trace Summary")
-                support_output = gr.Markdown(label="Support Context")
-                debug_output = gr.Markdown(label="Debug Metadata")
+                confidence_output = gr.Textbox(label="Confianza")
+                limitations_output = gr.Markdown(label="Limitaciones para revisión")
+                trace_output = gr.Textbox(label="Resumen de trazabilidad")
+                support_output = gr.Markdown(label="Contexto de soporte")
+                debug_output = gr.Markdown(label="Metadatos de depuración")
                 answer_quality_output = gr.Textbox(
-                    label="Answer Quality",
-                    value="Answer Quality — Standard draft quality.",
+                    label="Calidad de la respuesta",
+                    value="Calidad de la respuesta — Calidad estándar del borrador.",
                 )
                 error_output = gr.Textbox(
-                    label="Error State",
+                    label="Estado de error",
                     value=format_error_state(error_kind=None),
                 )
                 loading_output = gr.Textbox(
-                    label="Loading Status",
+                    label="Estado de carga",
                     value=format_loading_state(is_loading=False),
                 )
 
-        citations_output = gr.Markdown(label="Citations")
+        citations_output = gr.Markdown(label="Citas")
 
         submit_button.click(
             fn=handler,

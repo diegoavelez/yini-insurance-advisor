@@ -32,8 +32,8 @@ from contracts import (
 from core.config import Settings, clear_settings_cache
 
 DEGRADED_ANSWER_QUALITY_MESSAGE = (
-    "Answer Quality — Degraded. This draft has lower confidence or limited "
-    "grounded support and requires extra advisor review."
+    "Calidad de la respuesta — Degradada. Este borrador tiene menor "
+    "confianza o soporte fundamentado limitado y requiere revisión adicional del asesor."
 )
 
 
@@ -103,15 +103,15 @@ def test_format_citations_renders_traceable_markdown() -> None:
     )
 
     assert "Policy A" in rendered
-    assert "section: Eligibility" in rendered
-    assert "page: 2" in rendered
-    assert "clause: ELIG-2" in rendered
-    assert "chunk: chunk-v2-0" in rendered
+    assert "sección: Eligibility" in rendered
+    assert "página: 2" in rendered
+    assert "cláusula: ELIG-2" in rendered
+    assert "fragmento: chunk-v2-0" in rendered
     assert "Applicant must be over 18 years old." in rendered
 
 
 def test_format_limitations_handles_empty_and_non_empty_lists() -> None:
-    assert format_limitations([]) == "No additional limitations noted."
+    assert format_limitations([]) == "No se registraron limitaciones adicionales."
     assert format_limitations(["First", "Second"]) == "- First\n- Second"
 
 
@@ -138,16 +138,16 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert confidence == "HIGH"
-    assert "Advisor review is still required." in limitations
-    assert "query_received" in trace_summary
-    assert "grounded_answer_drafted" in trace_summary
-    assert "Request ID: ui-123456789abc" in support_context
-    assert "Support Outcome: grounded_draft_ready" in support_context
-    assert "Query Length: 16" in debug_metadata
-    assert "Retrieval Top K: 8" in debug_metadata
-    assert answer_quality_state == "Answer Quality — Standard draft quality."
-    assert error_state == "No active errors."
-    assert status == "Advisor review required before external use."
+    assert "La revisión del asesor sigue siendo obligatoria." in limitations
+    assert "consulta_recibida" in trace_summary
+    assert "borrador_fundamentado_generado" in trace_summary
+    assert "ID de solicitud: ui-123456789abc" in support_context
+    assert "Resultado de soporte: borrador fundamentado listo" in support_context
+    assert "Longitud de la consulta: 16" in debug_metadata
+    assert "Top K de recuperación: 8" in debug_metadata
+    assert answer_quality_state == "Calidad de la respuesta — Calidad estándar del borrador."
+    assert error_state == "No hay errores activos."
+    assert status == "Se requiere revisión del asesor antes del uso externo."
 
 
 def test_run_query_returns_successful_grounded_output() -> None:
@@ -176,14 +176,14 @@ def test_run_query_returns_successful_grounded_output() -> None:
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert confidence == "HIGH"
-    assert "Advisor review is still required." in limitations
-    assert "citations:1" in trace_summary
-    assert "Request ID: ui-" in support_context
-    assert "Support Outcome: grounded_draft_ready" in support_context
-    assert f"Retrieval Top K: {settings.top_k}" in debug_metadata
-    assert answer_quality_state == "Answer Quality — Standard draft quality."
-    assert error_state == "No active errors."
-    assert status == "Advisor review required before external use."
+    assert "La revisión del asesor sigue siendo obligatoria." in limitations
+    assert "citas:1" in trace_summary
+    assert "ID de solicitud: ui-" in support_context
+    assert "Resultado de soporte: borrador fundamentado listo" in support_context
+    assert f"Top K de recuperación: {settings.top_k}" in debug_metadata
+    assert answer_quality_state == "Calidad de la respuesta — Calidad estándar del borrador."
+    assert error_state == "No hay errores activos."
+    assert status == "Se requiere revisión del asesor antes del uso externo."
 
 
 def test_run_query_returns_scope_refusal_without_backend_call() -> None:
@@ -211,16 +211,16 @@ def test_run_query_returns_scope_refusal_without_backend_call() -> None:
         grounded_answer_fn=grounded_answer_fn,
     )
 
-    assert "cannot answer" in answer.lower()
-    assert citations == "No citations available."
+    assert "no puedo responder esa solicitud" in answer.lower()
+    assert citations == "No hay citas disponibles."
     assert confidence == "LOW"
-    assert "outside the supported insurance-document scope" in limitations
-    assert "grounding:limited" in trace_summary
-    assert "Support Outcome: unsupported_scope_refusal" in support_context
-    assert "Retrieval Top K: n/a" in debug_metadata
+    assert "fuera del alcance soportado de documentos de seguros" in limitations
+    assert "fundamentacion:limitada" in trace_summary
+    assert "Resultado de soporte: rechazo por alcance no soportado" in support_context
+    assert "Top K de recuperación: n/a" in debug_metadata
     assert answer_quality_state == DEGRADED_ANSWER_QUALITY_MESSAGE
-    assert error_state == "No active errors."
-    assert status == "This response is a draft for advisor review."
+    assert error_state == "No hay errores activos."
+    assert status == "Esta respuesta es un borrador para revisión del asesor."
     assert called is False
 
 
@@ -249,16 +249,16 @@ def test_run_query_returns_prompt_injection_refusal_without_backend_call() -> No
         grounded_answer_fn=grounded_answer_fn,
     )
 
-    assert "cannot follow instructions" in answer.lower()
-    assert citations == "No citations available."
+    assert "no puedo seguir instrucciones" in answer.lower()
+    assert citations == "No hay citas disponibles."
     assert confidence == "LOW"
-    assert "prompt-injection guardrail" in limitations.lower()
-    assert "grounding:limited" in trace_summary
-    assert "Support Outcome: prompt_guardrail_refusal" in support_context
-    assert "Retrieval Top K: n/a" in debug_metadata
+    assert "guardrail de prompt injection" in limitations.lower()
+    assert "fundamentacion:limitada" in trace_summary
+    assert "Resultado de soporte: rechazo por guardrail de prompt" in support_context
+    assert "Top K de recuperación: n/a" in debug_metadata
     assert answer_quality_state == DEGRADED_ANSWER_QUALITY_MESSAGE
-    assert error_state == "No active errors."
-    assert status == "This response is a draft for advisor review."
+    assert error_state == "No hay errores activos."
+    assert status == "Esta respuesta es un borrador para revisión del asesor."
     assert called is False
 
 
@@ -282,13 +282,13 @@ def test_run_query_emits_scope_refusal_event(caplog: pytest.LogCaptureFixture) -
         grounded_answer_fn=lambda *_args, **_kwargs: make_grounded_result(),
     )
 
-    assert "cannot answer" in answer.lower()
+    assert "no puedo responder esa solicitud" in answer.lower()
     assert confidence == "LOW"
     assert trace_summary
     assert support_context
     assert debug_metadata
     assert answer_quality_state
-    assert error_state == "No active errors."
+    assert error_state == "No hay errores activos."
     refusal_event = next(
         record
         for record in caplog.records
@@ -320,13 +320,13 @@ def test_run_query_emits_prompt_injection_guardrail_event(
         grounded_answer_fn=lambda *_args, **_kwargs: make_grounded_result(),
     )
 
-    assert "cannot follow instructions" in answer.lower()
+    assert "no puedo seguir instrucciones" in answer.lower()
     assert confidence == "LOW"
     assert trace_summary
     assert support_context
     assert debug_metadata
     assert answer_quality_state
-    assert error_state == "No active errors."
+    assert error_state == "No hay errores activos."
     guardrail_event = next(
         record
         for record in caplog.records
@@ -379,8 +379,8 @@ def test_run_query_returns_blank_query_error_without_backend_call() -> None:
         "",
     )
     assert answer_quality_state == ""
-    assert error_state == "Input Error — Please enter a question."
-    assert status == "Please enter a question."
+    assert error_state == "Error de entrada — Por favor, ingresa una pregunta."
+    assert status == "Por favor, ingresa una pregunta."
     assert called is False
 
 
@@ -415,11 +415,11 @@ def test_run_query_distinguishes_insufficient_evidence_from_runtime_failure() ->
     assert "do not have enough grounded evidence" in answer
     assert confidence == "LOW"
     assert "insufficient" in limitations.lower()
-    assert "grounding:limited" in trace_summary
-    assert "Support Outcome: limited_evidence_draft" in support_context
-    assert "Debug Outcome: limited_evidence_draft" in debug_metadata
+    assert "fundamentacion:limitada" in trace_summary
+    assert "Resultado de soporte: borrador con evidencia limitada" in support_context
+    assert "Resultado de depuración: borrador con evidencia limitada" in debug_metadata
     assert answer_quality_state == DEGRADED_ANSWER_QUALITY_MESSAGE
-    assert error_state == "No active errors."
+    assert error_state == "No hay errores activos."
     assert "Error:" not in status
 
 
@@ -462,8 +462,12 @@ def test_run_query_surfaces_runtime_failures_as_explicit_errors() -> None:
         "",
     )
     assert answer_quality_state == ""
-    assert error_state == "Runtime Error — Unable to process the query right now. Please try again."
-    assert "Unable to process the query right now." in status
+    assert (
+        error_state
+        == "Error de ejecución — No es posible procesar la consulta en este momento. "
+        "Inténtalo de nuevo."
+    )
+    assert "No es posible procesar la consulta en este momento." in status
     assert "backend offline" in status
 
 
@@ -477,7 +481,7 @@ def test_format_trace_summary_prefers_explicit_trace_summary_when_present() -> N
 
     rendered = format_trace_summary(result)
 
-    assert rendered == "query_received → retrieval_complete → answer_ready"
+    assert rendered == "consulta_recibida → retrieval_complete → answer_ready"
 
 
 def test_format_trace_summary_redacts_unsafe_explicit_trace_items() -> None:
@@ -496,8 +500,8 @@ def test_format_trace_summary_redacts_unsafe_explicit_trace_items() -> None:
     rendered = format_trace_summary(result)
 
     assert rendered == (
-        "query_received → retrieval_complete → internal_step_redacted"
-        " → internal_step_redacted"
+        "consulta_recibida → retrieval_complete → paso_interno_redactado"
+        " → paso_interno_redactado"
     )
 
 
@@ -514,8 +518,8 @@ def test_format_trace_summary_falls_back_when_all_explicit_items_are_unsafe() ->
 
     rendered = format_trace_summary(result)
 
-    assert "query_received" in rendered
-    assert "internal_step_redacted" not in rendered
+    assert "consulta_recibida" in rendered
+    assert "paso_interno_redactado" not in rendered
 
 
 def test_format_support_context_renders_safe_follow_up_fields() -> None:
@@ -525,10 +529,10 @@ def test_format_support_context_renders_safe_follow_up_fields() -> None:
         runtime_surface="gradio_ui",
     )
 
-    assert "Request ID: ui-123456789abc" in rendered
-    assert "Runtime Surface: gradio_ui" in rendered
-    assert "Support Outcome: grounded_draft_ready" in rendered
-    assert "share the request ID" in rendered
+    assert "ID de solicitud: ui-123456789abc" in rendered
+    assert "Superficie de ejecución: gradio_ui" in rendered
+    assert "Resultado de soporte: borrador fundamentado listo" in rendered
+    assert "comparte el ID de solicitud" in rendered
 
 
 def test_format_debug_metadata_renders_compact_operator_fields() -> None:
@@ -540,48 +544,49 @@ def test_format_debug_metadata_renders_compact_operator_fields() -> None:
         top_k=8,
     )
 
-    assert "Request ID: ui-123456789abc" in rendered
-    assert "Runtime Surface: gradio_ui" in rendered
-    assert "Query Length: 16" in rendered
-    assert "Retrieval Top K: 8" in rendered
-    assert "Debug Outcome: grounded_draft_ready" in rendered
+    assert "ID de solicitud: ui-123456789abc" in rendered
+    assert "Superficie de ejecución: gradio_ui" in rendered
+    assert "Longitud de la consulta: 16" in rendered
+    assert "Top K de recuperación: 8" in rendered
+    assert "Resultado de depuración: borrador fundamentado listo" in rendered
 
 
 def test_format_loading_state_renders_loading_and_ready_messages() -> None:
-    assert format_loading_state(is_loading=True) == "Generating draft answer..."
-    assert format_loading_state(is_loading=False) == "Draft answer ready for review."
+    assert format_loading_state(is_loading=True) == "Generando borrador de respuesta..."
+    assert format_loading_state(is_loading=False) == "Borrador listo para revisión."
 
 
 def test_format_error_state_renders_input_runtime_and_clear_messages() -> None:
-    assert format_error_state(error_kind=None) == "No active errors."
+    assert format_error_state(error_kind=None) == "No hay errores activos."
     assert (
-        format_error_state(error_kind="input", detail="Please enter a question.")
-        == "Input Error — Please enter a question."
+        format_error_state(error_kind="input", detail="Por favor, ingresa una pregunta.")
+        == "Error de entrada — Por favor, ingresa una pregunta."
     )
     assert (
         format_error_state(
             error_kind="runtime",
-            detail="Unable to process the query right now. Please try again.",
+            detail="No es posible procesar la consulta en este momento. Inténtalo de nuevo.",
         )
-        == "Runtime Error — Unable to process the query right now. Please try again."
+        == "Error de ejecución — No es posible procesar la consulta en este momento. "
+        "Inténtalo de nuevo."
     )
 
 
 def test_format_readiness_state_renders_ready_and_degraded_messages() -> None:
     assert (
         format_readiness_state(status="ready")
-        == "Service Readiness — Ready for grounded draft generation."
+        == "Estado del servicio — Listo para generar borradores fundamentados."
     )
     assert (
         format_readiness_state(status="degraded", detail="qdrant-client is unavailable.")
-        == "Service Readiness — Degraded. qdrant-client is unavailable."
+        == "Estado del servicio — Degradado. qdrant-client is unavailable."
     )
 
 
 def test_format_answer_quality_state_renders_standard_and_degraded_messages() -> None:
     assert (
         format_answer_quality_state(make_grounded_result())
-        == "Answer Quality — Standard draft quality."
+        == "Calidad de la respuesta — Calidad estándar del borrador."
     )
     assert (
         format_answer_quality_state(
@@ -609,7 +614,7 @@ def test_build_demo_readiness_message_returns_ready_when_runtime_is_ready() -> N
         },
     )
 
-    assert rendered == "Service Readiness — Ready for grounded draft generation."
+    assert rendered == "Estado del servicio — Listo para generar borradores fundamentados."
 
 
 def test_build_demo_readiness_message_returns_degraded_when_readiness_fails() -> None:
@@ -620,7 +625,7 @@ def test_build_demo_readiness_message_returns_degraded_when_readiness_fails() ->
         ),
     )
 
-    assert rendered == "Service Readiness — Degraded. qdrant-client is unavailable."
+    assert rendered == "Estado del servicio — Degradado. qdrant-client is unavailable."
 
 
 @dataclass
@@ -726,19 +731,19 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
         for component in app.children
         if "label" in component.kwargs
     ]
-    assert "Advisor Question" in component_labels
-    assert "Service Readiness" in component_labels
-    assert "Suggested Answer" in component_labels
-    assert "Review Status" in component_labels
-    assert "Confidence" in component_labels
-    assert "Review Limitations" in component_labels
-    assert "Trace Summary" in component_labels
-    assert "Support Context" in component_labels
-    assert "Debug Metadata" in component_labels
-    assert "Answer Quality" in component_labels
-    assert "Error State" in component_labels
-    assert "Loading Status" in component_labels
-    assert "Citations" in component_labels
+    assert "Pregunta del asesor" in component_labels
+    assert "Estado del servicio" in component_labels
+    assert "Respuesta sugerida" in component_labels
+    assert "Estado de revisión" in component_labels
+    assert "Confianza" in component_labels
+    assert "Limitaciones para revisión" in component_labels
+    assert "Resumen de trazabilidad" in component_labels
+    assert "Contexto de soporte" in component_labels
+    assert "Metadatos de depuración" in component_labels
+    assert "Calidad de la respuesta" in component_labels
+    assert "Estado de error" in component_labels
+    assert "Estado de carga" in component_labels
+    assert "Citas" in component_labels
 
     submit_button = next(
         component for component in app.children if component.kind == "Button"
@@ -752,8 +757,8 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     loading_update = updates[0]
     final_update = updates[1]
     assert loading_update[7] == ""
-    assert loading_update[8] == "No active errors."
-    assert loading_update[9] == "Generating draft answer..."
+    assert loading_update[8] == "No hay errores activos."
+    assert loading_update[9] == "Generando borrador de respuesta..."
 
     (
         answer,
@@ -771,11 +776,11 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert confidence == "HIGH"
-    assert "Advisor review is still required." in limitations
-    assert "query_received" in trace_summary
-    assert "Request ID: ui-" in support_context
-    assert "Debug Outcome: grounded_draft_ready" in debug_metadata
-    assert answer_quality_state == "Answer Quality — Standard draft quality."
-    assert error_state == "No active errors."
-    assert loading_status == "Draft answer ready for review."
-    assert status == "Advisor review required before external use."
+    assert "La revisión del asesor sigue siendo obligatoria." in limitations
+    assert "consulta_recibida" in trace_summary
+    assert "ID de solicitud: ui-" in support_context
+    assert "Resultado de depuración: borrador fundamentado listo" in debug_metadata
+    assert answer_quality_state == "Calidad de la respuesta — Calidad estándar del borrador."
+    assert error_state == "No hay errores activos."
+    assert loading_status == "Borrador listo para revisión."
+    assert status == "Se requiere revisión del asesor antes del uso externo."

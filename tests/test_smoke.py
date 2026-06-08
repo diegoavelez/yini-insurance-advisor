@@ -230,15 +230,15 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
     )
 
     assert "Coverage applies" in answer
-    assert citations == "No citations available."
+    assert citations == "No hay citas disponibles."
     assert confidence == "HIGH"
-    assert limitations == "No additional limitations noted."
-    assert "query_received" in trace_summary
-    assert "Request ID: ui-" in support_context
-    assert "Debug Outcome: grounded_draft_ready" in debug_metadata
-    assert answer_quality_state == "Answer Quality — Standard draft quality."
-    assert error_state == "No active errors."
-    assert status == "Advisor review required before external use."
+    assert limitations == "No se registraron limitaciones adicionales."
+    assert "consulta_recibida" in trace_summary
+    assert "ID de solicitud: ui-" in support_context
+    assert "Resultado de depuración: borrador fundamentado listo" in debug_metadata
+    assert answer_quality_state == "Calidad de la respuesta — Calidad estándar del borrador."
+    assert error_state == "No hay errores activos."
+    assert status == "Se requiere revisión del asesor antes del uso externo."
 
 
 def test_hosted_health_smoke_payload_is_callable() -> None:

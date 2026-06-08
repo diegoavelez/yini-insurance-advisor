@@ -2,6 +2,11 @@
 
 ## 2026-06-07
 
+- Add the first `Phase 15` Spanish-alignment slice by localizing the public
+  Gradio demo UI into Spanish, translating user-visible status/support/debug
+  surfaces in the UI layer without changing retrieval behavior, and updating
+  the roadmap to document both the completed `Phase 4` accounting gap and the
+  new `Phase 15` Spanish-localization slice state.
 - Finish the remaining `Phase 14` closure work by recording the deployed
   Hugging Face Space git SHA in the hosted deployment evidence slice, adding a
   dated `readme-phase-status-sync` bundle, and updating the README `Next

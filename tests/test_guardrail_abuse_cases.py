@@ -174,16 +174,16 @@ def test_guardrail_abuse_case_unsupported_query_refuses_conservatively() -> None
         ),
     )
 
-    assert "cannot answer" in answer.lower()
-    assert citations == "No citations available."
+    assert "no puedo responder esa solicitud" in answer.lower()
+    assert citations == "No hay citas disponibles."
     assert confidence == "LOW"
-    assert "outside the supported insurance-document scope" in limitations
-    assert "grounding:limited" in trace_summary
-    assert "Support Outcome: unsupported_scope_refusal" in support_context
-    assert "Debug Outcome: unsupported_scope_refusal" in debug_metadata
-    assert answer_quality_state.startswith("Answer Quality — Degraded.")
-    assert error_state == "No active errors."
-    assert status == "This response is a draft for advisor review."
+    assert "fuera del alcance soportado de documentos de seguros" in limitations
+    assert "fundamentacion:limitada" in trace_summary
+    assert "Resultado de soporte: rechazo por alcance no soportado" in support_context
+    assert "Resultado de depuración: rechazo por alcance no soportado" in debug_metadata
+    assert answer_quality_state.startswith("Calidad de la respuesta — Degradada.")
+    assert error_state == "No hay errores activos."
+    assert status == "Esta respuesta es un borrador para revisión del asesor."
 
 
 def test_guardrail_abuse_case_prompt_injection_refuses_conservatively() -> None:
@@ -206,16 +206,16 @@ def test_guardrail_abuse_case_prompt_injection_refuses_conservatively() -> None:
         ),
     )
 
-    assert "cannot follow instructions" in answer.lower()
-    assert citations == "No citations available."
+    assert "no puedo seguir instrucciones" in answer.lower()
+    assert citations == "No hay citas disponibles."
     assert confidence == "LOW"
-    assert "prompt-injection guardrail" in limitations.lower()
-    assert "grounding:limited" in trace_summary
-    assert "Support Outcome: prompt_guardrail_refusal" in support_context
-    assert "Debug Outcome: prompt_guardrail_refusal" in debug_metadata
-    assert answer_quality_state.startswith("Answer Quality — Degraded.")
-    assert error_state == "No active errors."
-    assert status == "This response is a draft for advisor review."
+    assert "guardrail de prompt injection" in limitations.lower()
+    assert "fundamentacion:limitada" in trace_summary
+    assert "Resultado de soporte: rechazo por guardrail de prompt" in support_context
+    assert "Resultado de depuración: rechazo por guardrail de prompt" in debug_metadata
+    assert answer_quality_state.startswith("Calidad de la respuesta — Degradada.")
+    assert error_state == "No hay errores activos."
+    assert status == "Esta respuesta es un borrador para revisión del asesor."
 
 
 def test_guardrail_abuse_case_citation_presence_downgrades_answerable_output(
@@ -295,10 +295,10 @@ def test_guardrail_abuse_case_benign_control_still_passes_normally() -> None:
     assert "coverage applies" in answer.lower()
     assert "Auto Policy" in citations
     assert confidence == "HIGH"
-    assert "Advisor review is still required." in limitations
-    assert "query_received" in trace_summary
-    assert "Support Outcome: grounded_draft_ready" in support_context
-    assert "Debug Outcome: grounded_draft_ready" in debug_metadata
-    assert answer_quality_state == "Answer Quality — Standard draft quality."
-    assert error_state == "No active errors."
-    assert status == "Advisor review required before external use."
+    assert "La revisión del asesor sigue siendo obligatoria." in limitations
+    assert "consulta_recibida" in trace_summary
+    assert "Resultado de soporte: borrador fundamentado listo" in support_context
+    assert "Resultado de depuración: borrador fundamentado listo" in debug_metadata
+    assert answer_quality_state == "Calidad de la respuesta — Calidad estándar del borrador."
+    assert error_state == "No hay errores activos."
+    assert status == "Se requiere revisión del asesor antes del uso externo."

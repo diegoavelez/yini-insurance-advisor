@@ -220,6 +220,15 @@ Initial narrow slices:
   - retry/backoff behavior;
   - indexing smoke checks against the configured collection.
 
+Current implementation status:
+
+- completed:
+  - `embedding-generation-and-local-artifacts`
+  - `qdrant-collection-bootstrap-and-idempotent-indexing`
+
+- remaining in `Phase 4`:
+  - none
+
 ---
 
 # Phase 5 — Basic RAG MVP
@@ -1062,6 +1071,27 @@ Stabilize the project for final delivery.
 - repository is understandable;
 - demo is stable;
 - deployment and evaluation artifacts are consistent.
+
+## Narrow Slices
+
+- `spanish-demo-ui-localization`
+- `spanish-retrieval-and-embedding-alignment`
+- `spanish-guardrail-and-scope-alignment`
+- `spanish-evaluation-fixtures-and-smoke-coverage`
+- `phase-15-final-readme-and-roadmap-sync`
+
+Current implementation status:
+
+completed:
+
+- `spanish-demo-ui-localization`
+
+remaining in `Phase 15`:
+
+- `spanish-retrieval-and-embedding-alignment`
+- `spanish-guardrail-and-scope-alignment`
+- `spanish-evaluation-fixtures-and-smoke-coverage`
+- `phase-15-final-readme-and-roadmap-sync`
 
 ---
 
