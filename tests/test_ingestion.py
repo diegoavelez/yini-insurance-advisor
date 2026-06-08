@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from rag.ingestion import (
     build_chunk_records,
     build_parser,
     clean_markdown,
+    convert_pdf_to_markdown_with_backend,
     docling_is_available,
     extract_document_metadata,
     main,
@@ -50,6 +52,8 @@ def test_parser_builds_canonical_ingest_command() -> None:
     assert args.glob == "*.pdf"
     assert args.overwrite is True
     assert args.fail_fast is False
+    assert args.pdf_conversion_backend == "docling"
+    assert args.docling_startup_timeout_seconds == 300.0
 
 
 @pytest.mark.parametrize(
@@ -99,6 +103,43 @@ def test_parser_accepts_chunk_configuration_overrides() -> None:
 
     assert args.chunk_size == 800
     assert args.chunk_overlap == 100
+
+
+def test_parser_accepts_docling_backend_controls() -> None:
+    args = build_parser().parse_args(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            "data/raw",
+            "--markdown-dir",
+            "data/markdown",
+            "--processed-dir",
+            "data/processed",
+            "--manifest-path",
+            "data/processed/ingestion-manifest.jsonl",
+            "--pdf-conversion-backend",
+            "auto",
+            "--docling-startup-timeout-seconds",
+            "180",
+        ]
+    )
+
+    assert args.pdf_conversion_backend == "auto"
+    assert args.docling_startup_timeout_seconds == 180.0
+
+
+def test_parser_builds_docling_warmup_command() -> None:
+    args = build_parser().parse_args(
+        [
+            "warmup-docling-assets",
+            "--sample-pdf",
+            "data/raw/sample.pdf",
+        ]
+    )
+
+    assert args.command == "warmup-docling-assets"
+    assert args.sample_pdf == "data/raw/sample.pdf"
+    assert args.docling_startup_timeout_seconds == 300.0
 
 
 def test_docling_smoke_check_reflects_importability() -> None:
@@ -264,13 +305,14 @@ def test_cli_fails_when_input_directory_is_missing(tmp_path, capsys) -> None:
     assert "Input directory does not exist" in captured.err
 
 
-def test_cli_fails_loudly_when_docling_is_unavailable(
+def test_cli_fails_loudly_when_no_pdf_conversion_backend_is_available(
     monkeypatch: pytest.MonkeyPatch, tmp_path, capsys
 ) -> None:
     input_dir = tmp_path / "raw"
     input_dir.mkdir()
     (input_dir / "policy-a.pdf").write_bytes(b"%PDF-1.4")
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: False)
+    monkeypatch.setattr("rag.ingestion.pdfium_backend_is_available", lambda: False)
 
     exit_code = main(
         [
@@ -289,6 +331,30 @@ def test_cli_fails_loudly_when_docling_is_unavailable(
 
     assert exit_code == 1
     assert "Docling is not installed" in captured.err
+
+
+def test_convert_pdf_to_markdown_falls_back_to_pdfium_when_docling_times_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.pdfium_backend_is_available", lambda: True)
+
+    def fake_docling(_path, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd="docling", timeout=20.0)
+
+    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown_with_docling", fake_docling)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_pdfium",
+        lambda _path: "# fallback markdown\n",
+    )
+
+    rendered = convert_pdf_to_markdown_with_backend(
+        Path("policy-a.pdf"),
+        backend="auto",
+        docling_startup_timeout_seconds=300.0,
+    )
+
+    assert rendered == "# fallback markdown\n"
 
 
 def test_cli_fails_when_no_matching_pdfs_are_found(
@@ -330,8 +396,8 @@ def test_successful_ingestion_writes_deterministic_artifacts(
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
     monkeypatch.setattr(
-        "rag.ingestion.convert_pdf_to_markdown",
-        lambda source_pdf_path: f"# Converted {source_pdf_path.stem}",
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
     )
 
     exit_code = main(
@@ -463,7 +529,10 @@ def test_overwrite_true_regenerates_outputs(monkeypatch: pytest.MonkeyPatch, tmp
     (processed_dir / "policy-a.json").write_text("{}", encoding="utf-8")
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
-    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown", lambda _: "# Fresh markdown")
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda _source_pdf_path, **_kwargs: "# Fresh markdown",
+    )
 
     exit_code = main(
         [
@@ -504,7 +573,10 @@ def test_manifest_is_append_only_across_reruns(monkeypatch: pytest.MonkeyPatch, 
     source_pdf.write_bytes(b"%PDF-1.4")
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
-    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown", lambda _: "# First markdown")
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda _source_pdf_path, **_kwargs: "# First markdown",
+    )
 
     first_exit_code = main(
         [
@@ -557,7 +629,10 @@ def test_cleaning_failure_records_failed_manifest_and_no_cleaned_artifacts(
     source_pdf.write_bytes(b"%PDF-1.4")
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
-    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown", lambda _: "# Raw markdown")
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda _source_pdf_path, **_kwargs: "# Raw markdown",
+    )
 
     def fail_cleaning(_: str) -> str:
         raise RuntimeError("cleaning failed")
@@ -602,7 +677,10 @@ def test_chunk_generation_failure_records_failed_manifest_and_no_chunk_artifact(
     source_pdf.write_bytes(b"%PDF-1.4")
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
-    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown", lambda _: "# Raw markdown")
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda _source_pdf_path, **_kwargs: "# Raw markdown",
+    )
 
     def fail_chunk_build(*args, **kwargs):
         raise RuntimeError("chunk generation failed")
@@ -649,8 +727,8 @@ def test_refined_chunk_generation_failure_records_failed_manifest_and_no_chunk_a
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
     monkeypatch.setattr(
-        "rag.ingestion.convert_pdf_to_markdown",
-        lambda _: "# Policy Title\n\n## Coverage\n\nCoverage applies.",
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda _source_pdf_path, **_kwargs: "# Policy Title\n\n## Coverage\n\nCoverage applies.",
     )
 
     def fail_refined_chunk_generation(*args, **kwargs):
@@ -695,7 +773,10 @@ def test_fail_fast_true_stops_after_first_cleaning_failure(
     manifest_path = tmp_path / "processed" / "ingestion-manifest.jsonl"
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
-    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown", lambda _: "# Raw markdown")
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda _source_pdf_path, **_kwargs: "# Raw markdown",
+    )
 
     def fail_cleaning(_: str) -> str:
         raise RuntimeError("cleaning failed")
@@ -735,13 +816,13 @@ def test_fail_fast_false_records_failures_and_continues(
     (input_dir / "policy-b.pdf").write_bytes(b"%PDF-1.4")
     manifest_path = tmp_path / "processed" / "ingestion-manifest.jsonl"
 
-    def fake_convert(source_pdf_path):
+    def fake_convert(source_pdf_path, **_kwargs):
         if source_pdf_path.stem == "policy-a":
             raise RuntimeError("conversion failed")
         return "# Converted"
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
-    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown", fake_convert)
+    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown_with_backend", fake_convert)
 
     exit_code = main(
         [
@@ -776,11 +857,11 @@ def test_fail_fast_true_stops_after_first_failure(
     (input_dir / "policy-b.pdf").write_bytes(b"%PDF-1.4")
     manifest_path = tmp_path / "processed" / "ingestion-manifest.jsonl"
 
-    def fake_convert(_):
+    def fake_convert(_source_pdf_path, **_kwargs):
         raise RuntimeError("conversion failed")
 
     monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
-    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown", fake_convert)
+    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown_with_backend", fake_convert)
 
     exit_code = main(
         [
@@ -804,6 +885,31 @@ def test_fail_fast_true_stops_after_first_failure(
     assert "Failed to ingest policy-a.pdf" in captured.err
     assert len(manifest_records) == 1
     assert ProcessedDocument.model_validate_json(manifest_records[0]).ingestion_status == "failed"
+
+
+def test_docling_warmup_runs_on_sample_pdf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys
+) -> None:
+    sample_pdf = tmp_path / "sample.pdf"
+    sample_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_docling",
+        lambda _path, **_kwargs: "# Warmed markdown\n",
+    )
+
+    exit_code = main(
+        [
+            "warmup-docling-assets",
+            "--sample-pdf",
+            str(sample_pdf),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Docling warm-up succeeded" in captured.out
 
 
 def test_processed_document_requires_error_message_for_failed_status() -> None:

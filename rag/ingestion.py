@@ -7,6 +7,7 @@ import importlib
 import importlib.util
 import logging
 import re
+import subprocess
 import sys
 import time
 from collections.abc import Sequence
@@ -57,6 +58,7 @@ DEFAULT_EMBEDDING_DIR = "data/processed/embeddings"
 DEFAULT_QDRANT_INDEXING_MANIFEST = "data/processed/qdrant-indexing-manifest.jsonl"
 DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
+DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 300.0
 MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
 RAG_LOGGER = logging.getLogger("yini.rag")
@@ -101,6 +103,15 @@ def parse_non_negative_int(value: str) -> int:
     return parsed_value
 
 
+def parse_positive_float(value: str) -> float:
+    """Parse a strictly positive floating-point CLI value."""
+
+    parsed_value = float(value)
+    if parsed_value <= 0:
+        raise argparse.ArgumentTypeError("expected a float > 0")
+    return parsed_value
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the canonical ingestion CLI parser."""
 
@@ -120,6 +131,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--chunk-overlap",
         type=parse_non_negative_int,
         default=DEFAULT_CHUNK_OVERLAP,
+    )
+    ingest_parser.add_argument(
+        "--pdf-conversion-backend",
+        choices=("docling", "auto", "pdfium"),
+        default="docling",
+    )
+    ingest_parser.add_argument(
+        "--docling-startup-timeout-seconds",
+        type=parse_positive_float,
+        default=DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS,
+    )
+
+    warmup_parser = subparsers.add_parser("warmup-docling-assets")
+    warmup_parser.add_argument("--sample-pdf", required=True)
+    warmup_parser.add_argument(
+        "--docling-startup-timeout-seconds",
+        type=parse_positive_float,
+        default=DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS,
     )
 
     embedding_parser = subparsers.add_parser("generate-embeddings")
@@ -178,6 +207,37 @@ def ensure_docling_available() -> None:
             "Docling is not installed. Install project dependencies before running "
             "the ingestion CLI."
         )
+
+
+def pdfium_backend_is_available() -> bool:
+    """Return whether the PDFium fallback backend is importable."""
+
+    return importlib.util.find_spec("pypdfium2") is not None
+
+
+def ensure_pdf_conversion_backend_available(*, backend: str) -> None:
+    """Fail loudly when no supported local PDF conversion backend is available."""
+
+    if backend == "docling":
+        if docling_is_available():
+            return
+        raise RuntimeError(
+            "Docling is not installed. Install project dependencies before running "
+            "the ingestion CLI with the Docling backend."
+        )
+    if backend == "pdfium":
+        if pdfium_backend_is_available():
+            return
+        raise RuntimeError(
+            "pypdfium2 is not installed. Install project dependencies before running "
+            "the ingestion CLI with the PDFium backend."
+        )
+    if docling_is_available() or pdfium_backend_is_available():
+        return
+    raise RuntimeError(
+        "No supported PDF conversion backend is installed. Install Docling or "
+        "pypdfium2 before running the ingestion CLI."
+    )
 
 
 def validate_embedding_settings(settings: Settings) -> Settings:
@@ -323,23 +383,119 @@ def generate_grounded_completion(prompt: str, settings: Settings) -> str:
     return content.strip()
 
 
-def convert_pdf_to_markdown(source_pdf_path: Path) -> str:
-    """Convert one PDF to markdown through Docling."""
+def convert_pdf_to_markdown_with_docling(
+    source_pdf_path: Path,
+    *,
+    startup_timeout_seconds: float,
+) -> str:
+    """Convert one PDF to markdown through Docling in an isolated subprocess."""
 
-    from docling.document_converter import DocumentConverter
+    script = """
+from pathlib import Path
+import sys
+from docling.document_converter import DocumentConverter
 
-    converter = DocumentConverter()
-    result = converter.convert(str(source_pdf_path))
-
-    document = getattr(result, "document", None)
-    if document is not None and hasattr(document, "export_to_markdown"):
-        return document.export_to_markdown()
-
+source_pdf_path = Path(sys.argv[1])
+converter = DocumentConverter()
+result = converter.convert(str(source_pdf_path))
+document = getattr(result, "document", None)
+if document is not None and hasattr(document, "export_to_markdown"):
+    markdown = document.export_to_markdown()
+else:
     markdown = getattr(result, "markdown", None)
-    if isinstance(markdown, str) and markdown.strip():
-        return markdown
-
+if not isinstance(markdown, str) or not markdown.strip():
     raise RuntimeError("Docling conversion result did not expose markdown output.")
+sys.stdout.write(markdown)
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script, str(source_pdf_path)],
+        capture_output=True,
+        text=True,
+        timeout=startup_timeout_seconds,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            completed.stderr.strip()
+            or "Docling conversion failed without a detailed error message."
+        )
+    markdown = completed.stdout
+    if not markdown.strip():
+        raise RuntimeError("Docling conversion produced empty markdown output.")
+    return markdown
+
+
+def convert_pdf_to_markdown_with_pdfium(source_pdf_path: Path) -> str:
+    """Convert one PDF into simple markdown through the PDFium text fallback."""
+
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(str(source_pdf_path))
+    markdown_sections = [f"# {source_pdf_path.stem}"]
+
+    for page_index in range(len(pdf)):
+        page = pdf[page_index]
+        text_page = page.get_textpage()
+        page_text = text_page.get_text_range().strip()
+        if not page_text:
+            continue
+        markdown_sections.extend(
+            [
+                "",
+                f"## Page {page_index + 1}",
+                "",
+                page_text,
+            ]
+        )
+
+    markdown = "\n".join(markdown_sections).strip()
+    if not markdown:
+        raise RuntimeError("PDFium fallback conversion produced empty markdown output.")
+    return f"{markdown}\n"
+
+
+def convert_pdf_to_markdown(source_pdf_path: Path) -> str:
+    """Convert one PDF to markdown using Docling first and PDFium as fallback."""
+
+    return convert_pdf_to_markdown_with_backend(
+        source_pdf_path,
+        backend="docling",
+        docling_startup_timeout_seconds=DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS,
+    )
+
+
+def convert_pdf_to_markdown_with_backend(
+    source_pdf_path: Path,
+    *,
+    backend: str,
+    docling_startup_timeout_seconds: float,
+) -> str:
+    """Convert one PDF to markdown using the selected backend policy."""
+
+    fallback_error: Exception | None = None
+    if backend in {"docling", "auto"} and docling_is_available():
+        try:
+            return convert_pdf_to_markdown_with_docling(
+                source_pdf_path,
+                startup_timeout_seconds=docling_startup_timeout_seconds,
+            )
+        except (RuntimeError, subprocess.TimeoutExpired) as exc:
+            fallback_error = exc
+
+    if backend == "docling" and fallback_error is not None:
+        raise RuntimeError(
+            "Docling conversion did not complete under the configured local timeout."
+        ) from fallback_error
+
+    if backend in {"pdfium", "auto"} and pdfium_backend_is_available():
+        return convert_pdf_to_markdown_with_pdfium(source_pdf_path)
+
+    if fallback_error is not None:
+        raise RuntimeError(
+            "Docling conversion did not complete and no PDFium fallback backend is available."
+        ) from fallback_error
+    ensure_pdf_conversion_backend_available(backend=backend)
+    raise RuntimeError("No PDF conversion backend produced markdown output.")
 
 
 def clean_markdown(markdown_text: str) -> str:
@@ -1592,6 +1748,8 @@ def ingest_one_pdf(
     overwrite: bool,
     chunk_size: int,
     chunk_overlap: int,
+    pdf_conversion_backend: str,
+    docling_startup_timeout_seconds: float,
 ) -> ProcessedDocument:
     """Ingest one source PDF according to the deterministic storage rules."""
 
@@ -1615,7 +1773,11 @@ def ingest_one_pdf(
             ingestion_status="skipped",
         )
 
-    raw_markdown_text = convert_pdf_to_markdown(source_pdf_path)
+    raw_markdown_text = convert_pdf_to_markdown_with_backend(
+        source_pdf_path,
+        backend=pdf_conversion_backend,
+        docling_startup_timeout_seconds=docling_startup_timeout_seconds,
+    )
     markdown_output_path.parent.mkdir(parents=True, exist_ok=True)
     markdown_output_path.write_text(raw_markdown_text, encoding="utf-8")
 
@@ -1661,7 +1823,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
         print(f"Input directory does not exist: {input_dir}", file=sys.stderr)
         return 2
 
-    ensure_docling_available()
+    ensure_pdf_conversion_backend_available(backend=args.pdf_conversion_backend)
 
     source_pdfs = iter_source_pdfs(input_dir, args.glob)
     if not source_pdfs:
@@ -1682,6 +1844,8 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 overwrite=args.overwrite,
                 chunk_size=args.chunk_size,
                 chunk_overlap=args.chunk_overlap,
+                pdf_conversion_backend=args.pdf_conversion_backend,
+                docling_startup_timeout_seconds=args.docling_startup_timeout_seconds,
             )
         except Exception as exc:
             encountered_failures = True
@@ -1711,6 +1875,29 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 return 1
 
     return 0 if not (encountered_failures and args.fail_fast) else 1
+
+
+def run_docling_warmup(args: argparse.Namespace) -> int:
+    """Warm up Docling locally by allowing model/assets download on one sample PDF."""
+
+    sample_pdf = Path(args.sample_pdf)
+    if not sample_pdf.exists() or not sample_pdf.is_file():
+        print(f"Sample PDF does not exist: {sample_pdf}", file=sys.stderr)
+        return 2
+
+    ensure_pdf_conversion_backend_available(backend="docling")
+    markdown = convert_pdf_to_markdown_with_docling(
+        sample_pdf,
+        startup_timeout_seconds=args.docling_startup_timeout_seconds,
+    )
+    if not markdown.strip():
+        print("Docling warm-up did not produce markdown output.", file=sys.stderr)
+        return 1
+    print(
+        f"Docling warm-up succeeded for {sample_pdf.name}. "
+        "Required assets should now be cached locally."
+    )
+    return 0
 
 
 def run_embedding_generation(args: argparse.Namespace) -> int:
@@ -1913,6 +2100,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "ingest-pdfs":
             exit_code = run_ingestion(args)
+        elif args.command == "warmup-docling-assets":
+            exit_code = run_docling_warmup(args)
         elif args.command == "generate-embeddings":
             exit_code = run_embedding_generation(args)
         elif args.command == "index-embeddings":

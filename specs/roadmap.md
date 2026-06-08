@@ -1098,6 +1098,47 @@ remaining in `Phase 15`:
 
 ---
 
+# Phase 16 — Ingestion Runtime Remediation
+
+## Goal
+
+Restore a practical, verifiable local ingestion path for PDF-to-markdown
+conversion when the current Docling-based runtime does not start in a
+reasonable development loop.
+
+## Deliverables
+
+- documented root-cause evidence for the Docling startup block;
+- a narrow remediation decision for local ingestion;
+- restored ability to run PDF-to-markdown ingestion locally, or an explicit
+  approved fallback path;
+- updated operational documentation for the chosen ingestion posture.
+
+## Success Criteria
+
+- the repo has a practical local path to convert sample PDFs into markdown
+  artifacts;
+- the remediation is evidenced, not speculative;
+- the chosen ingestion path is documented and testable.
+
+## Narrow Slices
+
+- `docling-ingestion-startup-remediation`
+- `docling-primary-local-ingestion-policy`
+
+Current implementation status:
+
+completed:
+
+- `docling-ingestion-startup-remediation`
+- `docling-primary-local-ingestion-policy`
+
+remaining in `Phase 16`:
+
+- none
+
+---
+
 # Phase Ordering Rules
 
 ## Mandatory Ordering

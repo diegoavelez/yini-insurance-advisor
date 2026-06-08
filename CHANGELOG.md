@@ -2,6 +2,11 @@
 
 ## 2026-06-08
 
+- Add the first `Phase 16` ingestion-remediation work by documenting the
+  Docling startup block, then making local PDF ingestion explicitly
+  Docling-first with configurable startup timeout, an asset warm-up command,
+  and a controlled PDFium fallback path verified by targeted ingestion tests
+  and a real local Docling warm-up/sample run.
 - Add the final `Phase 15` closure slice by synchronizing the top-level
   `README.md` and `specs/roadmap.md`, marking `Phase 15` complete, removing
   stale milestone text that still implied `Phase 15` was pending, and adding a
