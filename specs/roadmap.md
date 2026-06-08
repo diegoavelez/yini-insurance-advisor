@@ -1078,6 +1078,7 @@ Stabilize the project for final delivery.
 - `spanish-retrieval-and-embedding-alignment`
 - `spanish-guardrail-and-scope-alignment`
 - `spanish-evaluation-fixtures-and-smoke-coverage`
+- `spanish-ui-state-derivation-hardening`
 - `phase-15-final-readme-and-roadmap-sync`
 
 Current implementation status:
@@ -1088,6 +1089,7 @@ completed:
 - `spanish-retrieval-and-embedding-alignment`
 - `spanish-guardrail-and-scope-alignment`
 - `spanish-evaluation-fixtures-and-smoke-coverage`
+- `spanish-ui-state-derivation-hardening`
 
 remaining in `Phase 15`:
 

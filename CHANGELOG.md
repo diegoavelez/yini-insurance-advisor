@@ -2,6 +2,11 @@
 
 ## 2026-06-08
 
+- Add the next `Phase 15` Spanish-alignment slice by hardening the Spanish
+  demo UI state derivation so support/degraded outcomes no longer depend on
+  brittle English backend substrings, while adding regression coverage for
+  Spanish limited-evidence wording and marking the new slice complete in the
+  roadmap.
 - Add the fourth `Phase 15` Spanish-alignment slice by translating the curated
   30-question evaluation fixture set and the linked query-classification
   optimization subset to Spanish, preserving ids and expectation alignment

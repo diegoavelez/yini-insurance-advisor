@@ -184,23 +184,20 @@ def sanitize_trace_items(items: list[object]) -> list[str]:
     return sanitized
 
 
-def infer_support_outcome(result: GroundedAnswerResult) -> str:
-    """Infer a concise support outcome label from the current grounded result."""
+def infer_support_outcome(
+    result: GroundedAnswerResult,
+    *,
+    override: str | None = None,
+) -> str:
+    """Infer a concise support outcome label from structured grounded-result fields."""
 
-    answer = result.response.suggested_answer.lower()
-    limitations = [limitation.lower() for limitation in result.response.limitations]
-
-    if any("prompt-injection guardrail" in limitation for limitation in limitations):
-        return "prompt_guardrail_refusal"
-    if any(
-        "outside the supported insurance-document scope" in limitation
-        for limitation in limitations
-    ):
-        return "unsupported_scope_refusal"
-    if "do not have enough grounded evidence" in answer:
-        return "limited_evidence_draft"
-    if result.verification.supported:
+    if override is not None:
+        return override
+    if result.verification.supported and result.response.confidence != "low":
         return "grounded_draft_ready"
+    if result.response.confidence == "low" or not result.verification.supported:
+        if result.response.citations or not result.verification.unsupported_claims:
+            return "limited_evidence_draft"
     return "review_required_draft"
 
 
@@ -209,10 +206,11 @@ def format_support_context(
     *,
     request_id: str,
     runtime_surface: str,
+    support_outcome: str | None = None,
 ) -> str:
     """Render concise demo-safe support context for the current request."""
 
-    outcome = infer_support_outcome(result)
+    outcome = infer_support_outcome(result, override=support_outcome)
     return "\n".join(
         [
             f"- ID de solicitud: {request_id}",
@@ -230,10 +228,12 @@ def format_debug_metadata(
     runtime_surface: str,
     query_length: int,
     top_k: int | None,
+    support_outcome: str | None = None,
 ) -> str:
     """Render compact operator-facing debug metadata for the current request."""
 
     response = result.response
+    outcome = infer_support_outcome(result, override=support_outcome)
     return "\n".join(
         [
             f"- ID de solicitud: {request_id}",
@@ -244,7 +244,7 @@ def format_debug_metadata(
             + CONFIDENCE_TRANSLATIONS.get(response.confidence, response.confidence),
             f"- Cantidad de citas: {len(response.citations)}",
             f"- Cantidad de limitaciones: {len(response.limitations)}",
-            f"- Resultado de depuración: {localize_support_outcome(infer_support_outcome(result))}",
+            f"- Resultado de depuración: {localize_support_outcome(outcome)}",
         ]
     )
 
@@ -298,18 +298,35 @@ def format_readiness_state(*, status: str, detail: str | None = None) -> str:
     return detail or "Estado del servicio — Desconocido."
 
 
-def format_answer_quality_state(result: GroundedAnswerResult) -> str:
+def is_degraded_answer_quality(
+    result: GroundedAnswerResult,
+    *,
+    support_outcome: str | None = None,
+) -> bool:
+    """Return whether the current grounded result should surface degraded quality."""
+
+    outcome = infer_support_outcome(result, override=support_outcome)
+    return (
+        result.response.confidence == "low"
+        or not result.verification.supported
+        or bool(result.verification.missing_citations)
+        or outcome
+        in {
+            "prompt_guardrail_refusal",
+            "unsupported_scope_refusal",
+            "limited_evidence_draft",
+        }
+    )
+
+
+def format_answer_quality_state(
+    result: GroundedAnswerResult,
+    *,
+    support_outcome: str | None = None,
+) -> str:
     """Render concise user-visible messaging for degraded draft quality."""
 
-    response = result.response
-    answer = response.suggested_answer.lower()
-    limitations = [limitation.lower() for limitation in response.limitations]
-    degraded = (
-        response.confidence == "low"
-        or not result.verification.supported
-        or "do not have enough grounded evidence" in answer
-        or any("insufficient" in limitation for limitation in limitations)
-    )
+    degraded = is_degraded_answer_quality(result, support_outcome=support_outcome)
     if degraded:
         return (
             "Calidad de la respuesta — Degradada. Este borrador tiene menor "
@@ -399,6 +416,7 @@ def run_query(
             runtime_surface="gradio_ui",
             query_length=len(normalized_query),
             top_k=None,
+            support_outcome_override="prompt_guardrail_refusal",
         )
     scope_decision = classify_query_scope(normalized_query)
     if scope_decision.scope == "unsupported":
@@ -416,6 +434,7 @@ def run_query(
             runtime_surface="gradio_ui",
             query_length=len(normalized_query),
             top_k=None,
+            support_outcome_override="unsupported_scope_refusal",
         )
     retrieval_query = build_retrieval_query(normalized_query, resolved_settings)
     log_event(
@@ -484,10 +503,12 @@ def render_grounded_result(
     runtime_surface: str,
     query_length: int,
     top_k: int | None,
+    support_outcome_override: str | None = None,
 ) -> tuple[str, str, str, str, str, str, str, str, str, str]:
     """Render the typed grounded result into UI output fields."""
 
     response = result.response
+    support_outcome = infer_support_outcome(result, override=support_outcome_override)
     answer = localize_public_text(response.suggested_answer)
     citations = format_citations(response.citations)
     confidence = response.confidence.upper()
@@ -497,6 +518,7 @@ def render_grounded_result(
         result,
         request_id=request_id,
         runtime_surface=runtime_surface,
+        support_outcome=support_outcome,
     )
     debug_metadata = format_debug_metadata(
         result,
@@ -504,8 +526,12 @@ def render_grounded_result(
         runtime_surface=runtime_surface,
         query_length=query_length,
         top_k=top_k,
+        support_outcome=support_outcome,
     )
-    answer_quality_state = format_answer_quality_state(result)
+    answer_quality_state = format_answer_quality_state(
+        result,
+        support_outcome=support_outcome,
+    )
     error_state = format_error_state(error_kind=None)
     status = localize_public_text(response.advisor_review_notice)
     return (

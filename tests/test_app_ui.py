@@ -614,6 +614,44 @@ def test_format_debug_metadata_renders_compact_operator_fields() -> None:
     assert "Resultado de depuración: borrador fundamentado listo" in rendered
 
 
+def test_format_support_context_uses_structured_signals_for_spanish_limited_copy() -> None:
+    result = make_grounded_result(
+        answer="No tengo evidencia fundamentada suficiente en los documentos recuperados.",
+        confidence="low",
+        limitations=[
+            "La evidencia recuperada es insuficiente para una respuesta fundamentada sólida."
+        ],
+    )
+
+    rendered = format_support_context(
+        result,
+        request_id="ui-123456789abc",
+        runtime_surface="gradio_ui",
+    )
+
+    assert "Resultado de soporte: borrador con evidencia limitada" in rendered
+
+
+def test_format_debug_metadata_uses_structured_signals_for_spanish_limited_copy() -> None:
+    result = make_grounded_result(
+        answer="No tengo evidencia fundamentada suficiente en los documentos recuperados.",
+        confidence="low",
+        limitations=[
+            "La evidencia recuperada es insuficiente para una respuesta fundamentada sólida."
+        ],
+    )
+
+    rendered = format_debug_metadata(
+        result,
+        request_id="ui-123456789abc",
+        runtime_surface="gradio_ui",
+        query_length=42,
+        top_k=5,
+    )
+
+    assert "Resultado de depuración: borrador con evidencia limitada" in rendered
+
+
 def test_format_loading_state_renders_loading_and_ready_messages() -> None:
     assert format_loading_state(is_loading=True) == "Generando borrador de respuesta..."
     assert format_loading_state(is_loading=False) == "Borrador listo para revisión."
@@ -661,6 +699,24 @@ def test_format_answer_quality_state_renders_standard_and_degraded_messages() ->
                 confidence="low",
                 limitations=[
                     "Retrieved evidence is insufficient for a strong grounded answer."
+                ],
+            )
+        )
+        == DEGRADED_ANSWER_QUALITY_MESSAGE
+    )
+    assert (
+        format_answer_quality_state(
+            make_grounded_result(
+                answer=(
+                    "No tengo evidencia fundamentada suficiente en los documentos "
+                    "recuperados para responder con confianza."
+                ),
+                confidence="low",
+                limitations=[
+                    (
+                        "La evidencia recuperada es insuficiente para una respuesta "
+                        "fundamentada sólida."
+                    )
                 ],
             )
         )
