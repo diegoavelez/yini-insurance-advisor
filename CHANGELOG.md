@@ -2,6 +2,12 @@
 
 ## 2026-06-08
 
+- Add the final `Phase 16` ingestion-remediation slice by supporting
+  recursive PDF discovery under nested raw source folders, deriving
+  collision-safe document ids from relative source paths, recording relative
+  path traceability in processed/chunk contracts, and validating a real
+  Docling-first ingestion run against a nested sample tree without flattening
+  or renaming source PDFs.
 - Add the first `Phase 16` ingestion-remediation work by documenting the
   Docling startup block, then making local PDF ingestion explicitly
   Docling-first with configurable startup timeout, an asset warm-up command,

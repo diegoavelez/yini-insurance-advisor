@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import time
+import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -554,7 +555,9 @@ def extract_document_metadata(
 
 def build_processed_document(
     *,
+    source_pdf_id: str,
     source_pdf_path: Path,
+    source_pdf_relative_path: Path,
     markdown_output_path: Path,
     cleaned_markdown_output_path: Path,
     processed_output_path: Path,
@@ -565,10 +568,10 @@ def build_processed_document(
 ) -> ProcessedDocument:
     """Build one deterministic processed-document record."""
 
-    source_pdf_id = source_pdf_path.stem
     return ProcessedDocument(
         source_pdf_id=source_pdf_id,
         source_pdf_path=str(source_pdf_path),
+        source_pdf_relative_path=source_pdf_relative_path.as_posix(),
         markdown_output_path=str(markdown_output_path),
         cleaned_markdown_output_path=str(cleaned_markdown_output_path),
         processed_output_path=str(processed_output_path),
@@ -599,7 +602,45 @@ def write_processed_metadata(record: ProcessedDocument, processed_output_path: P
 def iter_source_pdfs(input_dir: Path, glob_pattern: str) -> list[Path]:
     """Return sorted matching PDF files under the configured input directory."""
 
-    return sorted(path for path in input_dir.glob(glob_pattern) if path.is_file())
+    return sorted(path for path in input_dir.rglob(glob_pattern) if path.is_file())
+
+
+def slugify_path_component(value: str) -> str:
+    """Return a deterministic ASCII slug for one source-path component."""
+
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    lowered = ascii_text.lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
+    return slug or "document"
+
+
+def derive_source_pdf_id(*, input_dir: Path, source_pdf_path: Path) -> str:
+    """Derive a collision-safe document id from the relative source path."""
+
+    relative_path = source_pdf_path.relative_to(input_dir)
+    components = [*relative_path.parts[:-1], relative_path.stem]
+    return "__".join(slugify_path_component(component) for component in components)
+
+
+def build_ingestion_artifact_paths(
+    *,
+    source_pdf_id: str,
+    markdown_dir: Path,
+    processed_dir: Path,
+) -> tuple[Path, Path, Path, Path]:
+    """Build deterministic artifact paths for one source document id."""
+
+    markdown_output_path = markdown_dir / f"{source_pdf_id}.md"
+    cleaned_markdown_output_path = processed_dir / f"{source_pdf_id}.cleaned.md"
+    processed_output_path = processed_dir / f"{source_pdf_id}.json"
+    chunk_artifact_path = processed_dir / "chunks" / f"{source_pdf_id}.chunks.json"
+    return (
+        markdown_output_path,
+        cleaned_markdown_output_path,
+        processed_output_path,
+        chunk_artifact_path,
+    )
 
 
 def remove_artifact_if_exists(path: Path) -> None:
@@ -732,6 +773,7 @@ def build_chunk_records(
     document_name: str,
     document_version: str | None,
     source_pdf_path: Path,
+    source_pdf_relative_path: Path,
     cleaned_markdown_output_path: Path,
     cleaned_markdown_text: str,
     chunk_size: int,
@@ -781,6 +823,7 @@ def build_chunk_records(
                 document_name=document_name,
                 document_version=document_version,
                 source_pdf_path=str(source_pdf_path),
+                source_pdf_relative_path=source_pdf_relative_path.as_posix(),
                 cleaned_markdown_output_path=str(cleaned_markdown_output_path),
                 text=chunk_text,
                 chunk_index=chunk_index,
@@ -823,6 +866,7 @@ def build_chunk_bundle(
         document_name=processed_document.document_name,
         document_version=processed_document.document_version,
         source_pdf_path=Path(processed_document.source_pdf_path),
+        source_pdf_relative_path=Path(processed_document.source_pdf_relative_path),
         cleaned_markdown_output_path=Path(processed_document.cleaned_markdown_output_path),
         cleaned_markdown_text=cleaned_markdown_text,
         chunk_size=chunk_size,
@@ -833,6 +877,7 @@ def build_chunk_bundle(
         document_name=processed_document.document_name,
         document_version=processed_document.document_version,
         source_pdf_path=processed_document.source_pdf_path,
+        source_pdf_relative_path=processed_document.source_pdf_relative_path,
         cleaned_markdown_output_path=processed_document.cleaned_markdown_output_path,
         chunk_artifact_path=str(chunk_artifact_path),
         chunk_size=chunk_size,
@@ -1742,6 +1787,7 @@ def generate_embeddings_for_chunk_bundle(
 
 def ingest_one_pdf(
     *,
+    input_dir: Path,
     source_pdf_path: Path,
     markdown_dir: Path,
     processed_dir: Path,
@@ -1753,10 +1799,18 @@ def ingest_one_pdf(
 ) -> ProcessedDocument:
     """Ingest one source PDF according to the deterministic storage rules."""
 
-    markdown_output_path = markdown_dir / f"{source_pdf_path.stem}.md"
-    cleaned_markdown_output_path = processed_dir / f"{source_pdf_path.stem}.cleaned.md"
-    processed_output_path = processed_dir / f"{source_pdf_path.stem}.json"
-    chunk_artifact_path = processed_dir / "chunks" / f"{source_pdf_path.stem}.chunks.json"
+    source_pdf_relative_path = source_pdf_path.relative_to(input_dir)
+    source_pdf_id = derive_source_pdf_id(input_dir=input_dir, source_pdf_path=source_pdf_path)
+    (
+        markdown_output_path,
+        cleaned_markdown_output_path,
+        processed_output_path,
+        chunk_artifact_path,
+    ) = build_ingestion_artifact_paths(
+        source_pdf_id=source_pdf_id,
+        markdown_dir=markdown_dir,
+        processed_dir=processed_dir,
+    )
 
     if (
         not overwrite
@@ -1766,7 +1820,9 @@ def ingest_one_pdf(
         and chunk_artifact_path.exists()
     ):
         return build_processed_document(
+            source_pdf_id=source_pdf_id,
             source_pdf_path=source_pdf_path,
+            source_pdf_relative_path=source_pdf_relative_path,
             markdown_output_path=markdown_output_path,
             cleaned_markdown_output_path=cleaned_markdown_output_path,
             processed_output_path=processed_output_path,
@@ -1791,7 +1847,9 @@ def ingest_one_pdf(
     cleaned_markdown_output_path.write_text(cleaned_markdown_text, encoding="utf-8")
 
     record = build_processed_document(
+        source_pdf_id=source_pdf_id,
         source_pdf_path=source_pdf_path,
+        source_pdf_relative_path=source_pdf_relative_path,
         markdown_output_path=markdown_output_path,
         cleaned_markdown_output_path=cleaned_markdown_output_path,
         processed_output_path=processed_output_path,
@@ -1838,6 +1896,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
     for source_pdf_path in source_pdfs:
         try:
             record = ingest_one_pdf(
+                input_dir=input_dir,
                 source_pdf_path=source_pdf_path,
                 markdown_dir=markdown_dir,
                 processed_dir=processed_dir,
@@ -1849,15 +1908,29 @@ def run_ingestion(args: argparse.Namespace) -> int:
             )
         except Exception as exc:
             encountered_failures = True
-            cleaned_markdown_output_path = processed_dir / f"{source_pdf_path.stem}.cleaned.md"
-            processed_output_path = processed_dir / f"{source_pdf_path.stem}.json"
-            chunk_artifact_path = processed_dir / "chunks" / f"{source_pdf_path.stem}.chunks.json"
+            source_pdf_relative_path = source_pdf_path.relative_to(input_dir)
+            source_pdf_id = derive_source_pdf_id(
+                input_dir=input_dir,
+                source_pdf_path=source_pdf_path,
+            )
+            (
+                markdown_output_path,
+                cleaned_markdown_output_path,
+                processed_output_path,
+                chunk_artifact_path,
+            ) = build_ingestion_artifact_paths(
+                source_pdf_id=source_pdf_id,
+                markdown_dir=markdown_dir,
+                processed_dir=processed_dir,
+            )
             remove_artifact_if_exists(cleaned_markdown_output_path)
             remove_artifact_if_exists(processed_output_path)
             remove_artifact_if_exists(chunk_artifact_path)
             record = build_processed_document(
+                source_pdf_id=source_pdf_id,
                 source_pdf_path=source_pdf_path,
-                markdown_output_path=markdown_dir / f"{source_pdf_path.stem}.md",
+                source_pdf_relative_path=source_pdf_relative_path,
+                markdown_output_path=markdown_output_path,
                 cleaned_markdown_output_path=cleaned_markdown_output_path,
                 processed_output_path=processed_output_path,
                 ingestion_status="failed",

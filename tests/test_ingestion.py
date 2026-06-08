@@ -9,9 +9,11 @@ import pytest
 from contracts import ChunkBundle, ProcessedDocument
 from rag.ingestion import (
     build_chunk_records,
+    build_ingestion_artifact_paths,
     build_parser,
     clean_markdown,
     convert_pdf_to_markdown_with_backend,
+    derive_source_pdf_id,
     docling_is_available,
     extract_document_metadata,
     main,
@@ -188,6 +190,7 @@ def test_build_chunk_records_is_deterministic() -> None:
         document_name="Policy Title",
         document_version=None,
         source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
         cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
         cleaned_markdown_text=cleaned_markdown_text,
         chunk_size=60,
@@ -198,6 +201,7 @@ def test_build_chunk_records_is_deterministic() -> None:
         document_name="Policy Title",
         document_version=None,
         source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
         cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
         cleaned_markdown_text=cleaned_markdown_text,
         chunk_size=60,
@@ -219,6 +223,7 @@ def test_build_chunk_records_keeps_heading_with_following_body_when_it_fits() ->
         document_name="Policy Title",
         document_version=None,
         source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
         cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
         cleaned_markdown_text=(
             "# Policy Title\n\n## Coverage\n\nCoverage applies to outpatient care."
@@ -239,6 +244,7 @@ def test_build_chunk_records_keeps_clause_marker_with_following_text_when_it_fit
         document_name="Policy Title",
         document_version=None,
         source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
         cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
         cleaned_markdown_text="# Policy Title\n\n1. Coverage\n\nApplies only after deductible.",
         chunk_size=200,
@@ -255,6 +261,7 @@ def test_build_chunk_records_avoids_tiny_heading_only_chunk_when_next_body_fits(
         document_name="Policy Title",
         document_version=None,
         source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
         cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
         cleaned_markdown_text=(
             "# Policy Title\n\n## Exclusions\n\nNo coverage applies to cosmetic surgery.\n\n"
@@ -274,6 +281,7 @@ def test_build_chunk_records_preserves_clause_split_fallback_for_oversized_conte
         document_name="Policy Title",
         document_version=None,
         source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
         cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
         cleaned_markdown_text="# Policy Title\n\n1. Coverage\n\n" + ("A" * 160),
         chunk_size=80,
@@ -439,6 +447,118 @@ def test_successful_ingestion_writes_deterministic_artifacts(
     assert len(manifest_records) == 1
 
 
+def test_recursive_ingestion_uses_path_derived_ids(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    nested_dir = input_dir / "AUTONOMIA" / "SOLUCIONES INDIVIDUALES" / "EDUCACION"
+    nested_dir.mkdir(parents=True)
+    source_pdf = nested_dir / "clausulado seguro de educacion.pdf"
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    source_pdf_id = derive_source_pdf_id(input_dir=input_dir, source_pdf_path=source_pdf)
+    (
+        markdown_output,
+        cleaned_output,
+        processed_output,
+        chunk_output,
+    ) = build_ingestion_artifact_paths(
+        source_pdf_id=source_pdf_id,
+        markdown_dir=markdown_dir,
+        processed_dir=processed_dir,
+    )
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert markdown_output.exists()
+    assert cleaned_output.exists()
+    assert chunk_output.exists()
+    assert processed_document.source_pdf_id == source_pdf_id
+    assert processed_document.source_pdf_relative_path == (
+        "AUTONOMIA/SOLUCIONES INDIVIDUALES/EDUCACION/clausulado seguro de educacion.pdf"
+    )
+
+
+def test_duplicate_basenames_in_different_folders_do_not_collide(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_a = input_dir / "ARL" / "clausulado.pdf"
+    source_b = input_dir / "EPS" / "PLAN COMPLEMENTARIO PAC" / "clausulado.pdf"
+    source_a.parent.mkdir(parents=True)
+    source_b.parent.mkdir(parents=True)
+    source_a.write_bytes(b"%PDF-1.4")
+    source_b.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.parent.name}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    source_a_id = derive_source_pdf_id(input_dir=input_dir, source_pdf_path=source_a)
+    source_b_id = derive_source_pdf_id(input_dir=input_dir, source_pdf_path=source_b)
+    source_a_markdown, _, source_a_processed, source_a_chunk = build_ingestion_artifact_paths(
+        source_pdf_id=source_a_id,
+        markdown_dir=markdown_dir,
+        processed_dir=processed_dir,
+    )
+    source_b_markdown, _, source_b_processed, source_b_chunk = build_ingestion_artifact_paths(
+        source_pdf_id=source_b_id,
+        markdown_dir=markdown_dir,
+        processed_dir=processed_dir,
+    )
+
+    assert exit_code == 0
+    assert source_a_id != source_b_id
+    assert source_a_markdown.exists()
+    assert source_b_markdown.exists()
+    assert source_a_processed.exists()
+    assert source_b_processed.exists()
+    assert source_a_chunk.exists()
+    assert source_b_chunk.exists()
+
+
 def test_existing_outputs_are_skipped_when_overwrite_is_false(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
@@ -455,6 +575,7 @@ def test_existing_outputs_are_skipped_when_overwrite_is_false(
     existing_record = ProcessedDocument(
         source_pdf_id="policy-a",
         source_pdf_path=str(source_pdf),
+        source_pdf_relative_path="policy-a.pdf",
         markdown_output_path=str(markdown_dir / "policy-a.md"),
         cleaned_markdown_output_path=str(processed_dir / "policy-a.cleaned.md"),
         processed_output_path=str(processed_dir / "policy-a.json"),
@@ -472,6 +593,7 @@ def test_existing_outputs_are_skipped_when_overwrite_is_false(
             document_name="policy-a",
             document_version=None,
             source_pdf_path=str(source_pdf),
+            source_pdf_relative_path="policy-a.pdf",
             cleaned_markdown_output_path=str(processed_dir / "policy-a.cleaned.md"),
             chunk_artifact_path=str(processed_dir / "chunks" / "policy-a.chunks.json"),
             chunk_size=1200,
@@ -917,6 +1039,7 @@ def test_processed_document_requires_error_message_for_failed_status() -> None:
         ProcessedDocument(
             source_pdf_id="policy-a",
             source_pdf_path="data/raw/policy-a.pdf",
+            source_pdf_relative_path="policy-a.pdf",
             markdown_output_path="data/markdown/policy-a.md",
             cleaned_markdown_output_path="data/processed/policy-a.cleaned.md",
             processed_output_path="data/processed/policy-a.json",
@@ -933,6 +1056,7 @@ def test_processed_document_rejects_invalid_ingestion_status() -> None:
         ProcessedDocument(
             source_pdf_id="policy-a",
             source_pdf_path="data/raw/policy-a.pdf",
+            source_pdf_relative_path="policy-a.pdf",
             markdown_output_path="data/markdown/policy-a.md",
             cleaned_markdown_output_path="data/processed/policy-a.cleaned.md",
             processed_output_path="data/processed/policy-a.json",

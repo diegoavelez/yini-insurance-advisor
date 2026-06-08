@@ -1125,6 +1125,7 @@ reasonable development loop.
 
 - `docling-ingestion-startup-remediation`
 - `docling-primary-local-ingestion-policy`
+- `recursive-ingestion-and-path-derived-document-ids`
 
 Current implementation status:
 
@@ -1132,6 +1133,7 @@ completed:
 
 - `docling-ingestion-startup-remediation`
 - `docling-primary-local-ingestion-policy`
+- `recursive-ingestion-and-path-derived-document-ids`
 
 remaining in `Phase 16`:
 

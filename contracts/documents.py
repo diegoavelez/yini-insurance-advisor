@@ -43,6 +43,7 @@ class ChunkRecord(BaseModel):
     document_name: str = Field(min_length=1)
     document_version: str | None = None
     source_pdf_path: str = Field(min_length=1)
+    source_pdf_relative_path: str = Field(min_length=1)
     cleaned_markdown_output_path: str = Field(min_length=1)
     text: str = Field(min_length=1)
     chunk_index: int = Field(ge=0)
@@ -58,6 +59,7 @@ class ChunkBundle(BaseModel):
     document_name: str = Field(min_length=1)
     document_version: str | None = None
     source_pdf_path: str = Field(min_length=1)
+    source_pdf_relative_path: str = Field(min_length=1)
     cleaned_markdown_output_path: str = Field(min_length=1)
     chunk_artifact_path: str = Field(min_length=1)
     chunk_size: int = Field(ge=1)
