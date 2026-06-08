@@ -2,6 +2,11 @@
 
 ## 2026-06-08
 
+- Add the fourth `Phase 15` Spanish-alignment slice by translating the curated
+  30-question evaluation fixture set and the linked query-classification
+  optimization subset to Spanish, preserving ids and expectation alignment
+  while updating local-evaluation, optimization, and hosted-like smoke tests
+  to the new Spanish-facing dataset versions.
 - Add the third `Phase 15` Spanish-alignment slice by extending deterministic
   supported-scope matching and prompt-injection detection to common Spanish
   insurance and override/reveal phrasing, while preserving the current typed

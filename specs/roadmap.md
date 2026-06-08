@@ -1087,10 +1087,10 @@ completed:
 - `spanish-demo-ui-localization`
 - `spanish-retrieval-and-embedding-alignment`
 - `spanish-guardrail-and-scope-alignment`
+- `spanish-evaluation-fixtures-and-smoke-coverage`
 
 remaining in `Phase 15`:
 
-- `spanish-evaluation-fixtures-and-smoke-coverage`
 - `phase-15-final-readme-and-roadmap-sync`
 
 ---

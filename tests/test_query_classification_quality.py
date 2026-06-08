@@ -12,7 +12,7 @@ def test_run_query_classification_quality_comparison_returns_typed_result() -> N
     result = run_query_classification_quality_comparison()
 
     assert isinstance(result, QueryClassificationQualityComparisonResult)
-    assert result.dataset_version == "2026-05-20-query-classification-subset-v1"
+    assert result.dataset_version == "2026-06-08-query-classification-subset-spanish-v1"
     assert result.example_count == 10
     assert len(result.category_results) == 5
     assert len(result.example_results) == 10

@@ -186,7 +186,7 @@ def test_app_entrypoint_runs(
 def test_hosted_request_smoke_path_runs_without_crashing() -> None:
     def grounded_answer_fn(*_args, **_kwargs):
         return GroundedAnswerResult(
-            query="What is covered?",
+            query="¿Qué cobertura aplica?",
             response=AdvisorDraftResponse(
                 suggested_answer="Coverage applies after the waiting period.",
                 documentary_basis=[],
@@ -226,7 +226,7 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
         error_state,
         status,
     ) = handler(
-        "What is covered?"
+        "¿Qué cobertura aplica?"
     )
 
     assert "Coverage applies" in answer

@@ -10,7 +10,7 @@ def test_run_query_classification_quality_improvement_validation_returns_typed_r
     result = run_query_classification_quality_improvement_validation()
 
     assert isinstance(result, QueryClassificationQualityImprovementValidationResult)
-    assert result.dataset_version == "2026-05-20-query-classification-subset-v1"
+    assert result.dataset_version == "2026-06-08-query-classification-subset-spanish-v1"
     assert result.evaluation_surface == "query_classification_optimization_subset"
 
 
