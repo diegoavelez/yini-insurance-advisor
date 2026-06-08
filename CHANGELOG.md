@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-08
+
+- Add the second `Phase 15` Spanish-alignment slice by switching the default
+  embedding model from the English-only `BAAI/bge-small-en-v1.5` to the
+  multilingual `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,
+  preserving the existing `sentence-transformers` provider seam while updating
+  embedding-generation and Qdrant-indexing expectations plus the roadmap
+  status for the completed retrieval-alignment slice.
+
 ## 2026-06-07
 
 - Add the first `Phase 15` Spanish-alignment slice by localizing the public

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from contracts import ChunkBundle, ChunkRecord, EmbeddingBundle, EmbeddingGenerationRecord
-from core.config import Settings, clear_settings_cache
+from core.config import DEFAULT_EMBEDDING_MODEL, Settings, clear_settings_cache
 from rag.ingestion import build_parser, main
 
 
@@ -141,7 +141,7 @@ def test_successful_embedding_generation_writes_typed_artifacts(
         lambda: Settings(
             _env_file=None,
             embedding_provider="sentence-transformers",
-            embedding_model="BAAI/bge-small-en-v1.5",
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
         ),
     )
     monkeypatch.setattr("rag.ingestion.embedding_backend_is_available", lambda settings: True)
@@ -173,7 +173,7 @@ def test_successful_embedding_generation_writes_typed_artifacts(
     assert exit_code == 0
     assert embedding_bundle.embedding_schema_version == "v1"
     assert embedding_bundle.embedding_provider == "sentence-transformers"
-    assert embedding_bundle.embedding_model == "BAAI/bge-small-en-v1.5"
+    assert embedding_bundle.embedding_model == DEFAULT_EMBEDDING_MODEL
     assert [record.chunk_id for record in embedding_bundle.embeddings] == [
         "policy-a:v2:0000",
         "policy-a:v2:0001",
@@ -202,7 +202,7 @@ def test_embedding_generation_skips_existing_artifact_when_overwrite_is_false(
         lambda: Settings(
             _env_file=None,
             embedding_provider="sentence-transformers",
-            embedding_model="BAAI/bge-small-en-v1.5",
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
         ),
     )
     monkeypatch.setattr("rag.ingestion.embedding_backend_is_available", lambda settings: True)
@@ -245,7 +245,7 @@ def test_embedding_generation_failure_removes_partial_artifact_and_records_failu
         lambda: Settings(
             _env_file=None,
             embedding_provider="sentence-transformers",
-            embedding_model="BAAI/bge-small-en-v1.5",
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
         ),
     )
     monkeypatch.setattr("rag.ingestion.embedding_backend_is_available", lambda settings: True)
@@ -294,7 +294,7 @@ def test_malformed_chunk_artifact_records_failed_manifest(
         lambda: Settings(
             _env_file=None,
             embedding_provider="sentence-transformers",
-            embedding_model="BAAI/bge-small-en-v1.5",
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
         ),
     )
     monkeypatch.setattr("rag.ingestion.embedding_backend_is_available", lambda settings: True)

@@ -6,6 +6,8 @@ from typing import Literal
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
 
 class Settings(BaseSettings):
     """Centralized environment-driven application settings."""
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     qdrant_api_key: SecretStr | None = None
     qdrant_collection: str = "yini-policies"
     embedding_provider: str = "sentence-transformers"
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_model: str = DEFAULT_EMBEDDING_MODEL
     phoenix_project_name: str = "yini-local"
     phoenix_endpoint: str | None = None
     deployment_mode: Literal["public_mvp_demo", "internal_production"] = "public_mvp_demo"

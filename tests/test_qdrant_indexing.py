@@ -10,7 +10,7 @@ from contracts import (
     EmbeddingRecord,
     VectorPayload,
 )
-from core.config import Settings
+from core.config import DEFAULT_EMBEDDING_MODEL, Settings
 from rag.ingestion import build_parser, main
 
 
@@ -24,7 +24,7 @@ def build_embedding_bundle_artifact(embedding_artifact_path: str) -> EmbeddingBu
         embedding_schema_version="v1",
         chunk_schema_version="v2",
         embedding_provider="sentence-transformers",
-        embedding_model="BAAI/bge-small-en-v1.5",
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
         vector_dimension=3,
         embeddings=[
             EmbeddingRecord(
@@ -32,7 +32,7 @@ def build_embedding_bundle_artifact(embedding_artifact_path: str) -> EmbeddingBu
                 source_pdf_id="policy-a",
                 chunk_schema_version="v2",
                 embedding_provider="sentence-transformers",
-                embedding_model="BAAI/bge-small-en-v1.5",
+                embedding_model=DEFAULT_EMBEDDING_MODEL,
                 vector_dimension=3,
                 vector=[0.1, 0.2, 0.3],
                 payload=VectorPayload(
@@ -52,7 +52,7 @@ def build_embedding_bundle_artifact(embedding_artifact_path: str) -> EmbeddingBu
                 source_pdf_id="policy-a",
                 chunk_schema_version="v2",
                 embedding_provider="sentence-transformers",
-                embedding_model="BAAI/bge-small-en-v1.5",
+                embedding_model=DEFAULT_EMBEDDING_MODEL,
                 vector_dimension=3,
                 vector=[0.4, 0.5, 0.6],
                 payload=VectorPayload(
