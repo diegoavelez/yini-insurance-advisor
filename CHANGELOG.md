@@ -2,6 +2,10 @@
 
 ## 2026-06-08
 
+- Add the final `Phase 15` closure slice by synchronizing the top-level
+  `README.md` and `specs/roadmap.md`, marking `Phase 15` complete, removing
+  stale milestone text that still implied `Phase 15` was pending, and adding a
+  dated traceability bundle for the final README/roadmap status sync.
 - Add the next `Phase 15` Spanish-alignment slice by hardening the Spanish
   demo UI state derivation so support/degraded outcomes no longer depend on
   brittle English backend substrings, while adding regression coverage for

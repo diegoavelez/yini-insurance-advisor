@@ -1090,10 +1090,11 @@ completed:
 - `spanish-guardrail-and-scope-alignment`
 - `spanish-evaluation-fixtures-and-smoke-coverage`
 - `spanish-ui-state-derivation-hardening`
+- `phase-15-final-readme-and-roadmap-sync`
 
 remaining in `Phase 15`:
 
-- `phase-15-final-readme-and-roadmap-sync`
+- `none`
 
 ---
 

@@ -22,7 +22,8 @@ layer, the completed `Phase 8` workflow orchestration layer, the completed
 `Phase 9` guardrail layer, the implemented `Phase 10` evaluation foundation,
 the completed `Phase 11` optimization foundation, the completed `Phase 12`
 MCP foundation, the completed `Phase 13` demo hardening work, and the
-completed `Phase 14` deployment hardening work.
+completed `Phase 14` deployment hardening work, and the completed `Phase 15`
+final evaluation and cleanup work.
 
 ## Source Documents
 
@@ -34,8 +35,7 @@ completed `Phase 14` deployment hardening work.
 
 ## Current Status
 
-- `Phase 0` through `Phase 14` are complete.
-- `Phase 15` remains open for final evaluation and cleanup.
+- `Phase 0` through `Phase 15` are complete.
 - Detailed implementation status lives in `specs/roadmap.md`.
 
 ## Local Setup
@@ -354,11 +354,12 @@ tests/      Smoke tests and future test coverage
 
 ## Next Milestones
 
-The next implementation work moves into `Phase 15` from
-`/Users/diegovelez/Documents/PROJECTS/codex/yini-insurance-advisor/specs/roadmap.md`,
-focused on:
+`Phase 15` is complete in
+`/Users/diegovelez/Documents/PROJECTS/codex/yini-insurance-advisor/specs/roadmap.md`.
 
-- README completion
-- architecture diagrams
-- evaluation report
-- final tests and cleanup
+The next implementation work should start from a new dated spec bundle if
+additional scope is approved, with likely follow-on work around:
+
+- expanded product scope beyond the current demo boundary
+- new architecture or deployment decisions
+- post-demo operational hardening
