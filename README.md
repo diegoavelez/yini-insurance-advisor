@@ -335,12 +335,46 @@ The command exits non-zero when:
 - no matching PDF files are found
 - a conversion fails while `--fail-fast=true`
 
-Current metadata behavior for this slice:
+## Corpus Metadata Baseline
 
-- `document_name` currently mirrors `source_pdf_id`
-- `document_version` is intentionally left unset
-- this slice records metadata fields and deterministic artifact paths, but does
-  not yet implement richer metadata extraction or Markdown cleaning
+The current corpus identity and metadata contract is intentionally narrow and
+deterministic.
+
+Current document-level fields:
+
+- `source_pdf_id` is the stable corpus identity key used across processed
+  metadata, chunk artifacts, embedding artifacts, indexing manifests, and
+  retrieval payloads
+- `source_pdf_relative_path` preserves traceability back to the nested raw
+  source tree under `data/raw`
+- `document_name` is a retrieval-facing display label:
+  - it falls back to the source PDF stem;
+  - it upgrades to the first Markdown heading when one is extracted safely
+    during ingestion;
+  - persisted records still fall back to `source_pdf_id` if no display label is
+    available
+- `document_version` is optional:
+  - it remains unset when no safe version-like token is detected;
+  - it is populated only from conservative pattern matching over early document
+    text
+
+Current repository responsibilities:
+
+- preserve deterministic artifact naming from `source_pdf_id`
+- preserve raw-to-processed traceability through `source_pdf_relative_path`
+- carry `document_name` and optional `document_version` through chunk,
+  embedding, indexing, retrieval, and citation-facing seams
+
+Current limitations:
+
+- the practical corpus identity surface still depends primarily on
+  `source_pdf_id`
+- `document_name` quality depends on filename quality or the presence of an
+  early heading in extracted Markdown
+- `document_version` is best-effort only and may remain absent for many real
+  documents
+- the repository does not yet implement richer metadata normalization,
+  classification, or operator-curated overrides
 
 ## Repository Layout
 

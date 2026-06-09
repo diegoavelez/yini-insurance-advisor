@@ -1187,6 +1187,44 @@ remaining in `Phase 17`:
 
 ---
 
+# Phase 18 — Corpus Metadata and Retrieval Traceability
+
+## Goal
+
+Strengthen the document-metadata layer that sits between local ingestion and
+advisor-facing retrieval so the corpus is easier to operate, filter, inspect,
+and cite as the real Spanish document set grows.
+
+## Deliverables
+
+- clearer document-level metadata contracts beyond path-derived ids;
+- explicit traceability from raw source structure to retrieval-facing document
+  identifiers and labels;
+- a foundation for later filter quality and citation readability improvements.
+
+## Success Criteria
+
+- corpus metadata responsibilities are explicit and reviewable;
+- the repository no longer relies on `source_pdf_id` alone as the practical
+  document identity surface for future retrieval-facing improvements;
+- the first metadata-enrichment seam remains narrow and locally testable.
+
+## Narrow Slices
+
+- `document-metadata-contract-baseline`
+
+Current implementation status:
+
+completed:
+
+- `document-metadata-contract-baseline`
+
+remaining in `Phase 18`:
+
+- none
+
+---
+
 # Phase Ordering Rules
 
 ## Mandatory Ordering

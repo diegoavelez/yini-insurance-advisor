@@ -2,6 +2,11 @@
 
 ## 2026-06-09
 
+- Add the first `Phase 18` corpus-metadata slice by documenting the current
+  baseline contract for `source_pdf_id`, `source_pdf_relative_path`,
+  retrieval-facing `document_name`, and optional `document_version`, while
+  correcting the stale README metadata note to match the actual ingestion
+  behavior without changing runtime logic.
 - Add the fourth `Phase 17` runtime-compatibility slice by synchronizing the
   top-level `README.md` phase-status summary with the already completed
   `Phase 16` ingestion-runtime remediation and `Phase 17` runtime-compatibility
