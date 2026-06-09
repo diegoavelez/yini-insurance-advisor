@@ -1168,12 +1168,14 @@ the validated local RAG pipeline can answer real user queries end-to-end.
 ## Narrow Slices
 
 - `groq-model-runtime-compatibility`
+- `groq-default-config-and-readme-contract-alignment`
 
 Current implementation status:
 
 completed:
 
 - `groq-model-runtime-compatibility`
+- `groq-default-config-and-readme-contract-alignment`
 
 remaining in `Phase 17`:
 

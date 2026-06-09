@@ -2,6 +2,11 @@
 
 ## 2026-06-09
 
+- Add the second `Phase 17` runtime-compatibility slice by aligning the typed
+  `Groq` default runtime model to `openai/gpt-oss-120b`, extending hosted
+  operator startup-contract notes to include `GROQ_MODEL`, adding focused
+  smoke/config regression coverage, and recording the remaining unrelated
+  hosted-latency smoke failure as out-of-slice evidence.
 - Add the first `Phase 17` runtime-compatibility slice by standardizing the
   tracked Groq model identifier to `openai/gpt-oss-120b`, synchronizing
   `.env.example`, `PRD.md`, and observability test fixtures with the validated

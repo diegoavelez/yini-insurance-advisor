@@ -30,6 +30,7 @@ def reset_settings_cache() -> None:
 def test_settings_defaults() -> None:
     settings = Settings(_env_file=None)
 
+    assert settings.groq_model == "openai/gpt-oss-120b"
     assert settings.deployment_mode == "public_mvp_demo"
     assert settings.app_env == "development"
     assert settings.log_level == "INFO"
@@ -40,12 +41,14 @@ def test_settings_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TOP_K", "7")
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("DEPLOYMENT_MODE", "internal_production")
+    monkeypatch.setenv("GROQ_MODEL", "custom/model")
 
     settings = Settings(_env_file=None)
 
     assert settings.deployment_mode == "internal_production"
     assert settings.top_k == 7
     assert settings.app_env == "test"
+    assert settings.groq_model == "custom/model"
 
 
 def test_invalid_app_env_fails() -> None:

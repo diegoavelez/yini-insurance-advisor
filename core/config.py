@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     )
 
     groq_api_key: SecretStr | None = None
-    groq_model: str = "gpt-oss-120b"
+    groq_model: str = "openai/gpt-oss-120b"
     qdrant_url: str | None = None
     qdrant_api_key: SecretStr | None = None
     qdrant_collection: str = "yini-policies"

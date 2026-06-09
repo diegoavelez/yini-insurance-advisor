@@ -81,6 +81,7 @@ Minimal operator procedure:
 3. In the Space settings, configure the runtime secrets or variables required
    by the current startup contract:
    - `GROQ_API_KEY`
+   - `GROQ_MODEL`
    - `QDRANT_URL`
    - `QDRANT_API_KEY`
 4. Let the Space rebuild automatically after the push completes.
@@ -118,6 +119,7 @@ Minimum rollback procedure:
    - root `Dockerfile`
 4. Confirm the required runtime variables are still configured in the Space:
    - `GROQ_API_KEY`
+   - `GROQ_MODEL`
    - `QDRANT_URL`
    - `QDRANT_API_KEY`
 5. Let the Space rebuild from the restored repo state.
@@ -145,6 +147,8 @@ Current runtime assumptions:
 Current startup-variable contract:
 
 - `GROQ_API_KEY` must be present at runtime
+- `GROQ_MODEL` must be present at runtime or resolve to the validated default
+  `openai/gpt-oss-120b`
 - `QDRANT_URL` must be present at runtime
 - `QDRANT_API_KEY` must be present at runtime
 
