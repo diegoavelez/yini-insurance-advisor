@@ -2,6 +2,12 @@
 
 ## 2026-06-08
 
+- Add the remaining `Phase 16` Qdrant remediation work by normalizing
+  physical Qdrant point ids to deterministic UUIDs while preserving logical
+  `chunk_id` values in payloads, adapting retrieval to the installed
+  `qdrant-client` surface via `query_points()`, synchronizing `.env.example`
+  with the multilingual embedding default, and temporarily ignoring
+  `data/raw/**` during local batch-ingestion tuning.
 - Add the final `Phase 16` ingestion-remediation slice by supporting
   recursive PDF discovery under nested raw source folders, deriving
   collision-safe document ids from relative source paths, recording relative

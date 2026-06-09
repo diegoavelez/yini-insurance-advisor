@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from uuid import UUID
 
 import pytest
 
@@ -11,7 +12,7 @@ from contracts import (
     VectorPayload,
 )
 from core.config import DEFAULT_EMBEDDING_MODEL, Settings
-from rag.ingestion import build_parser, main
+from rag.ingestion import build_parser, build_qdrant_point_id, main
 
 
 def build_embedding_bundle_artifact(embedding_artifact_path: str) -> EmbeddingBundle:
@@ -253,8 +254,20 @@ def test_qdrant_indexing_bootstraps_collection_and_indexes_points(
     assert exit_code == 0
     assert fake_client.collection_size == 3
     assert len(fake_client.points) == 2
+    for point_id, point in fake_client.points.items():
+        assert str(UUID(point_id)) == point_id
+        assert point.payload["chunk_id"].startswith("policy-a:v2:")
     assert manifest_record.indexing_status == "succeeded"
     assert manifest_record.indexed_point_count == 2
+
+
+def test_build_qdrant_point_id_is_deterministic_uuid() -> None:
+    bundle = build_embedding_bundle_artifact("data/processed/embeddings/policy-a.embeddings.json")
+    first_id = build_qdrant_point_id(bundle.embeddings[0])
+    second_id = build_qdrant_point_id(bundle.embeddings[0])
+
+    assert first_id == second_id
+    assert str(UUID(first_id)) == first_id
 
 
 def test_qdrant_indexing_fails_for_incompatible_collection_shape(
@@ -479,7 +492,7 @@ def test_qdrant_indexing_continues_after_one_failure_when_fail_fast_is_false(
     fake_client = FakeQdrantClient()
 
     def selective_upsert(collection_name: str, points: list[object], wait: bool) -> None:
-        if any(point.id.startswith("policy-a:") for point in points):
+        if any(point.payload["chunk_id"].startswith("policy-a:") for point in points):
             raise RuntimeError("policy-a failed")
         for point in points:
             fake_client.points[point.id] = point
@@ -515,4 +528,7 @@ def test_qdrant_indexing_continues_after_one_failure_when_fail_fast_is_false(
 
     assert exit_code == 0
     assert [record.indexing_status for record in manifest_records] == ["failed", "succeeded"]
-    assert any(point_id.startswith("policy-b:") for point_id in fake_client.points)
+    assert any(
+        point.payload["chunk_id"].startswith("policy-b:")
+        for point in fake_client.points.values()
+    )

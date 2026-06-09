@@ -6,3 +6,7 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+
+# Temporary local-ingestion inputs during batch tuning
+data/raw/**
+!data/raw/.gitkeep

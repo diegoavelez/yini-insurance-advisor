@@ -1126,6 +1126,8 @@ reasonable development loop.
 - `docling-ingestion-startup-remediation`
 - `docling-primary-local-ingestion-policy`
 - `recursive-ingestion-and-path-derived-document-ids`
+- `qdrant-point-id-normalization`
+- `qdrant-retrieval-client-compatibility`
 
 Current implementation status:
 
@@ -1134,6 +1136,8 @@ completed:
 - `docling-ingestion-startup-remediation`
 - `docling-primary-local-ingestion-policy`
 - `recursive-ingestion-and-path-derived-document-ids`
+- `qdrant-point-id-normalization`
+- `qdrant-retrieval-client-compatibility`
 
 remaining in `Phase 16`:
 

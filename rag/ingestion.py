@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import unicodedata
+import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -60,6 +61,7 @@ DEFAULT_QDRANT_INDEXING_MANIFEST = "data/processed/qdrant-indexing-manifest.json
 DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
 DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 300.0
+QDRANT_POINT_ID_NAMESPACE = uuid.UUID("8c39ce79-53d7-47e5-baad-95c5f1548599")
 MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
 RAG_LOGGER = logging.getLogger("yini.rag")
@@ -1061,7 +1063,7 @@ def iter_embedding_artifacts(embedding_dir: Path, glob_pattern: str) -> list[Pat
 def build_qdrant_point_id(embedding_record: EmbeddingRecord) -> str:
     """Return the deterministic Qdrant point id for one embedding record."""
 
-    return embedding_record.chunk_id
+    return str(uuid.uuid5(QDRANT_POINT_ID_NAMESPACE, embedding_record.chunk_id))
 
 
 def build_qdrant_point_payload(embedding_record: EmbeddingRecord) -> dict[str, object]:
@@ -1205,13 +1207,27 @@ def search_qdrant_chunks(
     """Execute one Qdrant search for retrieval."""
 
     query_filter = build_qdrant_query_filter(retrieval_query.filters)
-    return client.search(
-        collection_name=settings.qdrant_collection,
-        query_vector=query_vector,
-        query_filter=query_filter,
-        limit=retrieval_query.top_k,
-        with_payload=True,
-    )
+    if hasattr(client, "search"):
+        return client.search(
+            collection_name=settings.qdrant_collection,
+            query_vector=query_vector,
+            query_filter=query_filter,
+            limit=retrieval_query.top_k,
+            with_payload=True,
+        )
+    if hasattr(client, "query_points"):
+        response = client.query_points(
+            collection_name=settings.qdrant_collection,
+            query=query_vector,
+            query_filter=query_filter,
+            limit=retrieval_query.top_k,
+            with_payload=True,
+        )
+        points = getattr(response, "points", None)
+        if not isinstance(points, list):
+            raise RuntimeError("Qdrant query_points response did not include ranked points.")
+        return points
+    raise RuntimeError("Installed Qdrant client does not expose a supported retrieval method.")
 
 
 def retrieve_ranked_chunks(

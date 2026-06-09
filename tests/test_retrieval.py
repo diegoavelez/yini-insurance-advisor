@@ -33,6 +33,30 @@ class FakeQdrantRetrievalClient:
         return self.hits
 
 
+class FakeQdrantQueryPointsClient:
+    def __init__(self, hits: list[object]) -> None:
+        self.hits = hits
+        self.last_query: dict[str, object] | None = None
+
+    def query_points(
+        self,
+        *,
+        collection_name: str,
+        query: list[float],
+        query_filter: object,
+        limit: int,
+        with_payload: bool,
+    ) -> object:
+        self.last_query = {
+            "collection_name": collection_name,
+            "query": query,
+            "query_filter": query_filter,
+            "limit": limit,
+            "with_payload": with_payload,
+        }
+        return SimpleNamespace(points=self.hits)
+
+
 def fake_qdrant_models():
     class MatchValue:
         def __init__(self, value: object) -> None:
@@ -131,6 +155,42 @@ def test_retrieve_ranked_chunks_maps_search_hits_in_ranked_order(
     assert result.chunks[0].chunk_index == 1
     assert result.chunks[0].document_version == "2026-01"
     assert result.chunks[0].section_path == ["Policy A", "Coverage"]
+
+
+def test_retrieve_ranked_chunks_supports_query_points_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantQueryPointsClient(
+        [
+            make_hit(
+                chunk_id="policy-a:v2:0001",
+                text="Second ranked chunk",
+                document_name="Policy A",
+                score=0.92,
+                section="Coverage",
+            )
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(query="coverage", top_k=1),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.chunk_id for chunk in result.chunks] == ["policy-a:v2:0001"]
+    assert client.last_query is not None
+    assert client.last_query["query"] == [0.1, 0.2]
 
 
 def test_retrieve_ranked_chunks_returns_empty_result_explicitly(
