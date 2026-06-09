@@ -2,6 +2,10 @@
 
 ## 2026-06-09
 
+- Add the second `Phase 18` corpus-metadata slice by propagating
+  `source_pdf_relative_path` through embedding payloads, persisted Qdrant
+  payloads, and retrieved chunk mapping, preserving compatibility with older
+  payloads that do not yet carry the field.
 - Add the first `Phase 18` corpus-metadata slice by documenting the current
   baseline contract for `source_pdf_id`, `source_pdf_relative_path`,
   retrieval-facing `document_name`, and optional `document_version`, while

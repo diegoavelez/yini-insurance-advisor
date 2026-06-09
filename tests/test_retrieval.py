@@ -86,6 +86,7 @@ def make_hit(
         payload={
             "chunk_id": chunk_id,
             "source_pdf_id": "policy-a",
+            "source_pdf_relative_path": "autonomia/vida/policy-a.pdf",
             "chunk_schema_version": "v2",
             "chunk_index": 1,
             "text": text,
@@ -151,6 +152,7 @@ def test_retrieve_ranked_chunks_maps_search_hits_in_ranked_order(
     assert result.chunks[0].score == 0.92
     assert result.chunks[0].section == "Coverage"
     assert result.chunks[0].source_pdf_id == "policy-a"
+    assert result.chunks[0].source_pdf_relative_path == "autonomia/vida/policy-a.pdf"
     assert result.chunks[0].chunk_schema_version == "v2"
     assert result.chunks[0].chunk_index == 1
     assert result.chunks[0].document_version == "2026-01"
@@ -191,6 +193,47 @@ def test_retrieve_ranked_chunks_supports_query_points_client(
     assert [chunk.chunk_id for chunk in result.chunks] == ["policy-a:v2:0001"]
     assert client.last_query is not None
     assert client.last_query["query"] == [0.1, 0.2]
+
+
+def test_retrieve_ranked_chunks_allows_missing_relative_path_for_older_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "policy-a:v2:0001",
+                    "source_pdf_id": "policy-a",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 1,
+                    "text": "Coverage chunk",
+                    "document_name": "Policy A",
+                    "document_version": "2026-01",
+                    "section": "Coverage",
+                    "section_path": ["Policy A", "Coverage"],
+                },
+                score=0.92,
+            )
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(query="coverage", top_k=1),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].source_pdf_relative_path is None
 
 
 def test_retrieve_ranked_chunks_returns_empty_result_explicitly(

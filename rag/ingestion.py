@@ -902,6 +902,7 @@ def build_embedding_payload(chunk_record: ChunkRecord) -> VectorPayload:
     return VectorPayload(
         chunk_id=chunk_record.chunk_id,
         source_pdf_id=chunk_record.source_pdf_id,
+        source_pdf_relative_path=chunk_record.source_pdf_relative_path,
         chunk_schema_version=chunk_record.chunk_schema_version,
         chunk_index=chunk_record.chunk_index,
         document_name=chunk_record.document_name,
@@ -1072,6 +1073,7 @@ def build_qdrant_point_payload(embedding_record: EmbeddingRecord) -> dict[str, o
     return {
         "chunk_id": embedding_record.chunk_id,
         "source_pdf_id": embedding_record.source_pdf_id,
+        "source_pdf_relative_path": embedding_record.payload.source_pdf_relative_path,
         "chunk_schema_version": embedding_record.chunk_schema_version,
         "embedding_provider": embedding_record.embedding_provider,
         "embedding_model": embedding_record.embedding_model,
@@ -1157,6 +1159,9 @@ def map_search_hit_to_retrieved_chunk(hit: object) -> RetrievedChunk:
     source_pdf_id = payload.get("source_pdf_id")
     if not isinstance(source_pdf_id, str):
         source_pdf_id = None
+    source_pdf_relative_path = payload.get("source_pdf_relative_path")
+    if not isinstance(source_pdf_relative_path, str):
+        source_pdf_relative_path = None
     chunk_schema_version = payload.get("chunk_schema_version")
     if not isinstance(chunk_schema_version, str):
         chunk_schema_version = None
@@ -1184,6 +1189,7 @@ def map_search_hit_to_retrieved_chunk(hit: object) -> RetrievedChunk:
     return RetrievedChunk(
         chunk_id=chunk_id,
         source_pdf_id=source_pdf_id,
+        source_pdf_relative_path=source_pdf_relative_path,
         chunk_schema_version=chunk_schema_version,
         chunk_index=chunk_index,
         text=text,

@@ -39,6 +39,7 @@ def build_embedding_bundle_artifact(embedding_artifact_path: str) -> EmbeddingBu
                 payload=VectorPayload(
                     chunk_id="policy-a:v2:0000",
                     source_pdf_id="policy-a",
+                    source_pdf_relative_path="policy-a.pdf",
                     chunk_schema_version="v2",
                     chunk_index=0,
                     document_name="Policy A",
@@ -59,6 +60,7 @@ def build_embedding_bundle_artifact(embedding_artifact_path: str) -> EmbeddingBu
                 payload=VectorPayload(
                     chunk_id="policy-a:v2:0001",
                     source_pdf_id="policy-a",
+                    source_pdf_relative_path="policy-a.pdf",
                     chunk_schema_version="v2",
                     chunk_index=1,
                     document_name="Policy A",

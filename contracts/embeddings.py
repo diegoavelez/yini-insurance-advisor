@@ -16,6 +16,7 @@ class VectorPayload(BaseModel):
 
     chunk_id: str = Field(min_length=1)
     source_pdf_id: str = Field(min_length=1)
+    source_pdf_relative_path: str = Field(min_length=1)
     chunk_schema_version: str = Field(min_length=1)
     chunk_index: int = Field(ge=0)
     document_name: str = Field(min_length=1)

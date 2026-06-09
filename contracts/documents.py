@@ -23,6 +23,7 @@ class RetrievedChunk(BaseModel):
 
     chunk_id: str = Field(min_length=1)
     source_pdf_id: str | None = None
+    source_pdf_relative_path: str | None = None
     chunk_schema_version: str | None = None
     chunk_index: int | None = Field(default=None, ge=0)
     text: str = Field(min_length=1)

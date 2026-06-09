@@ -1212,12 +1212,14 @@ and cite as the real Spanish document set grows.
 ## Narrow Slices
 
 - `document-metadata-contract-baseline`
+- `source-relative-path-through-retrieval-payloads`
 
 Current implementation status:
 
 completed:
 
 - `document-metadata-contract-baseline`
+- `source-relative-path-through-retrieval-payloads`
 
 remaining in `Phase 18`:
 
