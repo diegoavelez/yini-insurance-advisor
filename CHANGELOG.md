@@ -2,6 +2,11 @@
 
 ## 2026-06-09
 
+- Add the third `Phase 17` runtime-compatibility slice by remediating the
+  hosted latency smoke so budget assertions are deterministic in tests via
+  injected timing/evaluation seams, preserving the callable default smoke
+  payload while removing machine-dependent wall-clock flakiness from
+  `tests/test_smoke.py`.
 - Add the second `Phase 17` runtime-compatibility slice by aligning the typed
   `Groq` default runtime model to `openai/gpt-oss-120b`, extending hosted
   operator startup-contract notes to include `GROQ_MODEL`, adding focused

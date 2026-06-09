@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import logging
+from collections import deque
 
 import pytest
 from pydantic import ValidationError
 
 import app.ui as app_ui
-from contracts import AdvisorDraftResponse, GroundedAnswerResult, GroundingVerification
+from contracts import (
+    AdvisorDraftResponse,
+    EvaluationQuestionResult,
+    EvaluationRunResult,
+    GroundedAnswerResult,
+    GroundingVerification,
+)
 from core.config import (
     Settings,
     clear_settings_cache,
@@ -278,7 +285,66 @@ def test_hosted_latency_smoke_is_callable() -> None:
     assert payload["question_count"] == 30
     assert payload["duration_ms"] >= 0
     assert payload["latency_budget_ms"] == 5000.0
+
+
+def test_hosted_latency_smoke_reports_within_budget_deterministically() -> None:
+    timeline = deque([0.0, 4.0])
+    run_result = EvaluationRunResult(
+        run_id="local-eval:test",
+        question_set_version="questions-v1",
+        golden_behavior_version="golden-v1",
+        retrieval_expectation_version="retrieval-v1",
+        citation_expectation_version="citations-v1",
+        results=[
+            EvaluationQuestionResult(
+                question_id=f"q-{index}",
+                status="matched",
+                actual_behavior="normal_answer",
+                expected_behavior="normal_answer",
+            )
+            for index in range(30)
+        ],
+    )
+
+    payload = run_hosted_latency_smoke(
+        latency_budget_ms=5000.0,
+        evaluation_runner=lambda: run_result,
+        timer=lambda: timeline.popleft(),
+    )
+
+    assert payload["question_count"] == 30
+    assert payload["duration_ms"] == 4000.0
     assert payload["within_budget"] is True
+
+
+def test_hosted_latency_smoke_reports_over_budget_deterministically() -> None:
+    timeline = deque([0.0, 6.25])
+    run_result = EvaluationRunResult(
+        run_id="local-eval:test",
+        question_set_version="questions-v1",
+        golden_behavior_version="golden-v1",
+        retrieval_expectation_version="retrieval-v1",
+        citation_expectation_version="citations-v1",
+        results=[
+            EvaluationQuestionResult(
+                question_id=f"q-{index}",
+                status="matched",
+                actual_behavior="normal_answer",
+                expected_behavior="normal_answer",
+            )
+            for index in range(30)
+        ],
+    )
+
+    payload = run_hosted_latency_smoke(
+        latency_budget_ms=5000.0,
+        evaluation_runner=lambda: run_result,
+        timer=lambda: timeline.popleft(),
+    )
+
+    assert payload["question_count"] == 30
+    assert payload["duration_ms"] == 6250.0
+    assert payload["within_budget"] is False
 
 
 def test_hosted_citation_regression_smoke_is_callable() -> None:

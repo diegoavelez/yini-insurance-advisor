@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from contracts.evaluation import (
@@ -105,12 +106,19 @@ def run_local_evaluation(
     )
 
 
-def run_hosted_latency_smoke(*, latency_budget_ms: float = 5000.0) -> dict[str, object]:
+def run_hosted_latency_smoke(
+    *,
+    latency_budget_ms: float = 5000.0,
+    evaluation_runner: Callable[[], EvaluationRunResult] | None = None,
+    timer: Callable[[], float] | None = None,
+) -> dict[str, object]:
     """Execute a narrow hosted-like latency smoke over the local evaluation runner."""
 
-    started_at = time.perf_counter()
-    run_result = run_local_evaluation()
-    duration_ms = round((time.perf_counter() - started_at) * 1000, 3)
+    resolved_runner = evaluation_runner or run_local_evaluation
+    resolved_timer = timer or time.perf_counter
+    started_at = resolved_timer()
+    run_result = resolved_runner()
+    duration_ms = round((resolved_timer() - started_at) * 1000, 3)
 
     return {
         "event_type": "hosted_latency_smoke_succeeded",
