@@ -1089,9 +1089,23 @@ def build_qdrant_point_payload(embedding_record: EmbeddingRecord) -> dict[str, o
 def build_qdrant_query_filter(filters: object) -> object | None:
     """Map typed retrieval filters into a Qdrant filter object."""
 
-    filter_mappings = {
+    unsupported_filter_fields = {
         "document_type": "document_type",
         "product": "product",
+    }
+    unsupported_filters = [
+        field_name
+        for field_name in unsupported_filter_fields
+        if getattr(filters, field_name, None) is not None
+    ]
+    if unsupported_filters:
+        joined_filters = ", ".join(sorted(unsupported_filters))
+        raise RuntimeError(
+            "The current indexed corpus does not support the following metadata filters: "
+            f"{joined_filters}."
+        )
+
+    filter_mappings = {
         "document_name": "document_name",
         "version": "document_version",
     }

@@ -2,6 +2,10 @@
 
 ## 2026-06-09
 
+- Add the third `Phase 18` corpus-metadata slice by guarding unsupported
+  `document_type` and `product` retrieval filters explicitly, preserving only
+  the metadata filters backed by the current indexed payload contract and
+  avoiding silent empty-result behavior for unsupported corpus fields.
 - Add the second `Phase 18` corpus-metadata slice by propagating
   `source_pdf_relative_path` through embedding payloads, persisted Qdrant
   payloads, and retrieved chunk mapping, preserving compatibility with older

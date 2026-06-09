@@ -376,6 +376,58 @@ def test_retrieve_ranked_chunks_uses_filters_in_qdrant_query(
     assert len(query_filter.must) == 2
 
 
+def test_retrieve_ranked_chunks_rejects_unsupported_document_type_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+
+    with pytest.raises(RuntimeError, match="document_type"):
+        retrieve_ranked_chunks(
+            RetrievalQuery(
+                query="coverage",
+                filters={"document_type": "policy"},
+            ),
+            settings=Settings(
+                _env_file=None,
+                qdrant_url="https://example.qdrant.io",
+                qdrant_api_key="secret",
+            ),
+            client=client,
+        )
+
+
+def test_retrieve_ranked_chunks_rejects_unsupported_product_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+
+    with pytest.raises(RuntimeError, match="product"):
+        retrieve_ranked_chunks(
+            RetrievalQuery(
+                query="coverage",
+                filters={"product": "health"},
+            ),
+            settings=Settings(
+                _env_file=None,
+                qdrant_url="https://example.qdrant.io",
+                qdrant_api_key="secret",
+            ),
+            client=client,
+        )
+
+
 def test_retrieve_cli_prints_typed_result(
     monkeypatch: pytest.MonkeyPatch,
     capsys,
