@@ -1215,6 +1215,7 @@ and cite as the real Spanish document set grows.
 - `source-relative-path-through-retrieval-payloads`
 - `unsupported-metadata-filter-guardrail`
 - `operator-curated-document-metadata-overlays`
+- `document-metadata-filter-enablement`
 
 Current implementation status:
 
@@ -1224,10 +1225,18 @@ completed:
 - `source-relative-path-through-retrieval-payloads`
 - `unsupported-metadata-filter-guardrail`
 - `operator-curated-document-metadata-overlays`
+- `document-metadata-filter-enablement`
 
 remaining in `Phase 18`:
 
 - none
+
+Implementation note:
+
+- This phase now includes the smallest truthful retrieval-facing metadata
+  filter surface for currently curated `document_type` and `product` values.
+- Broader taxonomy inference, automatic classification, and UI filter work
+  remain intentionally out of scope.
 
 ---
 

@@ -380,7 +380,7 @@ def test_retrieve_ranked_chunks_uses_filters_in_qdrant_query(
     assert len(query_filter.must) == 2
 
 
-def test_retrieve_ranked_chunks_rejects_unsupported_document_type_filter(
+def test_retrieve_ranked_chunks_supports_document_type_filter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client = FakeQdrantRetrievalClient([])
@@ -390,23 +390,28 @@ def test_retrieve_ranked_chunks_rejects_unsupported_document_type_filter(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
 
-    with pytest.raises(RuntimeError, match="document_type"):
-        retrieve_ranked_chunks(
-            RetrievalQuery(
-                query="coverage",
-                filters={"document_type": "policy"},
-            ),
-            settings=Settings(
-                _env_file=None,
-                qdrant_url="https://example.qdrant.io",
-                qdrant_api_key="secret",
-            ),
-            client=client,
-        )
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="coverage",
+            filters={"document_type": "policy"},
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    query_filter = client.last_query["query_filter"]
+    assert len(query_filter.must) == 1
+    assert query_filter.must[0].key == "document_type"
+    assert query_filter.must[0].match.value == "policy"
 
 
-def test_retrieve_ranked_chunks_rejects_unsupported_product_filter(
+def test_retrieve_ranked_chunks_supports_product_filter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client = FakeQdrantRetrievalClient([])
@@ -416,20 +421,65 @@ def test_retrieve_ranked_chunks_rejects_unsupported_product_filter(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
 
-    with pytest.raises(RuntimeError, match="product"):
-        retrieve_ranked_chunks(
-            RetrievalQuery(
-                query="coverage",
-                filters={"product": "health"},
-            ),
-            settings=Settings(
-                _env_file=None,
-                qdrant_url="https://example.qdrant.io",
-                qdrant_api_key="secret",
-            ),
-            client=client,
-        )
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="coverage",
+            filters={"product": "health"},
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    query_filter = client.last_query["query_filter"]
+    assert len(query_filter.must) == 1
+    assert query_filter.must[0].key == "product"
+    assert query_filter.must[0].match.value == "health"
+
+
+def test_retrieve_ranked_chunks_supports_combined_metadata_filters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="coverage",
+            filters={
+                "document_type": "policy",
+                "product": "health",
+                "document_name": "Policy A",
+                "version": "2026-01",
+            },
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    query_filter = client.last_query["query_filter"]
+    assert len(query_filter.must) == 4
+    assert [(condition.key, condition.match.value) for condition in query_filter.must] == [
+        ("document_type", "policy"),
+        ("product", "health"),
+        ("document_name", "Policy A"),
+        ("document_version", "2026-01"),
+    ]
 
 
 def test_retrieve_cli_prints_typed_result(

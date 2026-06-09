@@ -2,6 +2,7 @@
 
 ## 2026-06-09
 
+- Add the fifth `Phase 18` corpus-metadata slice by re-enabling truthful retrieval filtering for curated `document_type` and `product` metadata, mapping both fields into Qdrant query filters, adding focused regression coverage for combined supported filters, and closing the phase in the roadmap and spec bundle.
 - Add the fourth `Phase 18` corpus-metadata slice by introducing optional
   operator-curated metadata overlays keyed by stable `source_pdf_id`,
   propagating curated `document_type` and `product` values through ingestion,
