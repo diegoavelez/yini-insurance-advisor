@@ -1118,7 +1118,7 @@ The project should define at least the following environment variables:
 
 ```text
 GROQ_API_KEY=
-GROQ_MODEL=gpt-oss-120b
+GROQ_MODEL=openai/gpt-oss-120b
 QDRANT_URL=
 QDRANT_API_KEY=
 QDRANT_COLLECTION=
@@ -1501,4 +1501,3 @@ The MVP is complete when:
 3. Citation verification is a core safety mechanism, not an optional feature.
 4. LangGraph provides controlled orchestration better suited to insurance workflows than an open-ended agent loop.
 5. MCP and DSPy add portfolio value, but core RAG quality must be implemented first.
-

@@ -38,6 +38,7 @@ def make_settings() -> Settings:
     return Settings(
         _env_file=None,
         groq_api_key="test-groq-key",
+        groq_model="openai/gpt-oss-120b",
         qdrant_url="https://qdrant.example.com",
         qdrant_api_key="test-qdrant-key",
         app_env="test",
@@ -93,7 +94,7 @@ def test_build_startup_diagnostics_excludes_secrets() -> None:
 
     assert payload["event_type"] == "startup_diagnostics"
     assert payload["runtime_surface"] == "gradio_ui"
-    assert payload["groq_model"] == "gpt-oss-120b"
+    assert payload["groq_model"] == "openai/gpt-oss-120b"
     assert "groq_api_key" not in payload
     assert "qdrant_api_key" not in payload
 

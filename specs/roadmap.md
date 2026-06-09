@@ -1145,6 +1145,42 @@ remaining in `Phase 16`:
 
 ---
 
+# Phase 17 — Runtime Compatibility Hardening
+
+## Goal
+
+Stabilize the final external runtime dependencies that still determine whether
+the validated local RAG pipeline can answer real user queries end-to-end.
+
+## Deliverables
+
+- explicit runtime compatibility evidence for the configured LLM provider/model;
+- synchronized local configuration examples for the supported runtime;
+- a documented end-to-end answer-path validation that includes real retrieval
+  and real model completion.
+
+## Success Criteria
+
+- the configured Groq model identifier is correct and documented;
+- local runtime configuration examples do not drift from the validated setup;
+- `answer-query` succeeds end-to-end against the indexed sample corpus.
+
+## Narrow Slices
+
+- `groq-model-runtime-compatibility`
+
+Current implementation status:
+
+completed:
+
+- `groq-model-runtime-compatibility`
+
+remaining in `Phase 17`:
+
+- none
+
+---
+
 # Phase Ordering Rules
 
 ## Mandatory Ordering

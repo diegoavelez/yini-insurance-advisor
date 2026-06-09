@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-09
+
+- Add the first `Phase 17` runtime-compatibility slice by standardizing the
+  tracked Groq model identifier to `openai/gpt-oss-120b`, synchronizing
+  `.env.example`, `PRD.md`, and observability test fixtures with the validated
+  runtime value, and recording end-to-end `answer-query` evidence for the
+  hosted Spanish RAG path.
+
 ## 2026-06-08
 
 - Add the remaining `Phase 16` Qdrant remediation work by normalizing
