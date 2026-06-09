@@ -29,6 +29,8 @@ class RetrievedChunk(BaseModel):
     text: str = Field(min_length=1)
     document_name: str = Field(min_length=1)
     document_version: str | None = None
+    document_type: str | None = None
+    product: str | None = None
     page: int | None = Field(default=None, ge=1)
     section: str | None = None
     section_path: list[str] = Field(default_factory=list)
@@ -43,6 +45,8 @@ class ChunkRecord(BaseModel):
     source_pdf_id: str = Field(min_length=1)
     document_name: str = Field(min_length=1)
     document_version: str | None = None
+    document_type: str | None = None
+    product: str | None = None
     source_pdf_path: str = Field(min_length=1)
     source_pdf_relative_path: str = Field(min_length=1)
     cleaned_markdown_output_path: str = Field(min_length=1)
@@ -59,6 +63,8 @@ class ChunkBundle(BaseModel):
     source_pdf_id: str = Field(min_length=1)
     document_name: str = Field(min_length=1)
     document_version: str | None = None
+    document_type: str | None = None
+    product: str | None = None
     source_pdf_path: str = Field(min_length=1)
     source_pdf_relative_path: str = Field(min_length=1)
     cleaned_markdown_output_path: str = Field(min_length=1)

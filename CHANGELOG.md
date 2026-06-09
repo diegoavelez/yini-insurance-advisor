@@ -2,6 +2,11 @@
 
 ## 2026-06-09
 
+- Add the fourth `Phase 18` corpus-metadata slice by introducing optional
+  operator-curated metadata overlays keyed by stable `source_pdf_id`,
+  propagating curated `document_type` and `product` values through ingestion,
+  chunking, embedding, indexing, and retrieval seams without breaking
+  documents that have no overlay entry.
 - Add the third `Phase 18` corpus-metadata slice by guarding unsupported
   `document_type` and `product` retrieval filters explicitly, preserving only
   the metadata filters backed by the current indexed payload contract and

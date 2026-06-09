@@ -21,6 +21,8 @@ class VectorPayload(BaseModel):
     chunk_index: int = Field(ge=0)
     document_name: str = Field(min_length=1)
     document_version: str | None = None
+    document_type: str | None = None
+    product: str | None = None
     section: str | None = None
     section_path: list[str] = Field(default_factory=list)
     text: str = Field(min_length=1)
@@ -51,6 +53,8 @@ class EmbeddingBundle(BaseModel):
     source_pdf_id: str = Field(min_length=1)
     document_name: str = Field(min_length=1)
     document_version: str | None = None
+    document_type: str | None = None
+    product: str | None = None
     source_chunk_artifact_path: str = Field(min_length=1)
     embedding_artifact_path: str = Field(min_length=1)
     embedding_schema_version: str = Field(min_length=1)

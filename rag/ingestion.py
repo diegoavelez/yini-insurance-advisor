@@ -24,6 +24,8 @@ from contracts import (
     ChunkRecord,
     Citation,
     DocumentaryBasisItem,
+    DocumentMetadataOverlayEntry,
+    DocumentMetadataOverlaySet,
     DocumentRetrievalResult,
     EmbeddingBundle,
     EmbeddingGenerationRecord,
@@ -126,6 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
     ingest_parser.add_argument("--markdown-dir", required=True)
     ingest_parser.add_argument("--processed-dir", required=True)
     ingest_parser.add_argument("--manifest-path", required=True)
+    ingest_parser.add_argument("--metadata-overlay-path", default=None)
     ingest_parser.add_argument("--glob", default="*.pdf")
     ingest_parser.add_argument("--overwrite", type=parse_bool, default=False)
     ingest_parser.add_argument("--fail-fast", type=parse_bool, default=False)
@@ -555,6 +558,19 @@ def extract_document_metadata(
     return document_name, document_version
 
 
+def load_document_metadata_overlays(
+    metadata_overlay_path: Path | None,
+) -> dict[str, DocumentMetadataOverlayEntry]:
+    """Load an optional operator-curated document metadata overlay set."""
+
+    if metadata_overlay_path is None:
+        return {}
+    overlay_set = DocumentMetadataOverlaySet.model_validate_json(
+        metadata_overlay_path.read_text(encoding="utf-8")
+    )
+    return overlay_set.documents
+
+
 def build_processed_document(
     *,
     source_pdf_id: str,
@@ -566,6 +582,8 @@ def build_processed_document(
     ingestion_status: str,
     document_name: str | None = None,
     document_version: str | None = None,
+    document_type: str | None = None,
+    product: str | None = None,
     error_message: str | None = None,
 ) -> ProcessedDocument:
     """Build one deterministic processed-document record."""
@@ -579,6 +597,8 @@ def build_processed_document(
         processed_output_path=str(processed_output_path),
         document_name=document_name or source_pdf_id,
         document_version=document_version,
+        document_type=document_type,
+        product=product,
         ingestion_status=ingestion_status,
         error_message=error_message,
         ingested_at=datetime.now(UTC),
@@ -774,6 +794,8 @@ def build_chunk_records(
     source_pdf_id: str,
     document_name: str,
     document_version: str | None,
+    document_type: str | None = None,
+    product: str | None = None,
     source_pdf_path: Path,
     source_pdf_relative_path: Path,
     cleaned_markdown_output_path: Path,
@@ -824,6 +846,8 @@ def build_chunk_records(
                 source_pdf_id=source_pdf_id,
                 document_name=document_name,
                 document_version=document_version,
+                document_type=document_type,
+                product=product,
                 source_pdf_path=str(source_pdf_path),
                 source_pdf_relative_path=source_pdf_relative_path.as_posix(),
                 cleaned_markdown_output_path=str(cleaned_markdown_output_path),
@@ -867,6 +891,8 @@ def build_chunk_bundle(
         source_pdf_id=processed_document.source_pdf_id,
         document_name=processed_document.document_name,
         document_version=processed_document.document_version,
+        document_type=processed_document.document_type,
+        product=processed_document.product,
         source_pdf_path=Path(processed_document.source_pdf_path),
         source_pdf_relative_path=Path(processed_document.source_pdf_relative_path),
         cleaned_markdown_output_path=Path(processed_document.cleaned_markdown_output_path),
@@ -878,6 +904,8 @@ def build_chunk_bundle(
         source_pdf_id=processed_document.source_pdf_id,
         document_name=processed_document.document_name,
         document_version=processed_document.document_version,
+        document_type=processed_document.document_type,
+        product=processed_document.product,
         source_pdf_path=processed_document.source_pdf_path,
         source_pdf_relative_path=processed_document.source_pdf_relative_path,
         cleaned_markdown_output_path=processed_document.cleaned_markdown_output_path,
@@ -907,6 +935,8 @@ def build_embedding_payload(chunk_record: ChunkRecord) -> VectorPayload:
         chunk_index=chunk_record.chunk_index,
         document_name=chunk_record.document_name,
         document_version=chunk_record.document_version,
+        document_type=chunk_record.document_type,
+        product=chunk_record.product,
         section=chunk_record.section,
         section_path=chunk_record.section_path,
         text=chunk_record.text,
@@ -945,6 +975,8 @@ def build_embedding_bundle(
         source_pdf_id=chunk_bundle.source_pdf_id,
         document_name=chunk_bundle.document_name,
         document_version=chunk_bundle.document_version,
+        document_type=chunk_bundle.document_type,
+        product=chunk_bundle.product,
         source_chunk_artifact_path=chunk_bundle.chunk_artifact_path,
         embedding_artifact_path=str(embedding_artifact_path),
         embedding_schema_version=EMBEDDING_SCHEMA_VERSION,
@@ -1079,6 +1111,8 @@ def build_qdrant_point_payload(embedding_record: EmbeddingRecord) -> dict[str, o
         "embedding_model": embedding_record.embedding_model,
         "document_name": embedding_record.payload.document_name,
         "document_version": embedding_record.payload.document_version,
+        "document_type": embedding_record.payload.document_type,
+        "product": embedding_record.payload.product,
         "chunk_index": embedding_record.payload.chunk_index,
         "section": embedding_record.payload.section,
         "section_path": embedding_record.payload.section_path,
@@ -1185,6 +1219,12 @@ def map_search_hit_to_retrieved_chunk(hit: object) -> RetrievedChunk:
     document_version = payload.get("document_version")
     if not isinstance(document_version, str):
         document_version = None
+    document_type = payload.get("document_type")
+    if not isinstance(document_type, str):
+        document_type = None
+    product = payload.get("product")
+    if not isinstance(product, str):
+        product = None
     page = payload.get("page")
     if not isinstance(page, int):
         page = None
@@ -1209,6 +1249,8 @@ def map_search_hit_to_retrieved_chunk(hit: object) -> RetrievedChunk:
         text=text,
         document_name=document_name,
         document_version=document_version,
+        document_type=document_type,
+        product=product,
         page=page,
         section=section,
         section_path=section_path,
@@ -1832,11 +1874,13 @@ def ingest_one_pdf(
     chunk_overlap: int,
     pdf_conversion_backend: str,
     docling_startup_timeout_seconds: float,
+    metadata_overlays: dict[str, DocumentMetadataOverlayEntry] | None = None,
 ) -> ProcessedDocument:
     """Ingest one source PDF according to the deterministic storage rules."""
 
     source_pdf_relative_path = source_pdf_path.relative_to(input_dir)
     source_pdf_id = derive_source_pdf_id(input_dir=input_dir, source_pdf_path=source_pdf_path)
+    overlay_entry = (metadata_overlays or {}).get(source_pdf_id)
     (
         markdown_output_path,
         cleaned_markdown_output_path,
@@ -1863,6 +1907,8 @@ def ingest_one_pdf(
             cleaned_markdown_output_path=cleaned_markdown_output_path,
             processed_output_path=processed_output_path,
             ingestion_status="skipped",
+            document_type=overlay_entry.document_type if overlay_entry else None,
+            product=overlay_entry.product if overlay_entry else None,
         )
 
     raw_markdown_text = convert_pdf_to_markdown_with_backend(
@@ -1892,6 +1938,8 @@ def ingest_one_pdf(
         ingestion_status="succeeded",
         document_name=document_name,
         document_version=document_version,
+        document_type=overlay_entry.document_type if overlay_entry else None,
+        product=overlay_entry.product if overlay_entry else None,
     )
     write_processed_metadata(record, processed_output_path)
     chunk_bundle = build_chunk_bundle(
@@ -1912,12 +1960,14 @@ def run_ingestion(args: argparse.Namespace) -> int:
     markdown_dir = Path(args.markdown_dir)
     processed_dir = Path(args.processed_dir)
     manifest_path = Path(args.manifest_path)
+    metadata_overlay_path = Path(args.metadata_overlay_path) if args.metadata_overlay_path else None
 
     if not input_dir.exists() or not input_dir.is_dir():
         print(f"Input directory does not exist: {input_dir}", file=sys.stderr)
         return 2
 
     ensure_pdf_conversion_backend_available(backend=args.pdf_conversion_backend)
+    metadata_overlays = load_document_metadata_overlays(metadata_overlay_path)
 
     source_pdfs = iter_source_pdfs(input_dir, args.glob)
     if not source_pdfs:
@@ -1941,6 +1991,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 chunk_overlap=args.chunk_overlap,
                 pdf_conversion_backend=args.pdf_conversion_backend,
                 docling_startup_timeout_seconds=args.docling_startup_timeout_seconds,
+                metadata_overlays=metadata_overlays,
             )
         except Exception as exc:
             encountered_failures = True
@@ -1959,6 +2010,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 markdown_dir=markdown_dir,
                 processed_dir=processed_dir,
             )
+            overlay_entry = metadata_overlays.get(source_pdf_id)
             remove_artifact_if_exists(cleaned_markdown_output_path)
             remove_artifact_if_exists(processed_output_path)
             remove_artifact_if_exists(chunk_artifact_path)
@@ -1970,6 +2022,8 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 cleaned_markdown_output_path=cleaned_markdown_output_path,
                 processed_output_path=processed_output_path,
                 ingestion_status="failed",
+                document_type=overlay_entry.document_type if overlay_entry else None,
+                product=overlay_entry.product if overlay_entry else None,
                 error_message=str(exc),
             )
 

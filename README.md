@@ -327,6 +327,8 @@ Optional flags:
 - `--glob` defaults to `*.pdf`
 - `--overwrite` defaults to `false`
 - `--fail-fast` defaults to `false`
+- `--metadata-overlay-path` allows optional operator-curated metadata keyed by
+  stable `source_pdf_id`
 
 The command exits non-zero when:
 
@@ -373,8 +375,10 @@ Current limitations:
   early heading in extracted Markdown
 - `document_version` is best-effort only and may remain absent for many real
   documents
-- the repository does not yet implement richer metadata normalization,
-  classification, or operator-curated overrides
+- richer metadata normalization and automatic classification are not yet
+  implemented
+- operator-curated metadata overlays now exist as an optional ingestion-time
+  seam, but they still depend on deliberate manual maintenance
 
 ## Repository Layout
 

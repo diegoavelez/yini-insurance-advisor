@@ -502,6 +502,68 @@ def test_recursive_ingestion_uses_path_derived_ids(
     )
 
 
+def test_ingestion_applies_operator_curated_metadata_overlay(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    overlay_path = tmp_path / "document-metadata-overlays.json"
+    source_pdf = input_dir / "ARL" / "policy-a.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    overlay_path.write_text(
+        (
+            '{\n'
+            '  "documents": {\n'
+            '    "arl__policy-a": {\n'
+            '      "document_type": "policy",\n'
+            '      "product": "arl"\n'
+            "    }\n"
+            "  }\n"
+            "}\n"
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+            "--metadata-overlay-path",
+            str(overlay_path),
+        ]
+    )
+
+    processed_output = processed_dir / "arl__policy-a.json"
+    chunk_output = processed_dir / "chunks" / "arl__policy-a.chunks.json"
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+    chunk_bundle = ChunkBundle.model_validate_json(chunk_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.document_type == "policy"
+    assert processed_document.product == "arl"
+    assert chunk_bundle.document_type == "policy"
+    assert chunk_bundle.product == "arl"
+    assert chunk_bundle.chunks[0].document_type == "policy"
+    assert chunk_bundle.chunks[0].product == "arl"
+
+
 def test_duplicate_basenames_in_different_folders_do_not_collide(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:

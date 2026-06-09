@@ -1214,6 +1214,7 @@ and cite as the real Spanish document set grows.
 - `document-metadata-contract-baseline`
 - `source-relative-path-through-retrieval-payloads`
 - `unsupported-metadata-filter-guardrail`
+- `operator-curated-document-metadata-overlays`
 
 Current implementation status:
 
@@ -1222,6 +1223,7 @@ completed:
 - `document-metadata-contract-baseline`
 - `source-relative-path-through-retrieval-payloads`
 - `unsupported-metadata-filter-guardrail`
+- `operator-curated-document-metadata-overlays`
 
 remaining in `Phase 18`:
 

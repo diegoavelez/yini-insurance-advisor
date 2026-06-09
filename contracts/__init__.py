@@ -35,7 +35,12 @@ from contracts.evaluation import (
     RetrievalExpectationSet,
 )
 from contracts.guardrails import GuardrailEventRecord, GuardrailSummary
-from contracts.ingestion import IngestionStatus, ProcessedDocument
+from contracts.ingestion import (
+    DocumentMetadataOverlayEntry,
+    DocumentMetadataOverlaySet,
+    IngestionStatus,
+    ProcessedDocument,
+)
 from contracts.mcp import (
     MCPCompatibilityBoundary,
     MCPCompatibilityExpectation,
@@ -117,6 +122,8 @@ __all__ = [
     "ComparisonItem",
     "ConfidenceLevel",
     "DocumentFilters",
+    "DocumentMetadataOverlayEntry",
+    "DocumentMetadataOverlaySet",
     "DocumentRetrievalResult",
     "DocumentRetrievalToolResult",
     "DocumentaryBasisItem",

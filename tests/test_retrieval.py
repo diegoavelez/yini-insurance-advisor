@@ -92,6 +92,8 @@ def make_hit(
             "text": text,
             "document_name": document_name,
             "document_version": "2026-01",
+            "document_type": "policy",
+            "product": "health",
             "section": section,
             "section_path": ["Policy A", section] if section else [],
         },
@@ -156,6 +158,8 @@ def test_retrieve_ranked_chunks_maps_search_hits_in_ranked_order(
     assert result.chunks[0].chunk_schema_version == "v2"
     assert result.chunks[0].chunk_index == 1
     assert result.chunks[0].document_version == "2026-01"
+    assert result.chunks[0].document_type == "policy"
+    assert result.chunks[0].product == "health"
     assert result.chunks[0].section_path == ["Policy A", "Coverage"]
 
 
