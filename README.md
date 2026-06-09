@@ -22,8 +22,10 @@ layer, the completed `Phase 8` workflow orchestration layer, the completed
 `Phase 9` guardrail layer, the implemented `Phase 10` evaluation foundation,
 the completed `Phase 11` optimization foundation, the completed `Phase 12`
 MCP foundation, the completed `Phase 13` demo hardening work, and the
-completed `Phase 14` deployment hardening work, and the completed `Phase 15`
-final evaluation and cleanup work.
+completed `Phase 14` deployment hardening work, the completed `Phase 15`
+final evaluation and cleanup work, the completed `Phase 16` ingestion runtime
+remediation work, and the completed `Phase 17` runtime compatibility
+hardening work.
 
 ## Source Documents
 
@@ -35,7 +37,7 @@ final evaluation and cleanup work.
 
 ## Current Status
 
-- `Phase 0` through `Phase 15` are complete.
+- `Phase 0` through `Phase 17` are complete.
 - Detailed implementation status lives in `specs/roadmap.md`.
 
 ## Local Setup

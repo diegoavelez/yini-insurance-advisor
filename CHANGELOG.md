@@ -2,6 +2,11 @@
 
 ## 2026-06-09
 
+- Add the fourth `Phase 17` runtime-compatibility slice by synchronizing the
+  top-level `README.md` phase-status summary with the already completed
+  `Phase 16` ingestion-runtime remediation and `Phase 17` runtime-compatibility
+  hardening work, keeping the change narrowly scoped to documentation
+  traceability.
 - Add the third `Phase 17` runtime-compatibility slice by remediating the
   hosted latency smoke so budget assertions are deterministic in tests via
   injected timing/evaluation seams, preserving the callable default smoke
