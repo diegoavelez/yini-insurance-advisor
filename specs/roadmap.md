@@ -1264,6 +1264,7 @@ truthful source-traceability fields that already exist in retrieval outputs.
 
 - `citation-relative-path-traceability`
 - `citation-ui-relative-path-display`
+- `documentary-basis-ui-display`
 
 Current implementation status:
 
@@ -1271,6 +1272,7 @@ completed:
 
 - `citation-relative-path-traceability`
 - `citation-ui-relative-path-display`
+- `documentary-basis-ui-display`
 
 remaining in `Phase 19`:
 
@@ -1280,8 +1282,8 @@ Implementation note:
 
 - This phase should start by reusing existing retrieval metadata rather than
   inventing new taxonomy or display-label rules.
-- `citation-ui-relative-path-display` should stay narrowly focused on the
-  existing citation-rendering seam for the current Gradio demo path.
+- `citation-ui-relative-path-display` and `documentary-basis-ui-display`
+  should stay narrowly focused on the current Gradio rendering seams.
 - Broader UI redesign, citation prettification heuristics, and operator
   navigation aids remain intentionally out of scope.
 

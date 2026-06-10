@@ -158,6 +158,7 @@ def test_guardrail_abuse_case_unsupported_query_refuses_conservatively() -> None
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -176,6 +177,7 @@ def test_guardrail_abuse_case_unsupported_query_refuses_conservatively() -> None
 
     assert "no puedo responder esa solicitud" in answer.lower()
     assert citations == "No hay citas disponibles."
+    assert documentary_basis == "No hay base documental disponible."
     assert confidence == "LOW"
     assert "fuera del alcance soportado de documentos de seguros" in limitations
     assert "fundamentacion:limitada" in trace_summary
@@ -190,6 +192,7 @@ def test_guardrail_abuse_case_prompt_injection_refuses_conservatively() -> None:
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -208,6 +211,7 @@ def test_guardrail_abuse_case_prompt_injection_refuses_conservatively() -> None:
 
     assert "no puedo seguir instrucciones" in answer.lower()
     assert citations == "No hay citas disponibles."
+    assert documentary_basis == "No hay base documental disponible."
     assert confidence == "LOW"
     assert "guardrail de prompt injection" in limitations.lower()
     assert "fundamentacion:limitada" in trace_summary
@@ -222,6 +226,7 @@ def test_guardrail_abuse_case_spanish_prompt_injection_refuses_conservatively() 
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -240,6 +245,7 @@ def test_guardrail_abuse_case_spanish_prompt_injection_refuses_conservatively() 
 
     assert "no puedo seguir instrucciones" in answer.lower()
     assert citations == "No hay citas disponibles."
+    assert documentary_basis == "No hay base documental disponible."
     assert confidence == "LOW"
     assert "guardrail de prompt injection" in limitations.lower()
     assert "fundamentacion:limitada" in trace_summary
@@ -308,6 +314,7 @@ def test_guardrail_abuse_case_benign_control_still_passes_normally() -> None:
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -324,6 +331,7 @@ def test_guardrail_abuse_case_benign_control_still_passes_normally() -> None:
 
     assert "coverage applies" in answer.lower()
     assert "Auto Policy" in citations
+    assert documentary_basis == "No hay base documental disponible."
     assert confidence == "HIGH"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "consulta_recibida" in trace_summary

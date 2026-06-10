@@ -7,7 +7,7 @@ import importlib.util
 import logging
 import re
 
-from contracts import Citation, GroundedAnswerResult, RetrievalQuery
+from contracts import Citation, DocumentaryBasisItem, GroundedAnswerResult, RetrievalQuery
 from core.config import Settings, get_settings, validate_startup_settings
 from core.logging import configure_logging
 from core.prompt_guardrails import detect_prompt_injection_signals
@@ -138,6 +138,30 @@ def format_citations(citations: list[Citation]) -> str:
         line = "- " + " | ".join(parts)
         if citation.quote:
             line += f"\n  > {citation.quote}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def format_documentary_basis(documentary_basis: list[DocumentaryBasisItem]) -> str:
+    """Render documentary basis into a stable markdown block for the MVP UI."""
+
+    if not documentary_basis:
+        return "No hay base documental disponible."
+
+    lines: list[str] = []
+    for basis_item in documentary_basis:
+        parts = [basis_item.document_name]
+        if basis_item.source_pdf_relative_path:
+            parts.append(f"ruta fuente: {basis_item.source_pdf_relative_path}")
+        if basis_item.section:
+            parts.append(f"sección: {basis_item.section}")
+        if basis_item.page is not None:
+            parts.append(f"página: {basis_item.page}")
+        if basis_item.clause_id:
+            parts.append(f"cláusula: {basis_item.clause_id}")
+        line = "- " + " | ".join(parts)
+        if basis_item.note:
+            line += f"\n  > {basis_item.note}"
         lines.append(line)
     return "\n".join(lines)
 
@@ -366,7 +390,7 @@ def run_query(
     *,
     settings: Settings | None = None,
     grounded_answer_fn=generate_grounded_answer,
-) -> tuple[str, str, str, str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str, str, str, str, str]:
     """Execute one grounded QA request for the UI."""
 
     request_id = generate_request_id("ui")
@@ -382,6 +406,7 @@ def run_query(
             error_message="Please enter a question.",
         )
         return (
+            "",
             "",
             "",
             "",
@@ -473,6 +498,7 @@ def run_query(
             "",
             "",
             "",
+            "",
             format_error_state(
                 error_kind="runtime",
                 detail="No es posible procesar la consulta en este momento. Inténtalo de nuevo.",
@@ -506,13 +532,14 @@ def render_grounded_result(
     query_length: int,
     top_k: int | None,
     support_outcome_override: str | None = None,
-) -> tuple[str, str, str, str, str, str, str, str, str, str]:
+) -> tuple[str, str, str, str, str, str, str, str, str, str, str]:
     """Render the typed grounded result into UI output fields."""
 
     response = result.response
     support_outcome = infer_support_outcome(result, override=support_outcome_override)
     answer = localize_public_text(response.suggested_answer)
     citations = format_citations(response.citations)
+    documentary_basis = format_documentary_basis(response.documentary_basis)
     confidence = response.confidence.upper()
     limitations = format_limitations(response.limitations)
     trace_summary = format_trace_summary(result)
@@ -539,6 +566,7 @@ def render_grounded_result(
     return (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -557,7 +585,9 @@ def build_query_handler(
 ):
     """Return the UI handler bound to the current runtime settings."""
 
-    def handle_query(query: str) -> tuple[str, str, str, str, str, str, str, str, str, str]:
+    def handle_query(
+        query: str,
+    ) -> tuple[str, str, str, str, str, str, str, str, str, str, str]:
         return run_query(
             query,
             settings=settings,
@@ -589,6 +619,7 @@ def build_loading_query_handler(
             "",
             "",
             "",
+            "",
             "No hay errores activos.",
             format_loading_state(is_loading=True),
             "",
@@ -596,6 +627,7 @@ def build_loading_query_handler(
         (
             answer,
             citations,
+            documentary_basis,
             confidence,
             limitations,
             trace_summary,
@@ -608,6 +640,7 @@ def build_loading_query_handler(
         yield (
             answer,
             citations,
+            documentary_basis,
             confidence,
             limitations,
             trace_summary,
@@ -677,6 +710,7 @@ def build_gradio_app(
                 )
 
         citations_output = gr.Markdown(label="Citas")
+        documentary_basis_output = gr.Markdown(label="Base documental")
 
         submit_button.click(
             fn=handler,
@@ -684,6 +718,7 @@ def build_gradio_app(
             outputs=[
                 answer_output,
                 citations_output,
+                documentary_basis_output,
                 confidence_output,
                 limitations_output,
                 trace_output,

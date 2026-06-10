@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-10
+
+- Add the third `Phase 19` citation-readability slice by introducing a dedicated `Base documental` UI surface, rendering stable `documentary_basis` review fields including optional relative-path traceability, updating the Gradio output shape and focused UI regression coverage, and marking the slice complete in the roadmap and spec bundle.
+
 ## 2026-06-09
 
 - Add the second `Phase 19` citation-readability slice by exposing `source_pdf_relative_path` in the Gradio citation renderer with a stable Spanish label, preserving clean fallback behavior when the field is absent, adding focused UI rendering regression coverage, and marking the slice complete in the roadmap and spec bundle.

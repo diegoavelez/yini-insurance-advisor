@@ -113,6 +113,7 @@ def test_ui_run_query_emits_correlated_success_events(caplog: pytest.LogCaptureF
     (
         answer,
         _citations,
+        _documentary_basis,
         confidence,
         _limitations,
         trace_summary,
@@ -169,6 +170,7 @@ def test_ui_blank_query_emits_correlated_failure_event(
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -185,12 +187,14 @@ def test_ui_blank_query_emits_correlated_failure_event(
     assert (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
         support_context,
         debug_metadata,
     ) == (
+        "",
         "",
         "",
         "",

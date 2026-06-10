@@ -14,6 +14,7 @@ from app.ui import (
     format_answer_quality_state,
     format_citations,
     format_debug_metadata,
+    format_documentary_basis,
     format_error_state,
     format_limitations,
     format_loading_state,
@@ -26,6 +27,7 @@ from app.ui import (
 from contracts import (
     AdvisorDraftResponse,
     Citation,
+    DocumentaryBasisItem,
     GroundedAnswerResult,
     GroundingVerification,
 )
@@ -64,7 +66,16 @@ def make_grounded_result(
         query="What is covered?",
         response=AdvisorDraftResponse(
             suggested_answer=answer,
-            documentary_basis=[],
+            documentary_basis=[
+                DocumentaryBasisItem(
+                    document_name="Auto Policy",
+                    source_pdf_relative_path="autos/polizas/auto-policy.pdf",
+                    section="Coverage",
+                    page=3,
+                    clause_id="COV-1",
+                    note="Derived from chunk chunk-001",
+                )
+            ],
             citations=[
                 Citation(
                     document_name="Auto Policy",
@@ -136,10 +147,50 @@ def test_format_limitations_handles_empty_and_non_empty_lists() -> None:
     assert format_limitations(["First", "Second"]) == "- First\n- Second"
 
 
+def test_format_documentary_basis_renders_traceable_markdown() -> None:
+    rendered = format_documentary_basis(
+        [
+            DocumentaryBasisItem(
+                document_name="Policy A",
+                source_pdf_relative_path="salud/polizas/policy-a.pdf",
+                section="Eligibility",
+                page=2,
+                clause_id="ELIG-2",
+                note="Derived from chunk chunk-v2-0",
+            )
+        ]
+    )
+
+    assert "Policy A" in rendered
+    assert "ruta fuente: salud/polizas/policy-a.pdf" in rendered
+    assert "sección: Eligibility" in rendered
+    assert "página: 2" in rendered
+    assert "cláusula: ELIG-2" in rendered
+    assert "Derived from chunk chunk-v2-0" in rendered
+
+
+def test_format_documentary_basis_omits_relative_path_when_absent() -> None:
+    rendered = format_documentary_basis(
+        [
+            DocumentaryBasisItem(
+                document_name="Policy B",
+                section="Benefits",
+                page=6,
+            )
+        ]
+    )
+
+    assert "Policy B" in rendered
+    assert "ruta fuente:" not in rendered
+    assert "sección: Benefits" in rendered
+    assert "página: 6" in rendered
+
+
 def test_render_grounded_result_maps_typed_response_fields() -> None:
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -159,6 +210,8 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert "ruta fuente: autos/polizas/auto-policy.pdf" in citations
+    assert "Auto Policy" in documentary_basis
+    assert "ruta fuente: autos/polizas/auto-policy.pdf" in documentary_basis
     assert confidence == "HIGH"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "consulta_recibida" in trace_summary
@@ -181,6 +234,7 @@ def test_run_query_returns_successful_grounded_output() -> None:
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -197,6 +251,7 @@ def test_run_query_returns_successful_grounded_output() -> None:
 
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
+    assert "Auto Policy" in documentary_basis
     assert confidence == "HIGH"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "citas:1" in trace_summary
@@ -219,6 +274,7 @@ def test_run_query_returns_scope_refusal_without_backend_call() -> None:
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -235,6 +291,7 @@ def test_run_query_returns_scope_refusal_without_backend_call() -> None:
 
     assert "no puedo responder esa solicitud" in answer.lower()
     assert citations == "No hay citas disponibles."
+    assert documentary_basis == "No hay base documental disponible."
     assert confidence == "LOW"
     assert "fuera del alcance soportado de documentos de seguros" in limitations
     assert "fundamentacion:limitada" in trace_summary
@@ -250,6 +307,7 @@ def test_run_query_accepts_spanish_supported_scope_queries() -> None:
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -266,6 +324,7 @@ def test_run_query_accepts_spanish_supported_scope_queries() -> None:
 
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
+    assert "Auto Policy" in documentary_basis
     assert confidence == "HIGH"
     assert "consulta_recibida" in trace_summary
     assert "Resultado de soporte: borrador fundamentado listo" in support_context
@@ -285,6 +344,7 @@ def test_run_query_returns_prompt_injection_refusal_without_backend_call() -> No
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -301,6 +361,7 @@ def test_run_query_returns_prompt_injection_refusal_without_backend_call() -> No
 
     assert "no puedo seguir instrucciones" in answer.lower()
     assert citations == "No hay citas disponibles."
+    assert documentary_basis == "No hay base documental disponible."
     assert confidence == "LOW"
     assert "guardrail de prompt injection" in limitations.lower()
     assert "fundamentacion:limitada" in trace_summary
@@ -323,6 +384,7 @@ def test_run_query_rejects_spanish_prompt_injection_without_backend_call() -> No
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -339,6 +401,7 @@ def test_run_query_rejects_spanish_prompt_injection_without_backend_call() -> No
 
     assert "no puedo seguir instrucciones" in answer.lower()
     assert citations == "No hay citas disponibles."
+    assert documentary_basis == "No hay base documental disponible."
     assert confidence == "LOW"
     assert "guardrail de prompt injection" in limitations.lower()
     assert "Resultado de soporte: rechazo por guardrail de prompt" in support_context
@@ -353,6 +416,7 @@ def test_run_query_emits_scope_refusal_event(caplog: pytest.LogCaptureFixture) -
     (
         answer,
         _citations,
+        _documentary_basis,
         confidence,
         _limitations,
         trace_summary,
@@ -391,6 +455,7 @@ def test_run_query_emits_prompt_injection_guardrail_event(
     (
         answer,
         _citations,
+        _documentary_basis,
         confidence,
         _limitations,
         trace_summary,
@@ -432,6 +497,7 @@ def test_run_query_returns_blank_query_error_without_backend_call() -> None:
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -449,12 +515,14 @@ def test_run_query_returns_blank_query_error_without_backend_call() -> None:
     assert (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
         support_context,
         debug_metadata,
     ) == (
+        "",
         "",
         "",
         "",
@@ -483,6 +551,7 @@ def test_run_query_distinguishes_insufficient_evidence_from_runtime_failure() ->
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -498,6 +567,7 @@ def test_run_query_distinguishes_insufficient_evidence_from_runtime_failure() ->
     )
 
     assert "do not have enough grounded evidence" in answer
+    assert "Auto Policy" in documentary_basis
     assert confidence == "LOW"
     assert "insufficient" in limitations.lower()
     assert "fundamentacion:limitada" in trace_summary
@@ -515,6 +585,7 @@ def test_run_query_surfaces_runtime_failures_as_explicit_errors() -> None:
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -532,12 +603,14 @@ def test_run_query_surfaces_runtime_failures_as_explicit_errors() -> None:
     assert (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
         support_context,
         debug_metadata,
     ) == (
+        "",
         "",
         "",
         "",
@@ -885,6 +958,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Estado de error" in component_labels
     assert "Estado de carga" in component_labels
     assert "Citas" in component_labels
+    assert "Base documental" in component_labels
 
     submit_button = next(
         component for component in app.children if component.kind == "Button"
@@ -897,13 +971,14 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert len(updates) == 2
     loading_update = updates[0]
     final_update = updates[1]
-    assert loading_update[7] == ""
-    assert loading_update[8] == "No hay errores activos."
-    assert loading_update[9] == "Generando borrador de respuesta..."
+    assert loading_update[8] == ""
+    assert loading_update[9] == "No hay errores activos."
+    assert loading_update[10] == "Generando borrador de respuesta..."
 
     (
         answer,
         citations,
+        documentary_basis,
         confidence,
         limitations,
         trace_summary,
@@ -916,6 +991,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     ) = final_update
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
+    assert "Auto Policy" in documentary_basis
     assert confidence == "HIGH"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "consulta_recibida" in trace_summary
