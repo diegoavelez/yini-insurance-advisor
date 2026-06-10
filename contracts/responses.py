@@ -13,6 +13,7 @@ class Citation(BaseModel):
     """A citation that traces an answer back to source material."""
 
     document_name: str = Field(min_length=1)
+    source_pdf_relative_path: str | None = None
     chunk_id: str | None = None
     page: int | None = Field(default=None, ge=1)
     section: str | None = None
@@ -24,6 +25,7 @@ class DocumentaryBasisItem(BaseModel):
     """A structured documentary support entry for advisor review."""
 
     document_name: str = Field(min_length=1)
+    source_pdf_relative_path: str | None = None
     page: int | None = Field(default=None, ge=1)
     section: str | None = None
     clause_id: str | None = None

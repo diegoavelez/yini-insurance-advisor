@@ -148,12 +148,21 @@ def test_advisor_response_contract_matches_prd_shape() -> None:
         documentary_basis=[
             DocumentaryBasisItem(
                 document_name="policy-a",
+                source_pdf_relative_path="autonomia/vida/policy-a.pdf",
                 page=4,
                 section="Coverage",
                 clause_id="1.2",
             )
         ],
-        citations=[Citation(document_name="policy-a", page=4, section="Coverage", clause_id="1.2")],
+        citations=[
+            Citation(
+                document_name="policy-a",
+                source_pdf_relative_path="autonomia/vida/policy-a.pdf",
+                page=4,
+                section="Coverage",
+                clause_id="1.2",
+            )
+        ],
         confidence="high",
         limitations=["Does not include claim adjudication guidance."],
         advisor_review_notice="This response is a draft for advisor review.",
@@ -161,6 +170,7 @@ def test_advisor_response_contract_matches_prd_shape() -> None:
 
     assert response.confidence == "high"
     assert response.citations[0].document_name == "policy-a"
+    assert response.citations[0].source_pdf_relative_path == "autonomia/vida/policy-a.pdf"
 
 
 def test_invalid_confidence_fails_in_grounding_verification() -> None:
@@ -182,6 +192,7 @@ def test_grounding_verification_result_wraps_verification() -> None:
 def test_citation_preserves_traceability_fields() -> None:
     citation = Citation(
         document_name="policy-a",
+        source_pdf_relative_path="autonomia/vida/policy-a.pdf",
         page=4,
         section="Coverage",
         clause_id="1.2",
@@ -191,6 +202,19 @@ def test_citation_preserves_traceability_fields() -> None:
     assert citation.page == 4
     assert citation.section == "Coverage"
     assert citation.clause_id == "1.2"
+    assert citation.source_pdf_relative_path == "autonomia/vida/policy-a.pdf"
+
+
+def test_documentary_basis_item_preserves_relative_path_traceability() -> None:
+    basis_item = DocumentaryBasisItem(
+        document_name="policy-a",
+        source_pdf_relative_path="autonomia/vida/policy-a.pdf",
+        page=4,
+        section="Coverage",
+        clause_id="1.2",
+    )
+
+    assert basis_item.source_pdf_relative_path == "autonomia/vida/policy-a.pdf"
 
 
 def test_agent_state_is_typed_and_constructible() -> None:

@@ -1240,6 +1240,49 @@ Implementation note:
 
 ---
 
+# Phase 19 — Citation Readability and Operator Traceability
+
+## Goal
+
+Improve citation and documentary-basis readability for operators by exposing
+truthful source-traceability fields that already exist in retrieval outputs.
+
+## Deliverables
+
+- clearer citation-level source traceability;
+- documentary-basis entries that are easier to map back to the corpus tree;
+- compatibility-safe response-contract enrichment for operator-facing review.
+
+## Success Criteria
+
+- citations become easier to trace back to the underlying raw document path;
+- documentary-basis entries preserve readable source-location context without
+  weakening current answer/citation contracts;
+- the first readability improvement remains narrow and regression-tested.
+
+## Narrow Slices
+
+- `citation-relative-path-traceability`
+
+Current implementation status:
+
+completed:
+
+- `citation-relative-path-traceability`
+
+remaining in `Phase 19`:
+
+- none
+
+Implementation note:
+
+- This phase should start by reusing existing retrieval metadata rather than
+  inventing new taxonomy or display-label rules.
+- UI redesign, citation prettification heuristics, and broader operator
+  navigation aids remain intentionally out of scope for the first slice.
+
+---
+
 # Phase Ordering Rules
 
 ## Mandatory Ordering

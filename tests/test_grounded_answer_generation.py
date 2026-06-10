@@ -27,6 +27,7 @@ def make_retrieval_result() -> DocumentRetrievalResult:
             RetrievedChunk(
                 chunk_id="policy-a:v2:0000",
                 source_pdf_id="policy-a",
+                source_pdf_relative_path="autonomia/vida/policy-a.pdf",
                 chunk_schema_version="v2",
                 chunk_index=0,
                 text="Coverage applies to outpatient care after deductible.",
@@ -41,6 +42,7 @@ def make_retrieval_result() -> DocumentRetrievalResult:
             RetrievedChunk(
                 chunk_id="policy-a:v2:0001",
                 source_pdf_id="policy-a",
+                source_pdf_relative_path="autonomia/vida/policy-a.pdf",
                 chunk_schema_version="v2",
                 chunk_index=1,
                 text="Exclusions include cosmetic surgery.",
@@ -167,7 +169,15 @@ def test_generate_grounded_answer_returns_typed_response_with_citations(
     assert len(result.response.citations) == 2
     assert isinstance(result.response.citations[0], Citation)
     assert result.response.citations[0].document_name == "Policy A"
+    assert (
+        result.response.citations[0].source_pdf_relative_path
+        == "autonomia/vida/policy-a.pdf"
+    )
     assert result.response.citations[0].chunk_id == "policy-a:v2:0000"
+    assert (
+        result.response.documentary_basis[0].source_pdf_relative_path
+        == "autonomia/vida/policy-a.pdf"
+    )
     assert result.verification.confidence == "high"
 
 

@@ -2,6 +2,7 @@
 
 ## 2026-06-09
 
+- Add the first `Phase 19` citation-readability slice by propagating `source_pdf_relative_path` through citation and documentary-basis response contracts, reusing existing retrieval metadata for operator traceability, adding focused grounded-answer and contract regression coverage, and marking the new phase and slice complete in the roadmap and spec bundle.
 - Add the fifth `Phase 18` corpus-metadata slice by re-enabling truthful retrieval filtering for curated `document_type` and `product` metadata, mapping both fields into Qdrant query filters, adding focused regression coverage for combined supported filters, and closing the phase in the roadmap and spec bundle.
 - Add the fourth `Phase 18` corpus-metadata slice by introducing optional
   operator-curated metadata overlays keyed by stable `source_pdf_id`,
