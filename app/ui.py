@@ -125,6 +125,8 @@ def format_citations(citations: list[Citation]) -> str:
     lines: list[str] = []
     for citation in citations:
         parts = [citation.document_name]
+        if citation.source_pdf_relative_path:
+            parts.append(f"ruta fuente: {citation.source_pdf_relative_path}")
         if citation.section:
             parts.append(f"sección: {citation.section}")
         if citation.page is not None:

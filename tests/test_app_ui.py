@@ -68,6 +68,7 @@ def make_grounded_result(
             citations=[
                 Citation(
                     document_name="Auto Policy",
+                    source_pdf_relative_path="autos/polizas/auto-policy.pdf",
                     section="Coverage",
                     page=3,
                     clause_id="COV-1",
@@ -93,6 +94,7 @@ def test_format_citations_renders_traceable_markdown() -> None:
         [
             Citation(
                 document_name="Policy A",
+                source_pdf_relative_path="salud/polizas/policy-a.pdf",
                 section="Eligibility",
                 page=2,
                 clause_id="ELIG-2",
@@ -103,11 +105,30 @@ def test_format_citations_renders_traceable_markdown() -> None:
     )
 
     assert "Policy A" in rendered
+    assert "ruta fuente: salud/polizas/policy-a.pdf" in rendered
     assert "sección: Eligibility" in rendered
     assert "página: 2" in rendered
     assert "cláusula: ELIG-2" in rendered
     assert "fragmento: chunk-v2-0" in rendered
     assert "Applicant must be over 18 years old." in rendered
+
+
+def test_format_citations_omits_relative_path_when_absent() -> None:
+    rendered = format_citations(
+        [
+            Citation(
+                document_name="Policy B",
+                section="Benefits",
+                page=6,
+                chunk_id="chunk-v2-1",
+            )
+        ]
+    )
+
+    assert "Policy B" in rendered
+    assert "ruta fuente:" not in rendered
+    assert "sección: Benefits" in rendered
+    assert "página: 6" in rendered
 
 
 def test_format_limitations_handles_empty_and_non_empty_lists() -> None:
@@ -137,6 +158,7 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
 
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
+    assert "ruta fuente: autos/polizas/auto-policy.pdf" in citations
     assert confidence == "HIGH"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "consulta_recibida" in trace_summary

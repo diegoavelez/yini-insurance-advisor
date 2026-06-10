@@ -2,6 +2,7 @@
 
 ## 2026-06-09
 
+- Add the second `Phase 19` citation-readability slice by exposing `source_pdf_relative_path` in the Gradio citation renderer with a stable Spanish label, preserving clean fallback behavior when the field is absent, adding focused UI rendering regression coverage, and marking the slice complete in the roadmap and spec bundle.
 - Add the first `Phase 19` citation-readability slice by propagating `source_pdf_relative_path` through citation and documentary-basis response contracts, reusing existing retrieval metadata for operator traceability, adding focused grounded-answer and contract regression coverage, and marking the new phase and slice complete in the roadmap and spec bundle.
 - Add the fifth `Phase 18` corpus-metadata slice by re-enabling truthful retrieval filtering for curated `document_type` and `product` metadata, mapping both fields into Qdrant query filters, adding focused regression coverage for combined supported filters, and closing the phase in the roadmap and spec bundle.
 - Add the fourth `Phase 18` corpus-metadata slice by introducing optional
