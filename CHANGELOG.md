@@ -2,6 +2,7 @@
 
 ## 2026-06-11
 
+- Add the fifth `Phase 19` citation-readability slice by surfacing a compact operator-facing evidence summary in the Gradio debug metadata, deduplicating current evidence document names plus curated `document_type` and `product` values, adding focused empty/non-empty UI regression coverage, and closing `Phase 19` in the roadmap and spec bundle.
 - Add the fourth `Phase 19` citation-readability slice by propagating curated `document_type` and `product` metadata into citation and documentary-basis response contracts, rendering those fields in the Gradio `Citas` and `Base documental` surfaces with stable Spanish labels, adding focused contract, grounded-answer, and UI regression coverage, and marking the slice complete in the roadmap and spec bundle.
 
 ## 2026-06-10

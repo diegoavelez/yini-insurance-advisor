@@ -18,6 +18,7 @@ from app.ui import (
     format_error_state,
     format_limitations,
     format_loading_state,
+    format_operator_evidence_summary,
     format_readiness_state,
     format_support_context,
     format_trace_summary,
@@ -198,6 +199,46 @@ def test_format_documentary_basis_omits_relative_path_when_absent() -> None:
     assert "página: 6" in rendered
 
 
+def test_format_operator_evidence_summary_renders_deduplicated_curated_fields() -> None:
+    result = make_grounded_result()
+
+    result.response.citations.append(
+        Citation(
+            document_name="Health Annex",
+            document_type="annex",
+            product="health",
+            section="Benefits",
+            page=7,
+            chunk_id="chunk-002",
+        )
+    )
+    result.response.documentary_basis.append(
+        DocumentaryBasisItem(
+            document_name="Auto Policy",
+            document_type="policy",
+            product="auto",
+            section="Coverage",
+            page=3,
+        )
+    )
+
+    rendered = format_operator_evidence_summary(result)
+
+    assert rendered == (
+        "documentos: Auto Policy, Health Annex | "
+        "tipos: policy, annex | "
+        "productos: auto, health"
+    )
+
+
+def test_format_operator_evidence_summary_handles_empty_evidence() -> None:
+    result = make_grounded_result()
+    result.response.citations = []
+    result.response.documentary_basis = []
+
+    assert format_operator_evidence_summary(result) == "Sin evidencia resumida disponible."
+
+
 def test_render_grounded_result_maps_typed_response_fields() -> None:
     (
         answer,
@@ -236,6 +277,10 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
     assert "Resultado de soporte: borrador fundamentado listo" in support_context
     assert "Longitud de la consulta: 16" in debug_metadata
     assert "Top K de recuperación: 8" in debug_metadata
+    assert (
+        "Resumen de evidencia: documentos: Auto Policy | tipos: policy | productos: auto"
+        in debug_metadata
+    )
     assert answer_quality_state == "Calidad de la respuesta — Calidad estándar del borrador."
     assert error_state == "No hay errores activos."
     assert status == "Se requiere revisión del asesor antes del uso externo."
@@ -722,6 +767,10 @@ def test_format_debug_metadata_renders_compact_operator_fields() -> None:
     assert "Superficie de ejecución: gradio_ui" in rendered
     assert "Longitud de la consulta: 16" in rendered
     assert "Top K de recuperación: 8" in rendered
+    assert (
+        "Resumen de evidencia: documentos: Auto Policy | tipos: policy | productos: auto"
+        in rendered
+    )
     assert "Resultado de depuración: borrador fundamentado listo" in rendered
 
 

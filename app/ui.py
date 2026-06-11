@@ -174,6 +174,40 @@ def format_documentary_basis(documentary_basis: list[DocumentaryBasisItem]) -> s
     return "\n".join(lines)
 
 
+def format_operator_evidence_summary(result: GroundedAnswerResult) -> str:
+    """Render a compact operator-facing summary of current grounded evidence."""
+
+    document_names: list[str] = []
+    document_types: list[str] = []
+    products: list[str] = []
+
+    def collect_unique(target: list[str], value: str | None) -> None:
+        if value and value not in target:
+            target.append(value)
+
+    for citation in result.response.citations:
+        collect_unique(document_names, citation.document_name)
+        collect_unique(document_types, citation.document_type)
+        collect_unique(products, citation.product)
+
+    for basis_item in result.response.documentary_basis:
+        collect_unique(document_names, basis_item.document_name)
+        collect_unique(document_types, basis_item.document_type)
+        collect_unique(products, basis_item.product)
+
+    if not document_names and not document_types and not products:
+        return "Sin evidencia resumida disponible."
+
+    summary_parts: list[str] = []
+    if document_names:
+        summary_parts.append(f"documentos: {', '.join(document_names)}")
+    if document_types:
+        summary_parts.append(f"tipos: {', '.join(document_types)}")
+    if products:
+        summary_parts.append(f"productos: {', '.join(products)}")
+    return " | ".join(summary_parts)
+
+
 def format_limitations(limitations: list[str]) -> str:
     """Render limitations into a stable markdown block for the MVP UI."""
 
@@ -278,6 +312,7 @@ def format_debug_metadata(
             + CONFIDENCE_TRANSLATIONS.get(response.confidence, response.confidence),
             f"- Cantidad de citas: {len(response.citations)}",
             f"- Cantidad de limitaciones: {len(response.limitations)}",
+            f"- Resumen de evidencia: {format_operator_evidence_summary(result)}",
             f"- Resultado de depuración: {localize_support_outcome(outcome)}",
         ]
     )
