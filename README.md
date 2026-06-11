@@ -24,8 +24,10 @@ the completed `Phase 11` optimization foundation, the completed `Phase 12`
 MCP foundation, the completed `Phase 13` demo hardening work, and the
 completed `Phase 14` deployment hardening work, the completed `Phase 15`
 final evaluation and cleanup work, the completed `Phase 16` ingestion runtime
-remediation work, and the completed `Phase 17` runtime compatibility
-hardening work.
+remediation work, the completed `Phase 17` runtime compatibility hardening
+work, the completed `Phase 18` corpus metadata and retrieval traceability
+work, and the completed `Phase 19` citation readability and operator
+traceability work.
 
 ## Source Documents
 
@@ -37,7 +39,7 @@ hardening work.
 
 ## Current Status
 
-- `Phase 0` through `Phase 17` are complete.
+- `Phase 0` through `Phase 19` are complete.
 - Detailed implementation status lives in `specs/roadmap.md`.
 
 ## Local Setup
@@ -398,7 +400,7 @@ tests/      Smoke tests and future test coverage
 
 ## Next Milestones
 
-`Phase 15` is complete in
+`Phase 0` through `Phase 19` are complete in
 `/Users/diegovelez/Documents/PROJECTS/codex/yini-insurance-advisor/specs/roadmap.md`.
 
 The next implementation work should start from a new dated spec bundle if

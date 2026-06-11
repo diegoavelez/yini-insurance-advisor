@@ -1080,6 +1080,7 @@ Stabilize the project for final delivery.
 - `spanish-evaluation-fixtures-and-smoke-coverage`
 - `spanish-ui-state-derivation-hardening`
 - `phase-15-final-readme-and-roadmap-sync`
+- `readme-phase-18-19-status-and-milestones-sync`
 
 Current implementation status:
 
@@ -1091,6 +1092,7 @@ completed:
 - `spanish-evaluation-fixtures-and-smoke-coverage`
 - `spanish-ui-state-derivation-hardening`
 - `phase-15-final-readme-and-roadmap-sync`
+- `readme-phase-18-19-status-and-milestones-sync`
 
 remaining in `Phase 15`:
 
