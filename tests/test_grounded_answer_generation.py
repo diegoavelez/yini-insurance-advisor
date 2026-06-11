@@ -33,6 +33,8 @@ def make_retrieval_result() -> DocumentRetrievalResult:
                 text="Coverage applies to outpatient care after deductible.",
                 document_name="Policy A",
                 document_version="2026-01",
+                document_type="policy",
+                product="health",
                 page=4,
                 section="Coverage",
                 section_path=["Policy A", "Coverage"],
@@ -48,6 +50,8 @@ def make_retrieval_result() -> DocumentRetrievalResult:
                 text="Exclusions include cosmetic surgery.",
                 document_name="Policy A",
                 document_version="2026-01",
+                document_type="policy",
+                product="health",
                 page=7,
                 section="Exclusions",
                 section_path=["Policy A", "Exclusions"],
@@ -173,11 +177,15 @@ def test_generate_grounded_answer_returns_typed_response_with_citations(
         result.response.citations[0].source_pdf_relative_path
         == "autonomia/vida/policy-a.pdf"
     )
+    assert result.response.citations[0].document_type == "policy"
+    assert result.response.citations[0].product == "health"
     assert result.response.citations[0].chunk_id == "policy-a:v2:0000"
     assert (
         result.response.documentary_basis[0].source_pdf_relative_path
         == "autonomia/vida/policy-a.pdf"
     )
+    assert result.response.documentary_basis[0].document_type == "policy"
+    assert result.response.documentary_basis[0].product == "health"
     assert result.verification.confidence == "high"
 
 

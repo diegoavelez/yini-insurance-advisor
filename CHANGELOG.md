@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-11
+
+- Add the fourth `Phase 19` citation-readability slice by propagating curated `document_type` and `product` metadata into citation and documentary-basis response contracts, rendering those fields in the Gradio `Citas` and `Base documental` surfaces with stable Spanish labels, adding focused contract, grounded-answer, and UI regression coverage, and marking the slice complete in the roadmap and spec bundle.
+
 ## 2026-06-10
 
 - Add the third `Phase 19` citation-readability slice by introducing a dedicated `Base documental` UI surface, rendering stable `documentary_basis` review fields including optional relative-path traceability, updating the Gradio output shape and focused UI regression coverage, and marking the slice complete in the roadmap and spec bundle.

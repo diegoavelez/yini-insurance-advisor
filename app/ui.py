@@ -127,6 +127,10 @@ def format_citations(citations: list[Citation]) -> str:
         parts = [citation.document_name]
         if citation.source_pdf_relative_path:
             parts.append(f"ruta fuente: {citation.source_pdf_relative_path}")
+        if citation.document_type:
+            parts.append(f"tipo: {citation.document_type}")
+        if citation.product:
+            parts.append(f"producto: {citation.product}")
         if citation.section:
             parts.append(f"sección: {citation.section}")
         if citation.page is not None:
@@ -153,6 +157,10 @@ def format_documentary_basis(documentary_basis: list[DocumentaryBasisItem]) -> s
         parts = [basis_item.document_name]
         if basis_item.source_pdf_relative_path:
             parts.append(f"ruta fuente: {basis_item.source_pdf_relative_path}")
+        if basis_item.document_type:
+            parts.append(f"tipo: {basis_item.document_type}")
+        if basis_item.product:
+            parts.append(f"producto: {basis_item.product}")
         if basis_item.section:
             parts.append(f"sección: {basis_item.section}")
         if basis_item.page is not None:

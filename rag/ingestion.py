@@ -1353,6 +1353,8 @@ def build_citations_from_chunks(retrieved_chunks: list[RetrievedChunk]) -> list[
             Citation(
                 document_name=chunk.document_name,
                 source_pdf_relative_path=chunk.source_pdf_relative_path,
+                document_type=chunk.document_type,
+                product=chunk.product,
                 chunk_id=chunk.chunk_id,
                 page=chunk.page,
                 section=chunk.section,
@@ -1370,6 +1372,8 @@ def build_documentary_basis(retrieved_chunks: list[RetrievedChunk]) -> list[Docu
         DocumentaryBasisItem(
             document_name=chunk.document_name,
             source_pdf_relative_path=chunk.source_pdf_relative_path,
+            document_type=chunk.document_type,
+            product=chunk.product,
             page=chunk.page,
             section=chunk.section,
             clause_id=chunk.clause_id,

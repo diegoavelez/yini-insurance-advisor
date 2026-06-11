@@ -14,6 +14,8 @@ class Citation(BaseModel):
 
     document_name: str = Field(min_length=1)
     source_pdf_relative_path: str | None = None
+    document_type: str | None = None
+    product: str | None = None
     chunk_id: str | None = None
     page: int | None = Field(default=None, ge=1)
     section: str | None = None
@@ -26,6 +28,8 @@ class DocumentaryBasisItem(BaseModel):
 
     document_name: str = Field(min_length=1)
     source_pdf_relative_path: str | None = None
+    document_type: str | None = None
+    product: str | None = None
     page: int | None = Field(default=None, ge=1)
     section: str | None = None
     clause_id: str | None = None

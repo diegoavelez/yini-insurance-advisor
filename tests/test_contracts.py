@@ -127,9 +127,18 @@ def test_policy_comparison_supports_typed_citations() -> None:
                 finding="Policy A covers private room upgrades; Policy B does not.",
                 source_documents=["policy-a", "policy-b"],
                 citations=[
-                    Citation(document_name="policy-a", page=4, section="Coverage", clause_id="1.2"),
+                    Citation(
+                        document_name="policy-a",
+                        document_type="policy",
+                        product="health",
+                        page=4,
+                        section="Coverage",
+                        clause_id="1.2",
+                    ),
                     Citation(
                         document_name="policy-b",
+                        document_type="policy",
+                        product="dental",
                         page=7,
                         section="Exclusions",
                         clause_id="3.4",
@@ -149,6 +158,8 @@ def test_advisor_response_contract_matches_prd_shape() -> None:
             DocumentaryBasisItem(
                 document_name="policy-a",
                 source_pdf_relative_path="autonomia/vida/policy-a.pdf",
+                document_type="policy",
+                product="health",
                 page=4,
                 section="Coverage",
                 clause_id="1.2",
@@ -158,6 +169,8 @@ def test_advisor_response_contract_matches_prd_shape() -> None:
             Citation(
                 document_name="policy-a",
                 source_pdf_relative_path="autonomia/vida/policy-a.pdf",
+                document_type="policy",
+                product="health",
                 page=4,
                 section="Coverage",
                 clause_id="1.2",
@@ -171,6 +184,8 @@ def test_advisor_response_contract_matches_prd_shape() -> None:
     assert response.confidence == "high"
     assert response.citations[0].document_name == "policy-a"
     assert response.citations[0].source_pdf_relative_path == "autonomia/vida/policy-a.pdf"
+    assert response.citations[0].document_type == "policy"
+    assert response.citations[0].product == "health"
 
 
 def test_invalid_confidence_fails_in_grounding_verification() -> None:
@@ -193,6 +208,8 @@ def test_citation_preserves_traceability_fields() -> None:
     citation = Citation(
         document_name="policy-a",
         source_pdf_relative_path="autonomia/vida/policy-a.pdf",
+        document_type="policy",
+        product="health",
         page=4,
         section="Coverage",
         clause_id="1.2",
@@ -203,18 +220,24 @@ def test_citation_preserves_traceability_fields() -> None:
     assert citation.section == "Coverage"
     assert citation.clause_id == "1.2"
     assert citation.source_pdf_relative_path == "autonomia/vida/policy-a.pdf"
+    assert citation.document_type == "policy"
+    assert citation.product == "health"
 
 
 def test_documentary_basis_item_preserves_relative_path_traceability() -> None:
     basis_item = DocumentaryBasisItem(
         document_name="policy-a",
         source_pdf_relative_path="autonomia/vida/policy-a.pdf",
+        document_type="policy",
+        product="health",
         page=4,
         section="Coverage",
         clause_id="1.2",
     )
 
     assert basis_item.source_pdf_relative_path == "autonomia/vida/policy-a.pdf"
+    assert basis_item.document_type == "policy"
+    assert basis_item.product == "health"
 
 
 def test_agent_state_is_typed_and_constructible() -> None:

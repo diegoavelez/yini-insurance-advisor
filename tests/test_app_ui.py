@@ -70,6 +70,8 @@ def make_grounded_result(
                 DocumentaryBasisItem(
                     document_name="Auto Policy",
                     source_pdf_relative_path="autos/polizas/auto-policy.pdf",
+                    document_type="policy",
+                    product="auto",
                     section="Coverage",
                     page=3,
                     clause_id="COV-1",
@@ -80,6 +82,8 @@ def make_grounded_result(
                 Citation(
                     document_name="Auto Policy",
                     source_pdf_relative_path="autos/polizas/auto-policy.pdf",
+                    document_type="policy",
+                    product="auto",
                     section="Coverage",
                     page=3,
                     clause_id="COV-1",
@@ -106,6 +110,8 @@ def test_format_citations_renders_traceable_markdown() -> None:
             Citation(
                 document_name="Policy A",
                 source_pdf_relative_path="salud/polizas/policy-a.pdf",
+                document_type="policy",
+                product="health",
                 section="Eligibility",
                 page=2,
                 clause_id="ELIG-2",
@@ -117,6 +123,8 @@ def test_format_citations_renders_traceable_markdown() -> None:
 
     assert "Policy A" in rendered
     assert "ruta fuente: salud/polizas/policy-a.pdf" in rendered
+    assert "tipo: policy" in rendered
+    assert "producto: health" in rendered
     assert "sección: Eligibility" in rendered
     assert "página: 2" in rendered
     assert "cláusula: ELIG-2" in rendered
@@ -153,6 +161,8 @@ def test_format_documentary_basis_renders_traceable_markdown() -> None:
             DocumentaryBasisItem(
                 document_name="Policy A",
                 source_pdf_relative_path="salud/polizas/policy-a.pdf",
+                document_type="policy",
+                product="health",
                 section="Eligibility",
                 page=2,
                 clause_id="ELIG-2",
@@ -163,6 +173,8 @@ def test_format_documentary_basis_renders_traceable_markdown() -> None:
 
     assert "Policy A" in rendered
     assert "ruta fuente: salud/polizas/policy-a.pdf" in rendered
+    assert "tipo: policy" in rendered
+    assert "producto: health" in rendered
     assert "sección: Eligibility" in rendered
     assert "página: 2" in rendered
     assert "cláusula: ELIG-2" in rendered
@@ -210,8 +222,12 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert "ruta fuente: autos/polizas/auto-policy.pdf" in citations
+    assert "tipo: policy" in citations
+    assert "producto: auto" in citations
     assert "Auto Policy" in documentary_basis
     assert "ruta fuente: autos/polizas/auto-policy.pdf" in documentary_basis
+    assert "tipo: policy" in documentary_basis
+    assert "producto: auto" in documentary_basis
     assert confidence == "HIGH"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "consulta_recibida" in trace_summary
