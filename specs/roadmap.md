@@ -1134,6 +1134,7 @@ reasonable development loop.
 - `recursive-ingestion-and-path-derived-document-ids`
 - `qdrant-point-id-normalization`
 - `qdrant-retrieval-client-compatibility`
+- `docling-timeout-pdfium-fallback-remediation`
 
 Current implementation status:
 
@@ -1144,6 +1145,7 @@ completed:
 - `recursive-ingestion-and-path-derived-document-ids`
 - `qdrant-point-id-normalization`
 - `qdrant-retrieval-client-compatibility`
+- `docling-timeout-pdfium-fallback-remediation`
 
 remaining in `Phase 16`:
 

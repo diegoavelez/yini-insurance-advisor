@@ -384,6 +384,49 @@ def test_convert_pdf_to_markdown_falls_back_to_pdfium_when_docling_times_out(
     assert rendered == "# fallback markdown\n"
 
 
+def test_convert_pdf_to_markdown_docling_backend_falls_back_to_pdfium_on_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.pdfium_backend_is_available", lambda: True)
+
+    def fake_docling(_path, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd="docling", timeout=20.0)
+
+    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown_with_docling", fake_docling)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_pdfium",
+        lambda _path: "# fallback markdown\n",
+    )
+
+    rendered = convert_pdf_to_markdown_with_backend(
+        Path("policy-a.pdf"),
+        backend="docling",
+        docling_startup_timeout_seconds=300.0,
+    )
+
+    assert rendered == "# fallback markdown\n"
+
+
+def test_convert_pdf_to_markdown_docling_backend_still_fails_for_non_timeout_docling_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.pdfium_backend_is_available", lambda: True)
+
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_docling",
+        lambda _path, **_kwargs: (_ for _ in ()).throw(RuntimeError("docling parse failure")),
+    )
+
+    with pytest.raises(RuntimeError, match="Docling conversion did not complete"):
+        convert_pdf_to_markdown_with_backend(
+            Path("policy-a.pdf"),
+            backend="docling",
+            docling_startup_timeout_seconds=300.0,
+        )
+
+
 def test_cli_fails_when_no_matching_pdfs_are_found(
     monkeypatch: pytest.MonkeyPatch, tmp_path, capsys
 ) -> None:

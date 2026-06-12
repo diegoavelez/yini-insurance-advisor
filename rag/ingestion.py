@@ -492,6 +492,8 @@ def convert_pdf_to_markdown_with_backend(
             fallback_error = exc
 
     if backend == "docling" and fallback_error is not None:
+        if isinstance(fallback_error, subprocess.TimeoutExpired) and pdfium_backend_is_available():
+            return convert_pdf_to_markdown_with_pdfium(source_pdf_path)
         raise RuntimeError(
             "Docling conversion did not complete under the configured local timeout."
         ) from fallback_error
