@@ -11,6 +11,7 @@ QueryScope = Literal["supported", "unsupported"]
 SUPPORTED_QUERY_TOKENS = {
     "asistencia",
     "assist",
+    "arl",
     "auto",
     "autos",
     "accident",
@@ -46,6 +47,11 @@ SUPPORTED_QUERY_TOKENS = {
     "hospitalizacion",
     "hospitalización",
     "insurance",
+    "intermediacion",
+    "intermediación",
+    "intermediario",
+    "intermediarios",
+    "laborales",
     "poliza",
     "policy",
     "póliza",
@@ -53,6 +59,7 @@ SUPPORTED_QUERY_TOKENS = {
     "prima",
     "procedure",
     "procedimiento",
+    "registro",
     "reembolso",
     "reimbursement",
     "restriccion",
@@ -67,6 +74,8 @@ SUPPORTED_QUERY_TOKENS = {
     "vehículo",
     "versus",
     "vs",
+    "riesgos",
+    "rui",
 }
 
 

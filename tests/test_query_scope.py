@@ -21,6 +21,14 @@ def test_classify_query_scope_supports_spanish_autos_assistance_queries() -> Non
     assert decision.scope == "supported"
 
 
+def test_classify_query_scope_supports_spanish_arl_rui_queries() -> None:
+    decision = classify_query_scope(
+        "¿Cuál es la normatividad que rige el registro único de intermediarios en ARL?"
+    )
+
+    assert decision.scope == "supported"
+
+
 def test_classify_query_scope_keeps_non_insurance_spanish_queries_unsupported() -> None:
     decision = classify_query_scope("¿Cómo está el clima en Bogotá hoy?")
 

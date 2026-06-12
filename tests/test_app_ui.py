@@ -394,6 +394,42 @@ def test_run_query_accepts_spanish_supported_scope_queries() -> None:
     assert status == "Se requiere revisión del asesor antes del uso externo."
 
 
+def test_run_query_accepts_spanish_arl_scope_queries() -> None:
+    (
+        answer,
+        citations,
+        documentary_basis,
+        confidence,
+        limitations,
+        trace_summary,
+        support_context,
+        debug_metadata,
+        answer_quality_state,
+        error_state,
+        status,
+    ) = run_query(
+        "¿Cuál es la normatividad que rige el registro único de intermediarios en ARL?",
+        settings=make_settings(),
+        grounded_answer_fn=lambda *_args, **_kwargs: make_grounded_result(
+            answer=(
+                "La normatividad citada incluye la Ley 1562 de 2012, el Decreto "
+                "1117 de 2016 y la Resolución 0136 de 2024."
+            )
+        ),
+    )
+
+    assert "Ley 1562 de 2012" in answer
+    assert "Auto Policy" in citations
+    assert "Auto Policy" in documentary_basis
+    assert confidence == "HIGH"
+    assert "consulta_recibida" in trace_summary
+    assert "Resultado de soporte: borrador fundamentado listo" in support_context
+    assert "Resultado de depuración: borrador fundamentado listo" in debug_metadata
+    assert answer_quality_state == "Calidad de la respuesta — Calidad estándar del borrador."
+    assert error_state == "No hay errores activos."
+    assert status == "Se requiere revisión del asesor antes del uso externo."
+
+
 def test_run_query_returns_prompt_injection_refusal_without_backend_call() -> None:
     called = False
 

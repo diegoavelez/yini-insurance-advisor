@@ -1084,6 +1084,7 @@ Stabilize the project for final delivery.
 - `architecture-and-repo-surface-status-sync`
 - `local-embedding-runtime-remediation`
 - `spanish-query-scope-autos-alignment-remediation`
+- `arl-supported-scope-alignment-remediation`
 
 Current implementation status:
 
@@ -1099,6 +1100,7 @@ completed:
 - `architecture-and-repo-surface-status-sync`
 - `local-embedding-runtime-remediation`
 - `spanish-query-scope-autos-alignment-remediation`
+- `arl-supported-scope-alignment-remediation`
 
 ---
 
