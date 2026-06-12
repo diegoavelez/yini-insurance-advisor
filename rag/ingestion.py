@@ -66,6 +66,7 @@ DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
 DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 300.0
 QDRANT_POINT_ID_NAMESPACE = uuid.UUID("8c39ce79-53d7-47e5-baad-95c5f1548599")
+QDRANT_FILTERABLE_PAYLOAD_FIELDS = ("document_type", "product")
 MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
 RAG_LOGGER = logging.getLogger("yini.rag")
@@ -549,7 +550,7 @@ def extract_document_metadata(
         stripped_line = line.strip()
         if stripped_line.startswith("#"):
             heading_text = stripped_line.lstrip("#").strip()
-            if heading_text:
+            if is_safe_document_name_heading(heading_text):
                 document_name = heading_text
                 break
 
@@ -558,6 +559,33 @@ def extract_document_metadata(
         document_version = version_match.group(1)
 
     return document_name, document_version
+
+
+def is_safe_document_name_heading(heading_text: str) -> bool:
+    """Return whether a heading is safe to promote as document_name."""
+
+    normalized_heading = heading_text.strip()
+    if not normalized_heading:
+        return False
+
+    normalized_lower = normalized_heading.casefold()
+    noisy_prefixes = (
+        "grabación:",
+        "grabacion:",
+        "video:",
+        "vídeo:",
+    )
+    if normalized_lower.startswith(noisy_prefixes):
+        return False
+
+    if (
+        "http://" in normalized_lower
+        or "https://" in normalized_lower
+        or "www." in normalized_lower
+    ):
+        return False
+
+    return True
 
 
 def load_document_metadata_overlays(
@@ -1398,7 +1426,10 @@ def retrieve_ranked_chunks(
         )
         ensure_qdrant_backend_available()
         resolved_client = client or create_qdrant_client(resolved_settings)
-        query_vector = generate_embedding_vector(normalized_retrieval_query.query, resolved_settings)
+        query_vector = generate_embedding_vector(
+            normalized_retrieval_query.query,
+            resolved_settings,
+        )
         hits = search_qdrant_chunks(
             client=resolved_client,
             settings=resolved_settings,
@@ -1797,6 +1828,28 @@ def ensure_qdrant_collection(client: object, settings: Settings, vector_size: in
     if configured_size != vector_size:
         raise RuntimeError(
             "Configured Qdrant collection is incompatible with the embedding vector dimension."
+        )
+
+    ensure_qdrant_payload_indexes(client, settings)
+
+
+def ensure_qdrant_payload_indexes(client: object, settings: Settings) -> None:
+    """Ensure payload indexes exist for retrieval-facing metadata filters."""
+
+    create_payload_index = getattr(client, "create_payload_index", None)
+    if not callable(create_payload_index):
+        return
+
+    qdrant_models = get_qdrant_models()
+    field_schema_keyword = getattr(qdrant_models, "PayloadSchemaType", None)
+    keyword_value = getattr(field_schema_keyword, "KEYWORD", "keyword")
+
+    for field_name in QDRANT_FILTERABLE_PAYLOAD_FIELDS:
+        create_payload_index(
+            collection_name=settings.qdrant_collection,
+            field_name=field_name,
+            field_schema=keyword_value,
+            wait=True,
         )
 
 

@@ -1223,6 +1223,8 @@ and cite as the real Spanish document set grows.
 - `operator-curated-document-metadata-overlays`
 - `document-metadata-filter-enablement`
 - `operator-curated-term-equivalence-normalization`
+- `qdrant-metadata-filter-index-alignment`
+- `noisy-document-title-heading-guardrail`
 
 Current implementation status:
 
@@ -1234,6 +1236,8 @@ completed:
 - `operator-curated-document-metadata-overlays`
 - `document-metadata-filter-enablement`
 - `operator-curated-term-equivalence-normalization`
+- `qdrant-metadata-filter-index-alignment`
+- `noisy-document-title-heading-guardrail`
 
 remaining in `Phase 18`:
 
@@ -1243,6 +1247,12 @@ Implementation note:
 
 - This phase now includes the smallest truthful retrieval-facing metadata
   filter surface for currently curated `document_type` and `product` values.
+- Retrieval-time metadata filters also depend on Qdrant payload indexes for
+  those curated fields, and collection bootstrap is now responsible for
+  creating them when the client supports payload-index management.
+- Retrieval-facing `document_name` promotion now rejects obviously noisy
+  heading candidates such as media/embed labels with URLs and falls back to the
+  deterministic source filename stem instead.
 - Broader taxonomy inference, automatic classification, and UI filter work
   remain intentionally out of scope.
 

@@ -1,0 +1,20 @@
+{
+  "documents": {
+    "arl__instructivos-actualizacion-cuenta-bancaria-v2": {
+      "document_type": "guide",
+      "product": "arl"
+    },
+    "arl__instructivos-consulta-de-comisiones-arl-sura-v2": {
+      "document_type": "guide",
+      "product": "arl"
+    },
+    "arl__politica-de-remuneracion-canal-externo-v4": {
+      "document_type": "policy",
+      "product": "arl"
+    },
+    "arl__preguntas-frecuentes-registro-unico-de-intermediacion-rui": {
+      "document_type": "faq",
+      "product": "arl"
+    }
+  }
+}

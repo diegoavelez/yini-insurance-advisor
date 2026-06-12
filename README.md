@@ -365,6 +365,10 @@ Use an external local virtualenv for:
 - embeddings generation
 - Qdrant indexing
 
+The indexing step is also responsible for creating the Qdrant payload indexes
+required by the currently supported retrieval metadata filters when the client
+surface exposes payload-index creation.
+
 Reason:
 
 - on the current workstation, the repository-local `.venv` remains a poor fit
@@ -381,6 +385,8 @@ Important variables:
 - `BATCH_INPUT_DIR` raw PDF tree, defaults to `data/raw`
 - `BATCH_MARKDOWN_DIR` local markdown output path
 - `BATCH_PROCESSED_DIR` local processed output path
+- `BATCH_METADATA_OVERLAY_PATH` metadata overlay file, defaults to
+  `ops/document-metadata-overlays.json`
 - `BATCH_SAMPLE_PDF` sample PDF used for Docling warm-up
 - `BATCH_OVERWRITE` defaults to `false` for incremental local batch runs
 
@@ -393,7 +399,8 @@ make batch-warmup \
 make batch-ingest \
   BATCH_VENV=/private/tmp/yini-fast-venv311 \
   BATCH_MARKDOWN_DIR=/tmp/yini-batch-check/markdown \
-  BATCH_PROCESSED_DIR=/tmp/yini-batch-check/processed
+  BATCH_PROCESSED_DIR=/tmp/yini-batch-check/processed \
+  BATCH_METADATA_OVERLAY_PATH=ops/document-metadata-overlays.json
 
 make batch-embeddings \
   BATCH_VENV=/private/tmp/yini-fast-venv311 \
@@ -406,6 +413,9 @@ Operational notes:
   - previously processed documents are skipped during ingestion;
   - previously generated embedding artifacts are skipped during embedding generation;
   - set `BATCH_OVERWRITE=true` only when you intentionally want to regenerate;
+- keep `BATCH_METADATA_OVERLAY_PATH` pointed at the intended overlay file when
+  curated `document_type` / `product` metadata should be applied during
+  ingestion;
 - keep `data/markdown/` and `data/processed/` local-only unless there is an
   explicit reproducibility reason to snapshot them elsewhere;
 - prefer temporary output directories for local validation runs;
@@ -428,6 +438,8 @@ Current document-level fields:
   - it falls back to the source PDF stem;
   - it upgrades to the first Markdown heading when one is extracted safely
     during ingestion;
+  - it rejects obviously noisy media/embed labels with URLs and falls back to
+    the deterministic PDF stem in those cases;
   - persisted records still fall back to `source_pdf_id` if no display label is
     available
 - `document_version` is optional:

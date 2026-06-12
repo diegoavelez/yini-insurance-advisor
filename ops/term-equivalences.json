@@ -1,23 +1,168 @@
 {
   "query_aliases": {
-    "auto": ["autos", "carro", "carros", "vehiculo", "vehículos", "vehiculo", "vehiculos"],
-    "pac": ["plan complementario", "plan complementario pac"],
-    "arl": ["riesgos laborales"],
-    "vida grupo": ["vida colectiva"]
+    "auto": [
+      "autos",
+      "carro",
+      "carros",
+      "vehiculo",
+      "vehículo",
+      "vehiculos",
+      "vehículos"
+    ],
+    "moto": [
+      "motos",
+      "motocicleta",
+      "motocicletas"
+    ],
+    "pac": [
+      "plan complementario",
+      "plan complementario pac",
+      "plan pac"
+    ],
+    "arl": [
+      "riesgos laborales",
+      "administradora de riesgos laborales"
+    ],
+    "rui": [
+      "registro unico de intermediacion",
+      "registro único de intermediación"
+    ],
+    "eps": [
+      "salud eps"
+    ],
+    "vida grupo": [
+      "vida colectiva",
+      "seguro colectivo de vida"
+    ],
+    "vida individual": [
+      "seguro de vida individual",
+      "vida personal"
+    ],
+    "educacion": [
+      "educación",
+      "seguro educativo",
+      "seguro de educacion"
+    ],
+    "accidentes personales": [
+      "accidente personal",
+      "ap",
+      "seguro de accidentes personales"
+    ],
+    "enfermedades graves": [
+      "enfermedad grave",
+      "eg"
+    ],
+    "pension": [
+      "pensión",
+      "pensiones"
+    ],
+    "exequial": [
+      "servicio exequial",
+      "plan exequial"
+    ],
+    "movilidad": [
+      "asistencia vehicular",
+      "movilidad autos"
+    ],
+    "asistencia pequenos eventos": [
+      "asistencia pequeños eventos",
+      "pequeños eventos",
+      "pequenos eventos"
+    ]
   },
   "filter_aliases": {
     "document_type": {
-      "policy": ["poliza", "póliza", "clausulado"],
-      "annex": ["anexo"],
-      "faq": ["preguntas frecuentes"],
-      "form": ["formato", "formulario"],
-      "guide": ["guia", "guía", "instructivo", "ayudaventas"]
+      "policy": [
+        "poliza",
+        "póliza",
+        "clausulado",
+        "condiciones",
+        "politica",
+        "política"
+      ],
+      "annex": [
+        "anexo",
+        "anexos"
+      ],
+      "faq": [
+        "preguntas frecuentes",
+        "faq"
+      ],
+      "form": [
+        "formato",
+        "formularios",
+        "formulario",
+        "solicitud"
+      ],
+      "guide": [
+        "guia",
+        "guía",
+        "instructivo",
+        "instructivos",
+        "ayudaventas"
+      ]
     },
     "product": {
-      "auto": ["autos", "carro", "carros", "vehiculo", "vehículo", "vehiculos", "vehículos"],
-      "pac": ["plan complementario", "plan complementario pac"],
-      "arl": ["riesgos laborales"],
-      "vida grupo": ["vida colectiva"]
+      "auto": [
+        "autos",
+        "carro",
+        "carros",
+        "vehiculo",
+        "vehículo",
+        "vehiculos",
+        "vehículos"
+      ],
+      "moto": [
+        "motos",
+        "motocicleta",
+        "motocicletas"
+      ],
+      "pac": [
+        "plan complementario",
+        "plan complementario pac",
+        "plan pac"
+      ],
+      "arl": [
+        "riesgos laborales",
+        "administradora de riesgos laborales"
+      ],
+      "eps": [
+        "salud eps"
+      ],
+      "vida grupo": [
+        "vida colectiva",
+        "seguro colectivo de vida"
+      ],
+      "vida individual": [
+        "seguro de vida individual",
+        "vida personal"
+      ],
+      "educacion": [
+        "educación",
+        "seguro educativo",
+        "seguro de educacion"
+      ],
+      "accidentes personales": [
+        "accidente personal",
+        "ap",
+        "seguro de accidentes personales"
+      ],
+      "enfermedades graves": [
+        "enfermedad grave",
+        "eg"
+      ],
+      "pension": [
+        "pensión",
+        "pensiones"
+      ],
+      "exequial": [
+        "servicio exequial",
+        "plan exequial"
+      ],
+      "movilidad": [
+        "asistencia vehicular",
+        "movilidad autos"
+      ]
     }
   }
 }

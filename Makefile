@@ -10,6 +10,7 @@ BATCH_PIP ?= $(BATCH_VENV)/bin/pip
 BATCH_INPUT_DIR ?= data/raw
 BATCH_MARKDOWN_DIR ?= /tmp/yini-batch/markdown
 BATCH_PROCESSED_DIR ?= /tmp/yini-batch/processed
+BATCH_METADATA_OVERLAY_PATH ?= ops/document-metadata-overlays.json
 BATCH_INGEST_MANIFEST ?= $(BATCH_PROCESSED_DIR)/ingestion-manifest.jsonl
 BATCH_EMBEDDING_MANIFEST ?= $(BATCH_PROCESSED_DIR)/embedding-generation-manifest.jsonl
 BATCH_INDEX_MANIFEST ?= $(BATCH_PROCESSED_DIR)/qdrant-indexing-manifest.jsonl
@@ -53,6 +54,7 @@ batch-ingest:
 		--markdown-dir "$(BATCH_MARKDOWN_DIR)" \
 		--processed-dir "$(BATCH_PROCESSED_DIR)" \
 		--manifest-path "$(BATCH_INGEST_MANIFEST)" \
+		--metadata-overlay-path "$(BATCH_METADATA_OVERLAY_PATH)" \
 		--overwrite "$(BATCH_OVERWRITE)" \
 		--fail-fast true \
 		--pdf-conversion-backend "$(BATCH_PDF_BACKEND)" \

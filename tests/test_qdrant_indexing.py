@@ -117,6 +117,7 @@ class FakeQdrantClient:
         self.collection_size: int | None = None
         self.points: dict[str, object] = {}
         self.upsert_calls = 0
+        self.payload_indexes: list[tuple[str, object, bool]] = []
 
     def get_collection(self, collection_name: str):
         if self.collection_size is None:
@@ -125,6 +126,16 @@ class FakeQdrantClient:
 
     def create_collection(self, collection_name: str, vectors_config: object) -> None:
         self.collection_size = vectors_config.size
+
+    def create_payload_index(
+        self,
+        *,
+        collection_name: str,
+        field_name: str,
+        field_schema: object,
+        wait: bool,
+    ) -> None:
+        self.payload_indexes.append((field_name, field_schema, wait))
 
     def upsert(self, collection_name: str, points: list[object], wait: bool) -> None:
         self.upsert_calls += 1
@@ -135,11 +146,18 @@ class FakeQdrantClient:
         return SimpleNamespace(count=len(self.points))
 
 
+class FakeQdrantClientWithoutPayloadIndex(FakeQdrantClient):
+    create_payload_index = None
+
+
 class FakeTransientError(RuntimeError):
     transient = True
 
 
 def fake_qdrant_models():
+    class PayloadSchemaType:
+        KEYWORD = "keyword"
+
     class Distance:
         COSINE = "cosine"
 
@@ -154,7 +172,12 @@ def fake_qdrant_models():
             self.vector = vector
             self.payload = payload
 
-    return SimpleNamespace(Distance=Distance, VectorParams=VectorParams, PointStruct=PointStruct)
+    return SimpleNamespace(
+        Distance=Distance,
+        PayloadSchemaType=PayloadSchemaType,
+        PointStruct=PointStruct,
+        VectorParams=VectorParams,
+    )
 
 
 def test_parser_builds_qdrant_indexing_command() -> None:
@@ -255,6 +278,10 @@ def test_qdrant_indexing_bootstraps_collection_and_indexes_points(
 
     assert exit_code == 0
     assert fake_client.collection_size == 3
+    assert fake_client.payload_indexes == [
+        ("document_type", "keyword", True),
+        ("product", "keyword", True),
+    ]
     assert len(fake_client.points) == 2
     for point_id, point in fake_client.points.items():
         assert str(UUID(point_id)) == point_id
@@ -365,6 +392,51 @@ def test_qdrant_indexing_is_idempotent_across_reruns(
     assert second_exit_code == 0
     assert len(fake_client.points) == 2
     assert fake_client.upsert_calls == 2
+    assert fake_client.payload_indexes == [
+        ("document_type", "keyword", True),
+        ("product", "keyword", True),
+        ("document_type", "keyword", True),
+        ("product", "keyword", True),
+    ]
+
+
+def test_qdrant_indexing_skips_payload_index_creation_when_client_lacks_support(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    embedding_dir = tmp_path / "embeddings"
+    embedding_dir.mkdir()
+    artifact_path = embedding_dir / "policy-a.embeddings.json"
+    artifact_path.write_text(
+        build_embedding_bundle_artifact(str(artifact_path)).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    manifest_path = tmp_path / "qdrant-manifest.jsonl"
+    fake_client = FakeQdrantClientWithoutPayloadIndex()
+
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
+    monkeypatch.setattr(
+        "rag.ingestion.get_settings",
+        lambda: Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+    )
+
+    exit_code = main(
+        [
+            "index-embeddings",
+            "--embedding-dir",
+            str(embedding_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert len(fake_client.points) == 2
 
 
 def test_qdrant_indexing_retries_transient_failures(

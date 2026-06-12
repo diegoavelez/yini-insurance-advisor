@@ -176,6 +176,25 @@ def test_extract_document_metadata_falls_back_without_heading_or_version() -> No
     assert document_version is None
 
 
+def test_extract_document_metadata_rejects_noisy_media_heading() -> None:
+    document_name, document_version = extract_document_metadata(
+        source_pdf_path=(
+            Path(".")
+            / "preguntas frecuentes registro unico de intermediacion - rui.pdf"
+        ),
+        cleaned_markdown_text=(
+            "# Grabación: https://player.vimeo.com/video/943790015\n\n"
+            "Preguntas frecuentes sobre el registro único de intermediación.\n"
+        ),
+    )
+
+    assert (
+        document_name
+        == "preguntas frecuentes registro unico de intermediacion - rui"
+    )
+    assert document_version is None
+
+
 def test_build_chunk_records_is_deterministic() -> None:
     cleaned_markdown_text = (
         "# Policy Title\n\n"
