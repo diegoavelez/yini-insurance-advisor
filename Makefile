@@ -16,6 +16,7 @@ BATCH_INDEX_MANIFEST ?= $(BATCH_PROCESSED_DIR)/qdrant-indexing-manifest.jsonl
 BATCH_SAMPLE_PDF ?= $(BATCH_INPUT_DIR)/MOVILIDAD/AUTOS/ayudaventas asistencia pequeños eventos.pdf
 BATCH_PDF_BACKEND ?= docling
 BATCH_DOCLING_TIMEOUT ?= 600
+BATCH_OVERWRITE ?= false
 
 .PHONY: setup lint test app run batch-setup batch-warmup batch-ingest batch-embeddings batch-index
 
@@ -52,7 +53,7 @@ batch-ingest:
 		--markdown-dir "$(BATCH_MARKDOWN_DIR)" \
 		--processed-dir "$(BATCH_PROCESSED_DIR)" \
 		--manifest-path "$(BATCH_INGEST_MANIFEST)" \
-		--overwrite true \
+		--overwrite "$(BATCH_OVERWRITE)" \
 		--fail-fast true \
 		--pdf-conversion-backend "$(BATCH_PDF_BACKEND)" \
 		--docling-startup-timeout-seconds $(BATCH_DOCLING_TIMEOUT)
@@ -61,7 +62,7 @@ batch-embeddings:
 	$(BATCH_PYTHON) -m rag.ingestion generate-embeddings \
 		--chunk-dir "$(BATCH_PROCESSED_DIR)/chunks" \
 		--manifest-path "$(BATCH_EMBEDDING_MANIFEST)" \
-		--overwrite true \
+		--overwrite "$(BATCH_OVERWRITE)" \
 		--fail-fast true
 
 batch-index:

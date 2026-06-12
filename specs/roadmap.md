@@ -1222,6 +1222,7 @@ and cite as the real Spanish document set grows.
 - `unsupported-metadata-filter-guardrail`
 - `operator-curated-document-metadata-overlays`
 - `document-metadata-filter-enablement`
+- `operator-curated-term-equivalence-normalization`
 
 Current implementation status:
 
@@ -1232,6 +1233,7 @@ completed:
 - `unsupported-metadata-filter-guardrail`
 - `operator-curated-document-metadata-overlays`
 - `document-metadata-filter-enablement`
+- `operator-curated-term-equivalence-normalization`
 
 remaining in `Phase 18`:
 

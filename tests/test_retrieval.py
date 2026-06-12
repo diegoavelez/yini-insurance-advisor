@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from contracts import RetrievalQuery
+from contracts import RetrievalQuery, TermEquivalenceSet
 from core.config import Settings
 from rag.ingestion import build_parser, main, retrieve_ranked_chunks
 
@@ -480,6 +480,71 @@ def test_retrieve_ranked_chunks_supports_combined_metadata_filters(
         ("document_name", "Policy A"),
         ("document_version", "2026-01"),
     ]
+
+
+def test_retrieve_ranked_chunks_applies_operator_term_equivalences_to_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(query_aliases={"auto": ["carro", "vehículo"]}),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(query="¿Qué cubre el carro?", top_k=2),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes: auto" in captured_query["query"]
+
+
+def test_retrieve_ranked_chunks_applies_operator_term_equivalences_to_filters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(filter_aliases={"product": {"auto": ["carro", "vehículo"]}}),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="coverage",
+            filters={"product": "vehículo"},
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    query_filter = client.last_query["query_filter"]
+    assert len(query_filter.must) == 1
+    assert query_filter.must[0].key == "product"
+    assert query_filter.must[0].match.value == "auto"
 
 
 def test_retrieve_cli_prints_typed_result(

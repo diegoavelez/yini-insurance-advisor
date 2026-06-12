@@ -45,3 +45,10 @@ class DocumentMetadataOverlaySet(BaseModel):
     """Operator-curated metadata overlay keyed by stable document id."""
 
     documents: dict[str, DocumentMetadataOverlayEntry] = Field(default_factory=dict)
+
+
+class TermEquivalenceSet(BaseModel):
+    """Operator-curated term equivalences for retrieval normalization."""
+
+    query_aliases: dict[str, list[str]] = Field(default_factory=dict)
+    filter_aliases: dict[str, dict[str, list[str]]] = Field(default_factory=dict)

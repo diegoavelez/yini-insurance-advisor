@@ -332,6 +332,14 @@ Optional flags:
 - `--metadata-overlay-path` allows optional operator-curated metadata keyed by
   stable `source_pdf_id`
 
+Incremental corpus note:
+
+- `data/raw/` can accumulate previously ingested PDFs;
+- with `--overwrite false`, ingestion skips documents whose deterministic
+  artifacts already exist and only processes newly added source PDFs;
+- if an existing PDF is replaced in place and should be reprocessed, a rerun
+  must use `--overwrite true`.
+
 The command exits non-zero when:
 
 - Docling is not importable in the local runtime
@@ -374,6 +382,7 @@ Important variables:
 - `BATCH_MARKDOWN_DIR` local markdown output path
 - `BATCH_PROCESSED_DIR` local processed output path
 - `BATCH_SAMPLE_PDF` sample PDF used for Docling warm-up
+- `BATCH_OVERWRITE` defaults to `false` for incremental local batch runs
 
 Example:
 
@@ -393,6 +402,10 @@ make batch-embeddings \
 
 Operational notes:
 
+- the batch flow defaults to incremental behavior:
+  - previously processed documents are skipped during ingestion;
+  - previously generated embedding artifacts are skipped during embedding generation;
+  - set `BATCH_OVERWRITE=true` only when you intentionally want to regenerate;
 - keep `data/markdown/` and `data/processed/` local-only unless there is an
   explicit reproducibility reason to snapshot them elsewhere;
 - prefer temporary output directories for local validation runs;
@@ -428,6 +441,32 @@ Current repository responsibilities:
 - preserve raw-to-processed traceability through `source_pdf_relative_path`
 - carry `document_name` and optional `document_version` through chunk,
   embedding, indexing, retrieval, and citation-facing seams
+
+## Operator-Curated Term Equivalences
+
+The repository now includes one narrow operator-maintained term-equivalence
+table at:
+
+- `ops/term-equivalences.json`
+
+Purpose:
+
+- normalize common Spanish query aliases into canonical retrieval terms;
+- normalize `document_type` and `product` filter aliases into canonical values;
+- keep term reconciliation explicit and editable as the corpus grows.
+
+Important operator rule:
+
+- keep canonical values in `ops/term-equivalences.json` aligned with canonical
+  values used in any metadata overlay file, so retrieval filters continue to
+  match indexed payloads truthfully.
+
+Current scope:
+
+- query alias expansion is deterministic and retrieval-only;
+- metadata filter alias mapping is deterministic and limited to
+  `document_type` and `product`;
+- the repository does not attempt automatic taxonomy inference.
 
 Current limitations:
 

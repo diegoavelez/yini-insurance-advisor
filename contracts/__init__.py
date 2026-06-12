@@ -40,6 +40,7 @@ from contracts.ingestion import (
     DocumentMetadataOverlaySet,
     IngestionStatus,
     ProcessedDocument,
+    TermEquivalenceSet,
 )
 from contracts.mcp import (
     MCPCompatibilityBoundary,
@@ -191,6 +192,7 @@ __all__ = [
     "RetrievedChunk",
     "ResponseDraftToolResult",
     "ToolError",
+    "TermEquivalenceSet",
     "VectorPayload",
     "WorkflowExecutionResult",
 ]

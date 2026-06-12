@@ -36,6 +36,7 @@ from contracts import (
     ProcessedDocument,
     RetrievalQuery,
     RetrievedChunk,
+    TermEquivalenceSet,
     VectorPayload,
 )
 from core.config import Settings, get_settings, validate_startup_settings
@@ -60,6 +61,7 @@ EMBEDDING_SCHEMA_VERSION = "v1"
 SUPPORTED_EMBEDDING_PROVIDER = "sentence-transformers"
 DEFAULT_EMBEDDING_DIR = "data/processed/embeddings"
 DEFAULT_QDRANT_INDEXING_MANIFEST = "data/processed/qdrant-indexing-manifest.jsonl"
+DEFAULT_TERM_EQUIVALENCE_PATH = "ops/term-equivalences.json"
 DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
 DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 300.0
@@ -569,6 +571,96 @@ def load_document_metadata_overlays(
         metadata_overlay_path.read_text(encoding="utf-8")
     )
     return overlay_set.documents
+
+
+def normalize_equivalence_text(value: str) -> str:
+    """Normalize one term-equivalence key for stable phrase matching."""
+
+    normalized = unicodedata.normalize("NFKD", value)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    return " ".join(ascii_text.strip().lower().split())
+
+
+def load_term_equivalences(term_equivalence_path: Path | None = None) -> TermEquivalenceSet:
+    """Load optional operator-curated term equivalences."""
+
+    resolved_path = term_equivalence_path or Path(DEFAULT_TERM_EQUIVALENCE_PATH)
+    if not resolved_path.exists():
+        return TermEquivalenceSet()
+    return TermEquivalenceSet.model_validate_json(resolved_path.read_text(encoding="utf-8"))
+
+
+def query_contains_equivalent_phrase(query: str, phrase: str) -> bool:
+    """Return whether a normalized phrase appears in the normalized query."""
+
+    normalized_phrase = normalize_equivalence_text(phrase)
+    if not normalized_phrase:
+        return False
+    pattern = rf"(?<!\w){re.escape(normalized_phrase)}(?!\w)"
+    return re.search(pattern, normalize_equivalence_text(query)) is not None
+
+
+def augment_query_with_term_equivalences(query: str, term_equivalences: TermEquivalenceSet) -> str:
+    """Append operator-curated canonical terms when aliases appear in the query."""
+
+    appended_terms: list[str] = []
+    for canonical_term, aliases in term_equivalences.query_aliases.items():
+        if query_contains_equivalent_phrase(query, canonical_term):
+            continue
+        if any(query_contains_equivalent_phrase(query, alias) for alias in aliases):
+            appended_terms.append(canonical_term)
+
+    if not appended_terms:
+        return query
+    return f"{query}\n\nTérminos equivalentes: {', '.join(appended_terms)}"
+
+
+def canonicalize_filter_value(
+    *,
+    field_name: str,
+    value: str | None,
+    term_equivalences: TermEquivalenceSet,
+) -> str | None:
+    """Map one filter value to its canonical operator-curated equivalent."""
+
+    if value is None:
+        return None
+
+    normalized_value = normalize_equivalence_text(value)
+    field_aliases = term_equivalences.filter_aliases.get(field_name, {})
+    for canonical_value, aliases in field_aliases.items():
+        if normalized_value == normalize_equivalence_text(canonical_value):
+            return canonical_value
+        if normalized_value in {normalize_equivalence_text(alias) for alias in aliases}:
+            return canonical_value
+    return value
+
+
+def normalize_retrieval_query_with_term_equivalences(
+    retrieval_query: RetrievalQuery,
+    *,
+    term_equivalences: TermEquivalenceSet,
+) -> RetrievalQuery:
+    """Apply operator-curated term equivalences to query text and filters."""
+
+    return RetrievalQuery(
+        query=augment_query_with_term_equivalences(retrieval_query.query, term_equivalences),
+        top_k=retrieval_query.top_k,
+        filters={
+            "document_type": canonicalize_filter_value(
+                field_name="document_type",
+                value=retrieval_query.filters.document_type,
+                term_equivalences=term_equivalences,
+            ),
+            "product": canonicalize_filter_value(
+                field_name="product",
+                value=retrieval_query.filters.product,
+                term_equivalences=term_equivalences,
+            ),
+            "document_name": retrieval_query.filters.document_name,
+            "version": retrieval_query.filters.version,
+        },
+    )
 
 
 def build_processed_document(
@@ -1300,13 +1392,17 @@ def retrieve_ranked_chunks(
         resolved_settings = validate_embedding_settings(
             validate_startup_settings(settings or get_settings(), require_qdrant=True)
         )
+        normalized_retrieval_query = normalize_retrieval_query_with_term_equivalences(
+            retrieval_query,
+            term_equivalences=load_term_equivalences(),
+        )
         ensure_qdrant_backend_available()
         resolved_client = client or create_qdrant_client(resolved_settings)
-        query_vector = generate_embedding_vector(retrieval_query.query, resolved_settings)
+        query_vector = generate_embedding_vector(normalized_retrieval_query.query, resolved_settings)
         hits = search_qdrant_chunks(
             client=resolved_client,
             settings=resolved_settings,
-            retrieval_query=retrieval_query,
+            retrieval_query=normalized_retrieval_query,
             query_vector=query_vector,
         )
         result = DocumentRetrievalResult(

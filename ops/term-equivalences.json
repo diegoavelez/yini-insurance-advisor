@@ -1,0 +1,23 @@
+{
+  "query_aliases": {
+    "auto": ["autos", "carro", "carros", "vehiculo", "vehículos", "vehiculo", "vehiculos"],
+    "pac": ["plan complementario", "plan complementario pac"],
+    "arl": ["riesgos laborales"],
+    "vida grupo": ["vida colectiva"]
+  },
+  "filter_aliases": {
+    "document_type": {
+      "policy": ["poliza", "póliza", "clausulado"],
+      "annex": ["anexo"],
+      "faq": ["preguntas frecuentes"],
+      "form": ["formato", "formulario"],
+      "guide": ["guia", "guía", "instructivo", "ayudaventas"]
+    },
+    "product": {
+      "auto": ["autos", "carro", "carros", "vehiculo", "vehículo", "vehiculos", "vehículos"],
+      "pac": ["plan complementario", "plan complementario pac"],
+      "arl": ["riesgos laborales"],
+      "vida grupo": ["vida colectiva"]
+    }
+  }
+}
