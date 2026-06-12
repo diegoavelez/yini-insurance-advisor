@@ -1175,6 +1175,7 @@ the validated local RAG pipeline can answer real user queries end-to-end.
 - `groq-default-config-and-readme-contract-alignment`
 - `hosted-latency-smoke-budget-remediation`
 - `readme-phase-16-and-17-status-sync`
+- `external-batch-runtime-operator-flow`
 
 Current implementation status:
 
@@ -1184,6 +1185,7 @@ completed:
 - `groq-default-config-and-readme-contract-alignment`
 - `hosted-latency-smoke-budget-remediation`
 - `readme-phase-16-and-17-status-sync`
+- `external-batch-runtime-operator-flow`
 
 remaining in `Phase 17`:
 

@@ -10,3 +10,9 @@ __pycache__/
 # Temporary local-ingestion inputs during batch tuning
 data/raw/**
 !data/raw/.gitkeep
+
+# Local ingestion artifacts
+data/markdown/**
+!data/markdown/.gitkeep
+data/processed/**
+!data/processed/.gitkeep

@@ -339,6 +339,66 @@ The command exits non-zero when:
 - no matching PDF files are found
 - a conversion fails while `--fail-fast=true`
 
+## External Local Batch Runtime
+
+For this repository, the application runtime and the local batch-ingestion
+runtime are intentionally separate concerns.
+
+Use `.venv` for:
+
+- `make app`
+- `make test`
+- normal repository development
+
+Use an external local virtualenv for:
+
+- `Docling` asset warm-up
+- PDF ingestion
+- embeddings generation
+- Qdrant indexing
+
+Reason:
+
+- on the current workstation, the repository-local `.venv` remains a poor fit
+  for heavyweight local batch imports such as `torch`;
+- a clean virtualenv outside the synced workspace has already been validated as
+  the practical path for Docling and embeddings.
+
+The repository now exposes minimal batch targets through `Makefile`.
+They are configurable and do not require committing machine-specific paths.
+
+Important variables:
+
+- `BATCH_VENV` external virtualenv path
+- `BATCH_INPUT_DIR` raw PDF tree, defaults to `data/raw`
+- `BATCH_MARKDOWN_DIR` local markdown output path
+- `BATCH_PROCESSED_DIR` local processed output path
+- `BATCH_SAMPLE_PDF` sample PDF used for Docling warm-up
+
+Example:
+
+```bash
+make batch-warmup \
+  BATCH_VENV=/private/tmp/yini-fast-venv311
+
+make batch-ingest \
+  BATCH_VENV=/private/tmp/yini-fast-venv311 \
+  BATCH_MARKDOWN_DIR=/tmp/yini-batch-check/markdown \
+  BATCH_PROCESSED_DIR=/tmp/yini-batch-check/processed
+
+make batch-embeddings \
+  BATCH_VENV=/private/tmp/yini-fast-venv311 \
+  BATCH_PROCESSED_DIR=/tmp/yini-batch-check/processed
+```
+
+Operational notes:
+
+- keep `data/markdown/` and `data/processed/` local-only unless there is an
+  explicit reproducibility reason to snapshot them elsewhere;
+- prefer temporary output directories for local validation runs;
+- deployment and hosted runtime behavior still depends on Qdrant, not on
+  committed local ingestion artifacts.
+
 ## Corpus Metadata Baseline
 
 The current corpus identity and metadata contract is intentionally narrow and
