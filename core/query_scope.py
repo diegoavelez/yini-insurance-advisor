@@ -9,6 +9,10 @@ from pydantic import BaseModel, Field
 QueryScope = Literal["supported", "unsupported"]
 
 SUPPORTED_QUERY_TOKENS = {
+    "asistencia",
+    "assist",
+    "auto",
+    "autos",
     "accident",
     "accidente",
     "authorization",
@@ -54,6 +58,13 @@ SUPPORTED_QUERY_TOKENS = {
     "restriccion",
     "restriction",
     "restricción",
+    "evento",
+    "eventos",
+    "moto",
+    "motos",
+    "movilidad",
+    "vehiculo",
+    "vehículo",
     "versus",
     "vs",
 }

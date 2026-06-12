@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-12
+
+- Add the corrective `Phase 15` local-embedding-runtime remediation by evidencing the repo-local `.venv` import bottleneck, documenting the validated clean-venv workaround that restores practical local embeddings generation, and closing the dated spec bundle plus roadmap traceability after successful embeddings generation and Qdrant indexing on the current four-document corpus.
+- Add the corrective `Phase 15` Spanish autos scope-alignment remediation by narrowing supported query-scope vocabulary for benign autos-assistance requests, adding focused regression coverage for the Spanish autos query path, and validating that the real `answer-query` flow now returns a grounded cited answer instead of a false unsupported-scope refusal.
+- Refresh focused smoke coverage so the hosted smoke path asserts the current `documentary_basis` contract alongside the existing supported-answer shape without crashing.
+
 ## 2026-06-11
 
 - Add the corrective `Phase 15` architecture/repo-surface sync slice by updating `docs/architecture.md` to reflect the roadmap-complete posture through `Phase 19`, replacing stale future-only labels for implemented `agents/`, `mcp/`, `rag/`, and `tests/` surfaces in the top-level repo tree, and closing the dated spec bundle plus roadmap traceability for that documentation-only remediation.

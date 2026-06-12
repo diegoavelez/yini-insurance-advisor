@@ -1082,6 +1082,8 @@ Stabilize the project for final delivery.
 - `phase-15-final-readme-and-roadmap-sync`
 - `readme-phase-18-19-status-and-milestones-sync`
 - `architecture-and-repo-surface-status-sync`
+- `local-embedding-runtime-remediation`
+- `spanish-query-scope-autos-alignment-remediation`
 
 Current implementation status:
 
@@ -1095,10 +1097,8 @@ completed:
 - `phase-15-final-readme-and-roadmap-sync`
 - `readme-phase-18-19-status-and-milestones-sync`
 - `architecture-and-repo-surface-status-sync`
-
-remaining in `Phase 15`:
-
-- `none`
+- `local-embedding-runtime-remediation`
+- `spanish-query-scope-autos-alignment-remediation`
 
 ---
 
