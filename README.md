@@ -386,16 +386,16 @@ Current limitations:
 
 ```text
 app/        Gradio MVP application entry point
-agents/     Future LangGraph agents
+agents/     LangGraph workflow agents and orchestration surfaces
 contracts/  Shared typed contracts across ingestion, retrieval, and answers
 core/       Settings and logging bootstrap
 data/       Raw, markdown, processed, and eval data
 docs/       Supporting durable documentation
-mcp/        Future MCP server/client modules
+mcp/        MCP integration package surfaces
 ops/        Guardrails and observability modules
-rag/        Ingestion and future retrieval pipeline
+rag/        Ingestion and retrieval pipeline
 specs/      Constitution and implementation specs
-tests/      Smoke tests and future test coverage
+tests/      Smoke tests and regression coverage
 ```
 
 ## Next Milestones

@@ -1,7 +1,5 @@
 # Architecture Notes
 
-This file is intentionally minimal.
-
 ## Current Architecture State
 
 - `PRD.md` defines the target architecture and milestones.
@@ -9,7 +7,18 @@ This file is intentionally minimal.
 - `specs/tech-stack.md` defines stack constraints and architecture boundaries.
 - `specs/roadmap.md` defines implementation order and current status.
 - Dated specs in `specs/` are the implementation truth.
+- `Phase 0` through `Phase 19` are currently complete.
+
+## Implemented Surfaces
+
+- `app/` contains the Gradio demo surface and request/rendering seams.
+- `agents/` contains the LangGraph workflow and agent orchestration seams.
+- `rag/` contains ingestion, retrieval, indexing, and grounded-answer seams.
+- `mcp/` and `core/mcp_*` contain MCP integration boundaries.
+- `ops/` contains observability and guardrail-facing operational seams.
+- `tests/` contains regression, smoke, and compatibility coverage.
 
 ## Next Step
 
-Follow the next incomplete narrow slice in `specs/roadmap.md`.
+If new scope is approved, start from a new dated spec bundle and record it in
+`specs/roadmap.md` before implementation.

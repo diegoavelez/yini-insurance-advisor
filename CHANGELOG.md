@@ -2,6 +2,7 @@
 
 ## 2026-06-11
 
+- Add the corrective `Phase 15` architecture/repo-surface sync slice by updating `docs/architecture.md` to reflect the roadmap-complete posture through `Phase 19`, replacing stale future-only labels for implemented `agents/`, `mcp/`, `rag/`, and `tests/` surfaces in the top-level repo tree, and closing the dated spec bundle plus roadmap traceability for that documentation-only remediation.
 - Add the corrective `Phase 15` README sync slice by extending the top-level status summary and `Current Status` through completed `Phase 19`, updating `Next Milestones` to reflect the roadmap-complete posture instead of stopping at `Phase 15`, and closing the dated spec bundle plus roadmap traceability for that documentation-only remediation.
 - Add the fifth `Phase 19` citation-readability slice by surfacing a compact operator-facing evidence summary in the Gradio debug metadata, deduplicating current evidence document names plus curated `document_type` and `product` values, adding focused empty/non-empty UI regression coverage, and closing `Phase 19` in the roadmap and spec bundle.
 - Add the fourth `Phase 19` citation-readability slice by propagating curated `document_type` and `product` metadata into citation and documentary-basis response contracts, rendering those fields in the Gradio `Citas` and `Base documental` surfaces with stable Spanish labels, adding focused contract, grounded-answer, and UI regression coverage, and marking the slice complete in the roadmap and spec bundle.

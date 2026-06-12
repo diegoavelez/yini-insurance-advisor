@@ -1081,6 +1081,7 @@ Stabilize the project for final delivery.
 - `spanish-ui-state-derivation-hardening`
 - `phase-15-final-readme-and-roadmap-sync`
 - `readme-phase-18-19-status-and-milestones-sync`
+- `architecture-and-repo-surface-status-sync`
 
 Current implementation status:
 
@@ -1093,6 +1094,7 @@ completed:
 - `spanish-ui-state-derivation-hardening`
 - `phase-15-final-readme-and-roadmap-sync`
 - `readme-phase-18-19-status-and-milestones-sync`
+- `architecture-and-repo-surface-status-sync`
 
 remaining in `Phase 15`:
 
