@@ -2,6 +2,7 @@
 
 ## 2026-06-12
 
+- Add committed AUTOS document metadata overlays so the current MOVILIDAD/AUTOS corpus keeps stable `document_type` and `product=auto` classification across future local ingestions and deployments.
 - Add the next `Phase 16` ingestion-runtime corrective slice by allowing the `docling` backend path to fall back to PDFium only when a per-document Docling conversion exceeds the configured timeout, adding focused regression coverage for timeout fallback and non-timeout failure behavior, and unblocking the remaining AUTOS `diferenciales` PDF without demoting Docling as the primary local converter.
 - Add the next `Phase 15` corrective supported-scope slice by aligning deterministic scope admission with ARL/RUI document questions already supported by retrieval, expanding the narrow token set in `core/query_scope.py`, adding focused classifier and UI-query regression coverage, and closing the dated spec bundle plus roadmap traceability for the hosted ARL refusal gap.
 - Add the corrective `Phase 18` operator-curated term-equivalence normalization slice by introducing a committed `ops/term-equivalences.json` table for deterministic Spanish query and metadata-filter alias normalization, wiring retrieval-time query/filter canonicalization without changing the backend contract, documenting incremental `data/raw/` accumulation and canonical-value alignment with metadata overlays, and correcting the batch operator flow so ingestion and embeddings default to `overwrite=false` for new-file-only processing.

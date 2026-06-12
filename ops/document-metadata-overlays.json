@@ -15,6 +15,38 @@
     "arl__preguntas-frecuentes-registro-unico-de-intermediacion-rui": {
       "document_type": "faq",
       "product": "arl"
+    },
+    "movilidad__autos__ayudaventas-asistencia-pequenos-eventos": {
+      "document_type": "guide",
+      "product": "auto"
+    },
+    "movilidad__autos__ayudaventas-autos-electricos-e-hibridos": {
+      "document_type": "guide",
+      "product": "auto"
+    },
+    "movilidad__autos__ayudaventas-autos-v2": {
+      "document_type": "guide",
+      "product": "auto"
+    },
+    "movilidad__autos__clausulado-seguro-de-autos": {
+      "document_type": "policy",
+      "product": "auto"
+    },
+    "movilidad__autos__diferenciales-planes-autos": {
+      "document_type": "guide",
+      "product": "auto"
+    },
+    "movilidad__autos__generalidades-plan-autos-basico-pt-v2": {
+      "document_type": "guide",
+      "product": "auto"
+    },
+    "movilidad__autos__preguntas-frecuentes-electricos-e-hibridos-v2": {
+      "document_type": "faq",
+      "product": "auto"
+    },
+    "movilidad__autos__preguntas-frecuentes-plan-autos-basico-pt-v2": {
+      "document_type": "faq",
+      "product": "auto"
     }
   }
 }
