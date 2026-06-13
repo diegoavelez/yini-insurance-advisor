@@ -2,6 +2,7 @@
 
 ## 2026-06-13
 
+- Add a durable category-onboarding playbook that captures the operator workflow for new corpus categories from raw folder taxonomy through ingestion, embeddings, Qdrant indexing, retrieval validation, grounded-answer validation, and narrow corrective-slice escalation based on the implemented `AUTOS` and `BICICLETAS Y PATINETAS` experience.
 - Add the `MOVILIDAD/BICICLETAS Y PATINETAS` baseline corpus slice by onboarding the category into ingestion, embeddings, indexing, product/document-type alias normalization, and real retrieval validation under the existing `movilidad` taxonomy.
 - Add the follow-on `BICICLETAS Y PATINETAS` corrective retrieval slices by aligning supported-scope admission for bike and scooter queries, normalizing the diagrammatic `pv` corpus into semantic `COBERTURAS Y PLANES`, `GENERALIDADES`, `EXPEDICIÓN REQUISITOS`, and `DEDUCIBLE` chunks, and improving deductible-specific recall/reranking so real grounded answers now cite explicit deductible evidence.
 - Add the first AUTOS comparison corrective retrieval slice by introducing narrow operator-curated comparison query expansion terms, focused comparison-intent regression coverage, and roadmap/spec traceability for comparison-oriented AUTOS retrieval misses.

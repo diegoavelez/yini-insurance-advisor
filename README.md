@@ -369,6 +369,11 @@ The indexing step is also responsible for creating the Qdrant payload indexes
 required by the currently supported retrieval metadata filters when the client
 surface exposes payload-index creation.
 
+For the full operator procedure to onboard a new category from raw PDFs through
+retrieval and grounded-answer validation, see:
+
+- `docs/category-onboarding-playbook.md`
+
 Reason:
 
 - on the current workstation, the repository-local `.venv` remains a poor fit
