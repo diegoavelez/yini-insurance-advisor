@@ -729,6 +729,11 @@ def rerank_chunks_for_query_expansion_rules(
     deductible_intent = query_contains_equivalent_phrase(query, "deducible")
     for index, chunk in enumerate(chunks):
         score_bonus = 0.0
+        section_labels = [
+            section_label
+            for section_label in (chunk.section, *chunk.section_path)
+            if section_label
+        ]
         label_surface = "\n".join(
             value
             for value in (
@@ -741,7 +746,18 @@ def rerank_chunks_for_query_expansion_rules(
         body_surface = chunk.text
         for matched_rule in matched_expansion_rules:
             for term in matched_rule.append_terms:
-                if query_contains_equivalent_phrase(label_surface, term):
+                if any(
+                    query_contains_equivalent_phrase(section_label, term)
+                    for section_label in section_labels
+                ):
+                    exact_match_token_count = len(tokenize_lexical_surface(term))
+                    if query_contains_equivalent_phrase(term, "qué cubre este seguro"):
+                        score_bonus += 1.45
+                    elif exact_match_token_count >= 5:
+                        score_bonus += 0.60
+                    else:
+                        score_bonus += 0.18
+                elif query_contains_equivalent_phrase(label_surface, term):
                     score_bonus += 0.12
                 elif query_contains_equivalent_phrase(body_surface, term):
                     score_bonus += 0.04
@@ -1108,23 +1124,47 @@ def normalize_retrieval_query_with_term_equivalences(
 ) -> RetrievalQuery:
     """Apply operator-curated term equivalences to query text and filters."""
 
+    normalized_filters = {
+        "document_type": canonicalize_filter_value(
+            field_name="document_type",
+            value=retrieval_query.filters.document_type,
+            term_equivalences=term_equivalences,
+        ),
+        "product": canonicalize_filter_value(
+            field_name="product",
+            value=retrieval_query.filters.product,
+            term_equivalences=term_equivalences,
+        ),
+        "document_name": retrieval_query.filters.document_name,
+        "version": retrieval_query.filters.version,
+    }
+    for query_filter_rule in term_equivalences.query_filter_rules:
+        matches_all = all(
+            query_contains_equivalent_phrase(retrieval_query.query, phrase)
+            for phrase in query_filter_rule.all_of
+        )
+        matches_any = not query_filter_rule.any_of or any(
+            query_contains_equivalent_phrase(retrieval_query.query, phrase)
+            for phrase in query_filter_rule.any_of
+        )
+        if not (matches_all and matches_any):
+            continue
+        for field_name, field_value in query_filter_rule.filters.items():
+            if field_name not in normalized_filters or normalized_filters[field_name] is not None:
+                continue
+            if field_name in {"document_type", "product"}:
+                normalized_filters[field_name] = canonicalize_filter_value(
+                    field_name=field_name,
+                    value=field_value,
+                    term_equivalences=term_equivalences,
+                )
+                continue
+            normalized_filters[field_name] = field_value
+
     return RetrievalQuery(
         query=augment_query_with_term_equivalences(retrieval_query.query, term_equivalences),
         top_k=retrieval_query.top_k,
-        filters={
-            "document_type": canonicalize_filter_value(
-                field_name="document_type",
-                value=retrieval_query.filters.document_type,
-                term_equivalences=term_equivalences,
-            ),
-            "product": canonicalize_filter_value(
-                field_name="product",
-                value=retrieval_query.filters.product,
-                term_equivalences=term_equivalences,
-            ),
-            "document_name": retrieval_query.filters.document_name,
-            "version": retrieval_query.filters.version,
-        },
+        filters=normalized_filters,
     )
 
 

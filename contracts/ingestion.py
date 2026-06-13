@@ -53,6 +53,7 @@ class TermEquivalenceSet(BaseModel):
     query_aliases: dict[str, list[str]] = Field(default_factory=dict)
     filter_aliases: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
     query_expansion_rules: list[QueryExpansionRule] = Field(default_factory=list)
+    query_filter_rules: list[QueryFilterRule] = Field(default_factory=list)
 
 
 class QueryExpansionRule(BaseModel):
@@ -68,4 +69,20 @@ class QueryExpansionRule(BaseModel):
             raise ValueError("query expansion rules must define all_of or any_of")
         if not self.append_terms:
             raise ValueError("query expansion rules must define append_terms")
+        return self
+
+
+class QueryFilterRule(BaseModel):
+    """Deterministic operator-curated rule for defaulting retrieval filters."""
+
+    all_of: list[str] = Field(default_factory=list)
+    any_of: list[str] = Field(default_factory=list)
+    filters: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_matchers_and_filters(self) -> QueryFilterRule:
+        if not self.all_of and not self.any_of:
+            raise ValueError("query filter rules must define all_of or any_of")
+        if not self.filters:
+            raise ValueError("query filter rules must define filters")
         return self

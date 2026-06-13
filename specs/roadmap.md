@@ -1251,6 +1251,9 @@ and cite as the real Spanish document set grows.
 - `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
 - `motos-corpus-baseline-ingestion-and-retrieval`
 - `motos-plan-comparison-retrieval-alignment`
+- `soat-corpus-baseline-ingestion-and-retrieval`
+- `soat-coverage-document-type-alignment`
+- `soat-coverage-evidence-prioritization-alignment`
 
 Current implementation status:
 
@@ -1276,6 +1279,9 @@ completed:
 - `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
 - `motos-corpus-baseline-ingestion-and-retrieval`
 - `motos-plan-comparison-retrieval-alignment`
+- `soat-corpus-baseline-ingestion-and-retrieval`
+- `soat-coverage-document-type-alignment`
+- `soat-coverage-evidence-prioritization-alignment`
 
 remaining in `Phase 18`:
 
@@ -1301,6 +1307,11 @@ Implementation note:
   embedded text surface.
 - Structured documents with many short adjacent fragments under one section can
   now be greedily aggregated into denser grouped blocks before chunk assembly.
+- SOAT coverage-vs-tariff intent can now default retrieval toward the correct
+  `document_type` surface, while preserving explicit caller-provided filters.
+- When curated coverage terms exactly match a chunk `section` or one item in
+  its `section_path`, deterministic reranking now gives that evidence a
+  stronger boost than generic label/body matches.
 - Broader taxonomy inference, automatic classification, and UI filter work
   remain intentionally out of scope.
 

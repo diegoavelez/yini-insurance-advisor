@@ -63,6 +63,14 @@
     "movilidad__motos__comparativo-motos": {
       "document_type": "guide",
       "product": "moto"
+    },
+    "movilidad__soat__clausulado-soat": {
+      "document_type": "policy",
+      "product": "soat"
+    },
+    "movilidad__soat__tarifas-soat-2026": {
+      "document_type": "guide",
+      "product": "soat"
     }
   }
 }

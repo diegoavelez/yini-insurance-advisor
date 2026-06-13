@@ -2,6 +2,9 @@
 
 ## 2026-06-13
 
+- Add the `MOVILIDAD/SOAT` baseline corpus slice by curating overlay metadata for `clausulado soat.pdf` and `tarifas soat 2026.pdf`, extending canonical `soat` query/filter normalization and supported-scope admission, and validating local ingestion plus real embeddings/Qdrant retrieval for the new category.
+- Add the first `SOAT` corrective retrieval slice by introducing narrow operator-curated intent-to-`document_type` alignment so coverage questions default toward `policy` evidence while tariff questions default toward `guide` evidence without overriding explicit caller filters.
+- Add the follow-on `SOAT` quality slice by strengthening deterministic reranking for the summary heading `SECCIÓN I ¿Qué cubre este seguro?`, so real coverage retrieval now prioritizes the clausulado summary block and grounded answers lead with the complete coverage list instead of lateral detail chunks.
 - Add the `MOVILIDAD/MOTOS` baseline corpus slice by curating overlay metadata for the first four source PDFs, extending `comparativo` path inference to `document_type=guide`, validating category ingestion locally, and evidencing successful embeddings generation plus Qdrant indexing for the new category.
 - Add the follow-on `MOTOS` comparison corrective retrieval slice by activating the existing comparison-intent expansion, candidate-pool, and reranking path for motorcycle plan-difference queries so `comparativo motos.pdf` now surfaces as the primary evidence source in real retrieval and grounded-answer validation.
 - Add a durable category-onboarding playbook that captures the operator workflow for new corpus categories from raw folder taxonomy through ingestion, embeddings, Qdrant indexing, retrieval validation, grounded-answer validation, and narrow corrective-slice escalation based on the implemented `AUTOS` and `BICICLETAS Y PATINETAS` experience.

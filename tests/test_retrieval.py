@@ -4,9 +4,21 @@ from types import SimpleNamespace
 
 import pytest
 
-from contracts import ChunkRecord, QueryExpansionRule, RetrievalQuery, TermEquivalenceSet
+from contracts import (
+    ChunkRecord,
+    QueryExpansionRule,
+    QueryFilterRule,
+    RetrievalQuery,
+    TermEquivalenceSet,
+)
 from core.config import Settings
-from rag.ingestion import build_hybrid_recall_terms, build_parser, main, retrieve_ranked_chunks
+from rag.ingestion import (
+    build_hybrid_recall_terms,
+    build_parser,
+    main,
+    normalize_retrieval_query_with_term_equivalences,
+    retrieve_ranked_chunks,
+)
 
 
 class FakeQdrantRetrievalClient:
@@ -107,6 +119,44 @@ def test_parser_builds_retrieval_command() -> None:
     assert args.command == "retrieve-chunks"
     assert args.query == "coverage"
     assert args.top_k is None
+
+
+def test_normalize_retrieval_query_applies_soat_coverage_document_type_rule() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(query="¿Qué cubre el SOAT?", filters={"product": "soat"}),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["soat"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    filters={"document_type": "policy"},
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "soat"
+    assert normalized_query.filters.document_type == "policy"
+
+
+def test_normalize_retrieval_query_does_not_override_explicit_document_type_filter() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el SOAT?",
+            filters={"product": "soat", "document_type": "guide"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["soat"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    filters={"document_type": "policy"},
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.document_type == "guide"
 
 
 def test_retrieve_ranked_chunks_maps_search_hits_in_ranked_order(
@@ -1079,6 +1129,108 @@ def test_retrieve_ranked_chunks_expands_candidate_pool_and_reranks_comparison_hi
     assert client.last_query["limit"] == 6
     assert result.chunks[0].document_name == "DIFERENCIALES SURA"
     assert result.chunks[0].score > result.chunks[1].score
+
+
+def test_retrieve_ranked_chunks_prioritizes_exact_soat_coverage_section_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "soat:v2:0009",
+                    "source_pdf_id": "soat",
+                    "source_pdf_relative_path": "MOVILIDAD/SOAT/clausulado soat.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 9,
+                    "text": "Coberturas fijadas por víctima. Gastos de transporte y movilización.",
+                    "document_name": "Seguro obligatorio de Accidentes de tránsito SOAT",
+                    "document_version": "1",
+                    "document_type": "policy",
+                    "product": "soat",
+                    "section": "4. Gastos de transporte.",
+                    "section_path": [
+                        "Seguro obligatorio de Accidentes de tránsito SOAT",
+                        "4. Gastos de transporte.",
+                    ],
+                },
+                score=0.90,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "soat:v2:0059",
+                    "source_pdf_id": "soat",
+                    "source_pdf_relative_path": "MOVILIDAD/SOAT/clausulado soat.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 59,
+                    "text": (
+                        "SECCIÓN I ¿Qué cubre este seguro? "
+                        "1. Servicios de salud. 2. Indemnización por incapacidad permanente. "
+                        "3. Indemnización por muerte y gastos funerarios. 4. Gastos de transporte."
+                    ),
+                    "document_name": "Seguro obligatorio de Accidentes de tránsito SOAT",
+                    "document_version": "1",
+                    "document_type": "policy",
+                    "product": "soat",
+                    "section": "SECCIÓN I ¿Qué cubre este seguro?",
+                    "section_path": [
+                        "Seguro obligatorio de Accidentes de tránsito SOAT",
+                        "SECCIÓN I ¿Qué cubre este seguro?",
+                    ],
+                },
+                score=0.60,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["soat"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    filters={"document_type": "policy"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["soat"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    append_terms=[
+                        "sección i qué cubre este seguro",
+                        "servicios de salud",
+                        "indemnización por incapacidad permanente",
+                        "indemnización por muerte y gastos funerarios",
+                        "gastos de transporte",
+                        "clausulado",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(query="¿Qué cubre el SOAT?", filters={"product": "soat"}, top_k=2),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].chunk_id == "soat:v2:0059"
+    assert result.chunks[0].section == "SECCIÓN I ¿Qué cubre este seguro?"
 
 
 def test_retrieve_ranked_chunks_adds_local_lexical_candidates_for_comparison_queries(

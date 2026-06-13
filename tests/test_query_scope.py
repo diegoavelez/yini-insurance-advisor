@@ -35,6 +35,12 @@ def test_classify_query_scope_supports_spanish_bicicletas_y_patinetas_queries() 
     assert decision.scope == "supported"
 
 
+def test_classify_query_scope_supports_soat_queries() -> None:
+    decision = classify_query_scope("¿Cuáles son las tarifas del SOAT 2026?")
+
+    assert decision.scope == "supported"
+
+
 def test_classify_query_scope_keeps_non_insurance_spanish_queries_unsupported() -> None:
     decision = classify_query_scope("¿Cómo está el clima en Bogotá hoy?")
 

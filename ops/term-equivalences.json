@@ -14,6 +14,11 @@
       "motocicleta",
       "motocicletas"
     ],
+    "soat": [
+      "seguro obligatorio",
+      "seguro obligatorio de accidentes de tránsito",
+      "seguro obligatorio de accidentes de transito"
+    ],
     "pac": [
       "plan complementario",
       "plan complementario pac",
@@ -144,6 +149,59 @@
         "renta diaria por hospitalización",
         "expedición requisitos"
       ]
+    },
+    {
+      "all_of": [
+        "soat"
+      ],
+      "any_of": [
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "append_terms": [
+        "sección i qué cubre este seguro",
+        "servicios de salud",
+        "indemnización por incapacidad permanente",
+        "indemnización por muerte y gastos funerarios",
+        "gastos de transporte",
+        "clausulado"
+      ]
+    }
+  ],
+  "query_filter_rules": [
+    {
+      "all_of": [
+        "soat"
+      ],
+      "any_of": [
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "filters": {
+        "document_type": "policy"
+      }
+    },
+    {
+      "all_of": [
+        "soat"
+      ],
+      "any_of": [
+        "tarifa",
+        "tarifas",
+        "prima",
+        "primas"
+      ],
+      "filters": {
+        "document_type": "guide"
+      }
     }
   ],
   "filter_aliases": {
@@ -179,6 +237,7 @@
         "comparativo",
         "diferenciales",
         "generalidades",
+        "tarifas",
         "pv",
         "propuesta de valor"
       ]
@@ -197,6 +256,11 @@
         "motos",
         "motocicleta",
         "motocicletas"
+      ],
+      "soat": [
+        "seguro obligatorio",
+        "seguro obligatorio de accidentes de tránsito",
+        "seguro obligatorio de accidentes de transito"
       ],
       "pac": [
         "plan complementario",
