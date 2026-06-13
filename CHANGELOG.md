@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-13
+
+- Add the first AUTOS comparison corrective retrieval slice by introducing narrow operator-curated comparison query expansion terms, focused comparison-intent regression coverage, and roadmap/spec traceability for comparison-oriented AUTOS retrieval misses.
+- Add the next AUTOS comparison corrective retrieval slice by expanding the Qdrant candidate pool for matched comparison intents and applying deterministic lexical reranking so comparative evidence can outrank FAQ-heavy semantic hits when both are present.
+- Add the next AUTOS comparison corrective ingestion slices by prefixing governing section context into follow-on chunks, greedily aggregating short same-section comparison fragments, and normalizing markdown comparison tables into plan-oriented semantic statements before chunking.
+- Add the next AUTOS comparison corrective retrieval slice by introducing deterministic hybrid comparison recall from local chunk artifacts, fusing lexical candidates with semantic Qdrant results under the existing comparison-intent gate, and correcting the hybrid scorer so anchor restatements do not over-favor Plan Básico FAQ evidence.
+- Add the next AUTOS metadata corrective slices by inferring missing `product` and `document_type` values from `source_pdf_relative_path` with overlay precedence, persisting those canonical values into processed and chunk artifacts, and extending the curated `guide` aliases so the real `diferenciales planes autos.pdf` corpus now lands in runtime retrieval with `product=auto` and `document_type=guide`.
+
 ## 2026-06-12
 
 - Add committed AUTOS document metadata overlays so the current MOVILIDAD/AUTOS corpus keeps stable `document_type` and `product=auto` classification across future local ingestions and deployments.

@@ -1229,6 +1229,15 @@ and cite as the real Spanish document set grows.
 - `operator-curated-term-equivalence-normalization`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
+- `autos-plan-comparison-retrieval-alignment`
+- `autos-plan-comparison-reranking-or-evidence-bias`
+- `section-context-prefixed-chunk-remediation`
+- `autos-comparison-corpus-retrievability-remediation`
+- `autos-comparison-table-normalization-remediation`
+- `autos-comparison-hybrid-recall-remediation`
+- `source-path-product-filter-fallback-remediation`
+- `source-path-product-metadata-backfill`
+- `source-path-document-type-metadata-backfill`
 
 Current implementation status:
 
@@ -1242,6 +1251,15 @@ completed:
 - `operator-curated-term-equivalence-normalization`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
+- `autos-plan-comparison-retrieval-alignment`
+- `autos-plan-comparison-reranking-or-evidence-bias`
+- `section-context-prefixed-chunk-remediation`
+- `autos-comparison-corpus-retrievability-remediation`
+- `autos-comparison-table-normalization-remediation`
+- `autos-comparison-hybrid-recall-remediation`
+- `source-path-product-filter-fallback-remediation`
+- `source-path-product-metadata-backfill`
+- `source-path-document-type-metadata-backfill`
 
 remaining in `Phase 18`:
 
@@ -1257,6 +1275,16 @@ Implementation note:
 - Retrieval-facing `document_name` promotion now rejects obviously noisy
   heading candidates such as media/embed labels with URLs and falls back to the
   deterministic source filename stem instead.
+- Retrieval normalization can also carry narrow operator-curated comparison
+  bundles when repeated AUTOS comparison queries need stronger lexical
+  alignment with comparative documents.
+- When those comparison bundles match, retrieval can use a larger candidate
+  pool plus deterministic lexical reranking before returning the final top-k.
+- Chunk text can now be prefixed with its governing `section_path` headings
+  when overlap or fragmented layout would otherwise drop that context from the
+  embedded text surface.
+- Structured documents with many short adjacent fragments under one section can
+  now be greedily aggregated into denser grouped blocks before chunk assembly.
 - Broader taxonomy inference, automatic classification, and UI filter work
   remain intentionally out of scope.
 

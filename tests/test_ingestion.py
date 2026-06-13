@@ -18,6 +18,7 @@ from rag.ingestion import (
     extract_document_metadata,
     main,
     parse_bool,
+    split_markdown_blocks,
 )
 
 
@@ -310,6 +311,112 @@ def test_build_chunk_records_preserves_clause_split_fallback_for_oversized_conte
     assert len(chunk_records) >= 2
     assert chunk_records[0].text.startswith("# Policy Title")
     assert any("1. Coverage" in record.text for record in chunk_records)
+
+
+def test_build_chunk_records_prefixes_missing_section_context_for_follow_on_chunks() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="policy-a",
+        document_name="Policy Title",
+        document_version=None,
+        source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
+        cleaned_markdown_text=(
+            "# Policy Title\n\n"
+            "## Comparison Section\n\n"
+            "Alpha.\n\n"
+            "Beta.\n\n"
+            "Gamma.\n\n"
+            "Delta.\n\n"
+            "Epsilon.\n\n"
+            "Zeta."
+        ),
+        chunk_size=70,
+        chunk_overlap=10,
+    )
+
+    assert len(chunk_records) >= 2
+    assert all("## Comparison Section" in record.text for record in chunk_records)
+    assert all(record.section == "Comparison Section" for record in chunk_records)
+
+
+def test_build_chunk_records_does_not_duplicate_existing_section_context() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="policy-a",
+        document_name="Policy Title",
+        document_version=None,
+        source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
+        cleaned_markdown_text=(
+            "# Policy Title\n\n## Coverage\n\nCoverage applies to outpatient care."
+        ),
+        chunk_size=200,
+        chunk_overlap=20,
+    )
+
+    assert len(chunk_records) == 1
+    assert chunk_records[0].text.count("## Coverage") == 1
+
+
+def test_build_chunk_records_greedily_aggregates_short_same_section_blocks() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="policy-a",
+        document_name="Policy Title",
+        document_version=None,
+        source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
+        cleaned_markdown_text=(
+            "# Policy Title\n\n"
+            "## Comparison Grid\n\n"
+            "Alpha\n\n"
+            "Beta\n\n"
+            "Gamma\n\n"
+            "Delta\n\n"
+            "Epsilon"
+        ),
+        chunk_size=200,
+        chunk_overlap=20,
+    )
+
+    assert len(chunk_records) == 1
+    assert "Alpha" in chunk_records[0].text
+    assert "Beta" in chunk_records[0].text
+    assert "Gamma" in chunk_records[0].text
+    assert "Delta" in chunk_records[0].text
+    assert "Epsilon" in chunk_records[0].text
+
+
+def test_split_markdown_blocks_normalizes_comparison_tables_into_plan_statements() -> None:
+    blocks = split_markdown_blocks(
+        "## DIFERENCIALES SURA\n\n"
+        "## Planes SURA\n\n"
+        "| | Plan Autos Global | Plan Autos Clásico |\n"
+        "|---|---|---|\n"
+        "| Estrategia | Acompañamiento integral | Cobertura estándar |\n"
+        "| Segmento | • Vehículos 0 km • Viajeros | • Vehículos usados • Ahorro |\n"
+    )
+
+    assert len(blocks) == 3
+    assert blocks[2].section == "Planes SURA"
+    assert blocks[2].section_path == ("DIFERENCIALES SURA", "Planes SURA")
+    assert "Plan Autos Global" in blocks[2].text
+    assert "- Estrategia: Acompañamiento integral" in blocks[2].text
+    assert "- Segmento: Vehículos 0 km; Viajeros" in blocks[2].text
+    assert "Plan Autos Clásico" in blocks[2].text
+    assert "- Segmento: Vehículos usados; Ahorro" in blocks[2].text
+    assert "| Estrategia |" not in blocks[2].text
+
+
+def test_split_markdown_blocks_leaves_non_comparison_content_unchanged() -> None:
+    blocks = split_markdown_blocks(
+        "## Coberturas\n\nTexto normal sin tabla.\n\n1. Condición especial"
+    )
+
+    assert len(blocks) == 3
+    assert blocks[1].text == "Texto normal sin tabla."
+    assert blocks[2].text == "1. Condición especial"
 
 
 def test_cli_fails_when_input_directory_is_missing(tmp_path, capsys) -> None:
@@ -624,6 +731,238 @@ def test_ingestion_applies_operator_curated_metadata_overlay(
     assert chunk_bundle.product == "arl"
     assert chunk_bundle.chunks[0].document_type == "policy"
     assert chunk_bundle.chunks[0].product == "arl"
+
+
+def test_ingestion_infers_product_from_source_relative_path_when_overlay_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_pdf = input_dir / "MOVILIDAD" / "AUTOS" / "diferenciales planes autos.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    processed_output = processed_dir / "movilidad__autos__diferenciales-planes-autos.json"
+    chunk_output = (
+        processed_dir / "chunks" / "movilidad__autos__diferenciales-planes-autos.chunks.json"
+    )
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+    chunk_bundle = ChunkBundle.model_validate_json(chunk_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.product == "auto"
+    assert chunk_bundle.product == "auto"
+    assert chunk_bundle.chunks[0].product == "auto"
+
+
+def test_ingestion_overlay_product_takes_precedence_over_path_inference(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    overlay_path = tmp_path / "document-metadata-overlays.json"
+    source_pdf = input_dir / "MOVILIDAD" / "AUTOS" / "policy-a.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    overlay_path.write_text(
+        (
+            '{\n'
+            '  "documents": {\n'
+            '    "movilidad__autos__policy-a": {\n'
+            '      "product": "moto"\n'
+            "    }\n"
+            "  }\n"
+            "}\n"
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+            "--metadata-overlay-path",
+            str(overlay_path),
+        ]
+    )
+
+    processed_output = processed_dir / "movilidad__autos__policy-a.json"
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.product == "moto"
+
+
+def test_ingestion_infers_document_type_from_source_relative_path_when_overlay_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_pdf = input_dir / "MOVILIDAD" / "AUTOS" / "ayudaventas autos v2.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    processed_output = processed_dir / "movilidad__autos__ayudaventas-autos-v2.json"
+    chunk_output = processed_dir / "chunks" / "movilidad__autos__ayudaventas-autos-v2.chunks.json"
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+    chunk_bundle = ChunkBundle.model_validate_json(chunk_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.document_type == "guide"
+    assert chunk_bundle.document_type == "guide"
+    assert chunk_bundle.chunks[0].document_type == "guide"
+
+
+def test_ingestion_infers_document_type_for_diferenciales_source_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_pdf = input_dir / "MOVILIDAD" / "AUTOS" / "diferenciales planes autos.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    processed_output = processed_dir / "movilidad__autos__diferenciales-planes-autos.json"
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.document_type == "guide"
+
+
+def test_ingestion_overlay_document_type_takes_precedence_over_path_inference(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    overlay_path = tmp_path / "document-metadata-overlays.json"
+    source_pdf = input_dir / "MOVILIDAD" / "AUTOS" / "preguntas frecuentes autos.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    overlay_path.write_text(
+        (
+            '{\n'
+            '  "documents": {\n'
+            '    "movilidad__autos__preguntas-frecuentes-autos": {\n'
+            '      "document_type": "policy"\n'
+            "    }\n"
+            "  }\n"
+            "}\n"
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+            "--metadata-overlay-path",
+            str(overlay_path),
+        ]
+    )
+
+    processed_output = processed_dir / "movilidad__autos__preguntas-frecuentes-autos.json"
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.document_type == "policy"
 
 
 def test_duplicate_basenames_in_different_folders_do_not_collide(

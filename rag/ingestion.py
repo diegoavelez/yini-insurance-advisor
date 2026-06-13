@@ -57,9 +57,11 @@ DEFAULT_CHUNK_SIZE = 1200
 DEFAULT_CHUNK_OVERLAP = 200
 CLAUSE_LIKE_PATTERN = re.compile(r"^(?:\d+[.)]|[A-Z][.)]|[IVXLCDM]+[.)])(?:\s+\S.*)?$")
 MAX_STRUCTURAL_BLOCK_LENGTH = 120
+MARKDOWN_TABLE_SEPARATOR_PATTERN = re.compile(r"^\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?$")
 EMBEDDING_SCHEMA_VERSION = "v1"
 SUPPORTED_EMBEDDING_PROVIDER = "sentence-transformers"
 DEFAULT_EMBEDDING_DIR = "data/processed/embeddings"
+DEFAULT_CHUNK_DIR = "data/processed/chunks"
 DEFAULT_QDRANT_INDEXING_MANIFEST = "data/processed/qdrant-indexing-manifest.jsonl"
 DEFAULT_TERM_EQUIVALENCE_PATH = "ops/term-equivalences.json"
 DEFAULT_QDRANT_MAX_RETRIES = 3
@@ -634,15 +636,339 @@ def augment_query_with_term_equivalences(query: str, term_equivalences: TermEqui
     """Append operator-curated canonical terms when aliases appear in the query."""
 
     appended_terms: list[str] = []
+    appended_term_keys: set[str] = set()
+
+    def append_term_if_missing(term: str) -> None:
+        normalized_term = normalize_equivalence_text(term)
+        if not normalized_term:
+            return
+        if query_contains_equivalent_phrase(query, term):
+            return
+        if normalized_term in appended_term_keys:
+            return
+        appended_terms.append(term)
+        appended_term_keys.add(normalized_term)
+
     for canonical_term, aliases in term_equivalences.query_aliases.items():
-        if query_contains_equivalent_phrase(query, canonical_term):
-            continue
         if any(query_contains_equivalent_phrase(query, alias) for alias in aliases):
-            appended_terms.append(canonical_term)
+            append_term_if_missing(canonical_term)
+
+    for expansion_rule in term_equivalences.query_expansion_rules:
+        matches_all = all(
+            query_contains_equivalent_phrase(query, phrase)
+            for phrase in expansion_rule.all_of
+        )
+        matches_any = not expansion_rule.any_of or any(
+            query_contains_equivalent_phrase(query, phrase) for phrase in expansion_rule.any_of
+        )
+        if not (matches_all and matches_any):
+            continue
+        for appended_term in expansion_rule.append_terms:
+            append_term_if_missing(appended_term)
 
     if not appended_terms:
         return query
     return f"{query}\n\nTérminos equivalentes: {', '.join(appended_terms)}"
+
+
+def get_matching_query_expansion_rules(
+    query: str,
+    *,
+    term_equivalences: TermEquivalenceSet,
+) -> list[object]:
+    """Return operator-curated query-expansion rules that match the query."""
+
+    matched_rules: list[object] = []
+    for expansion_rule in term_equivalences.query_expansion_rules:
+        matches_all = all(
+            query_contains_equivalent_phrase(query, phrase)
+            for phrase in expansion_rule.all_of
+        )
+        matches_any = not expansion_rule.any_of or any(
+            query_contains_equivalent_phrase(query, phrase) for phrase in expansion_rule.any_of
+        )
+        if matches_all and matches_any:
+            matched_rules.append(expansion_rule)
+    return matched_rules
+
+
+def build_candidate_pool_limit(*, top_k: int, matched_expansion_rules: Sequence[object]) -> int:
+    """Return the Qdrant candidate-pool limit for one retrieval query."""
+
+    if not matched_expansion_rules:
+        return top_k
+    return min(max(top_k * 3, top_k + 4), 20)
+
+
+def rerank_chunks_for_query_expansion_rules(
+    chunks: Sequence[RetrievedChunk],
+    *,
+    matched_expansion_rules: Sequence[object],
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Apply deterministic lexical reranking based on matched curated expansion rules."""
+
+    if not matched_expansion_rules:
+        return list(chunks[:top_k])
+
+    reranked_candidates: list[tuple[float, int, RetrievedChunk]] = []
+    for index, chunk in enumerate(chunks):
+        score_bonus = 0.0
+        label_surface = "\n".join(
+            value
+            for value in (
+                chunk.document_name,
+                chunk.section,
+                *chunk.section_path,
+            )
+            if value
+        )
+        body_surface = chunk.text
+        for matched_rule in matched_expansion_rules:
+            for term in matched_rule.append_terms:
+                if query_contains_equivalent_phrase(label_surface, term):
+                    score_bonus += 0.12
+                elif query_contains_equivalent_phrase(body_surface, term):
+                    score_bonus += 0.04
+        reranked_candidates.append(
+            (
+                chunk.score + score_bonus,
+                -index,
+                chunk.model_copy(update={"score": chunk.score + score_bonus}),
+            )
+        )
+
+    reranked_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [candidate[2] for candidate in reranked_candidates[:top_k]]
+
+
+def tokenize_lexical_surface(value: str) -> set[str]:
+    """Return normalized lexical tokens for deterministic local recall."""
+
+    normalized_text = normalize_equivalence_text(value)
+    return {
+        token
+        for token in re.split(r"[^a-z0-9]+", normalized_text)
+        if len(token) >= 3
+    }
+
+
+def build_hybrid_recall_terms(
+    query: str,
+    *,
+    matched_expansion_rules: Sequence[object],
+) -> list[str]:
+    """Build deterministic lexical-recall phrases for one retrieval query."""
+
+    ordered_terms: list[str] = []
+    seen_terms: set[str] = set()
+    anchor_token_sets = [
+        tokenize_lexical_surface(" ".join(matched_rule.all_of))
+        for matched_rule in matched_expansion_rules
+        if matched_rule.all_of
+    ]
+
+    def append_term_if_new(term: str, *, allow_anchor_overlap: bool = False) -> None:
+        normalized_term = normalize_equivalence_text(term)
+        if not normalized_term or normalized_term in seen_terms:
+            return
+        term_tokens = tokenize_lexical_surface(term)
+        if (
+            not allow_anchor_overlap
+            and any(
+                anchor_tokens and anchor_tokens.issubset(term_tokens)
+                for anchor_tokens in anchor_token_sets
+            )
+        ):
+            return
+        seen_terms.add(normalized_term)
+        ordered_terms.append(term)
+
+    append_term_if_new(query, allow_anchor_overlap=True)
+    for matched_rule in matched_expansion_rules:
+        for term in matched_rule.append_terms:
+            append_term_if_new(term)
+    return ordered_terms
+
+
+@lru_cache(maxsize=1)
+def load_local_chunk_corpus(chunk_dir: str = DEFAULT_CHUNK_DIR) -> tuple[ChunkRecord, ...]:
+    """Load the local chunk corpus for optional hybrid lexical recall."""
+
+    resolved_chunk_dir = Path(chunk_dir)
+    if not resolved_chunk_dir.exists():
+        return ()
+
+    chunk_records: list[ChunkRecord] = []
+    for chunk_artifact_path in iter_chunk_artifacts(resolved_chunk_dir, "*.chunks.json"):
+        chunk_records.extend(load_chunk_bundle(chunk_artifact_path).chunks)
+    return tuple(chunk_records)
+
+
+def chunk_record_matches_filters(
+    chunk_record: ChunkRecord,
+    filters: object,
+    *,
+    term_equivalences: TermEquivalenceSet,
+) -> bool:
+    """Return whether one local chunk record satisfies retrieval filters."""
+
+    resolved_product = chunk_record.product or infer_canonical_product_from_relative_path(
+        chunk_record.source_pdf_relative_path,
+        term_equivalences=term_equivalences,
+    )
+    filter_mappings = (
+        ("document_type", chunk_record.document_type),
+        ("product", resolved_product),
+        ("document_name", chunk_record.document_name),
+        ("version", chunk_record.document_version),
+    )
+    for filter_name, chunk_value in filter_mappings:
+        filter_value = getattr(filters, filter_name, None)
+        if filter_value is None:
+            continue
+        if chunk_value != filter_value:
+            return False
+    return True
+
+
+def score_chunk_record_for_hybrid_recall(
+    chunk_record: ChunkRecord,
+    *,
+    lexical_terms: Sequence[str],
+) -> float:
+    """Score one local chunk record for deterministic lexical comparison recall."""
+
+    if not lexical_terms:
+        return 0.0
+
+    label_surface = "\n".join(
+        value
+        for value in (
+            chunk_record.document_name,
+            chunk_record.section,
+            *chunk_record.section_path,
+        )
+        if value
+    )
+    body_surface = chunk_record.text
+    label_tokens = tokenize_lexical_surface(label_surface)
+    body_tokens = tokenize_lexical_surface(body_surface)
+
+    total_score = 0.0
+    for term in lexical_terms:
+        normalized_term = normalize_equivalence_text(term)
+        if not normalized_term:
+            continue
+        term_tokens = tokenize_lexical_surface(term)
+        if query_contains_equivalent_phrase(label_surface, term):
+            total_score += 2.0
+            continue
+        if query_contains_equivalent_phrase(body_surface, term):
+            total_score += 1.0
+            continue
+        if term_tokens and term_tokens.issubset(label_tokens):
+            total_score += 1.25
+            continue
+        if term_tokens and term_tokens.issubset(body_tokens):
+            total_score += 0.75
+            continue
+        if term_tokens:
+            label_overlap = len(term_tokens & label_tokens) / len(term_tokens)
+            body_overlap = len(term_tokens & body_tokens) / len(term_tokens)
+            total_score += max(label_overlap * 0.5, body_overlap * 0.25)
+    return total_score
+
+
+def build_retrieved_chunk_from_chunk_record(
+    chunk_record: ChunkRecord,
+    *,
+    score: float,
+) -> RetrievedChunk:
+    """Map one local chunk record into a retrieval result item."""
+
+    return RetrievedChunk(
+        chunk_id=chunk_record.chunk_id,
+        source_pdf_id=chunk_record.source_pdf_id,
+        source_pdf_relative_path=chunk_record.source_pdf_relative_path,
+        chunk_schema_version=chunk_record.chunk_schema_version,
+        chunk_index=chunk_record.chunk_index,
+        text=chunk_record.text,
+        document_name=chunk_record.document_name,
+        document_version=chunk_record.document_version,
+        document_type=chunk_record.document_type,
+        product=chunk_record.product,
+        page=None,
+        section=chunk_record.section,
+        section_path=list(chunk_record.section_path),
+        clause_id=None,
+        score=score,
+    )
+
+
+def retrieve_local_lexical_candidates(
+    retrieval_query: RetrievalQuery,
+    *,
+    term_equivalences: TermEquivalenceSet,
+    matched_expansion_rules: Sequence[object],
+    candidate_limit: int,
+) -> list[RetrievedChunk]:
+    """Return deterministic local lexical candidates for comparison-oriented queries."""
+
+    if not matched_expansion_rules or candidate_limit < 1:
+        return []
+
+    lexical_terms = build_hybrid_recall_terms(
+        retrieval_query.query,
+        matched_expansion_rules=matched_expansion_rules,
+    )
+    scored_candidates: list[tuple[float, int, RetrievedChunk]] = []
+    for index, chunk_record in enumerate(load_local_chunk_corpus()):
+        if not chunk_record_matches_filters(
+            chunk_record,
+            retrieval_query.filters,
+            term_equivalences=term_equivalences,
+        ):
+            continue
+        lexical_score = score_chunk_record_for_hybrid_recall(
+            chunk_record,
+            lexical_terms=lexical_terms,
+        )
+        if lexical_score <= 0:
+            continue
+        scored_candidates.append(
+            (
+                lexical_score,
+                -index,
+                build_retrieved_chunk_from_chunk_record(
+                    chunk_record,
+                    score=lexical_score,
+                ),
+            )
+        )
+
+    scored_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [candidate[2] for candidate in scored_candidates[:candidate_limit]]
+
+
+def merge_hybrid_retrieval_candidates(
+    semantic_chunks: Sequence[RetrievedChunk],
+    lexical_chunks: Sequence[RetrievedChunk],
+) -> list[RetrievedChunk]:
+    """Merge semantic and lexical candidates with deterministic score fusion."""
+
+    merged_candidates: dict[str, RetrievedChunk] = {
+        chunk.chunk_id: chunk for chunk in semantic_chunks
+    }
+    for lexical_chunk in lexical_chunks:
+        existing_chunk = merged_candidates.get(lexical_chunk.chunk_id)
+        if existing_chunk is None:
+            merged_candidates[lexical_chunk.chunk_id] = lexical_chunk
+            continue
+        merged_candidates[lexical_chunk.chunk_id] = existing_chunk.model_copy(
+            update={"score": existing_chunk.score + (lexical_chunk.score * 0.2)}
+        )
+    return list(merged_candidates.values())
 
 
 def canonicalize_filter_value(
@@ -664,6 +990,91 @@ def canonicalize_filter_value(
         if normalized_value in {normalize_equivalence_text(alias) for alias in aliases}:
             return canonical_value
     return value
+
+
+def infer_canonical_product_from_relative_path(
+    source_pdf_relative_path: str,
+    *,
+    term_equivalences: TermEquivalenceSet,
+) -> str | None:
+    """Infer one canonical product from source-relative path segments."""
+
+    path_segments = [
+        normalize_equivalence_text(segment)
+        for segment in Path(source_pdf_relative_path).parts
+        if segment.strip()
+    ]
+    if not path_segments:
+        return None
+
+    product_aliases = term_equivalences.filter_aliases.get("product", {})
+    for canonical_product, aliases in product_aliases.items():
+        candidate_values = {
+            normalize_equivalence_text(canonical_product),
+            *(normalize_equivalence_text(alias) for alias in aliases),
+        }
+        if any(segment in candidate_values for segment in path_segments):
+            return canonical_product
+        if canonical_product == "auto" and "autos" in path_segments:
+            return canonical_product
+    return None
+
+
+def infer_canonical_document_type_from_relative_path(
+    source_pdf_relative_path: str,
+    *,
+    term_equivalences: TermEquivalenceSet,
+) -> str | None:
+    """Infer one canonical document type from source-relative path tokens."""
+
+    normalized_path = normalize_equivalence_text(source_pdf_relative_path)
+    path_tokens = tokenize_lexical_surface(normalized_path)
+    if not path_tokens:
+        return None
+
+    document_type_aliases = term_equivalences.filter_aliases.get("document_type", {})
+    for canonical_document_type, aliases in document_type_aliases.items():
+        candidate_values = (
+            canonical_document_type,
+            *aliases,
+        )
+        for candidate_value in candidate_values:
+            candidate_tokens = tokenize_lexical_surface(candidate_value)
+            if candidate_tokens and candidate_tokens.issubset(path_tokens):
+                return canonical_document_type
+    return None
+
+
+def resolve_document_product(
+    *,
+    source_pdf_relative_path: Path,
+    overlay_entry: DocumentMetadataOverlayEntry | None,
+    term_equivalences: TermEquivalenceSet,
+) -> str | None:
+    """Resolve persisted product metadata with overlay precedence."""
+
+    if overlay_entry is not None and overlay_entry.product is not None:
+        return overlay_entry.product
+    return infer_canonical_product_from_relative_path(
+        source_pdf_relative_path.as_posix(),
+        term_equivalences=term_equivalences,
+    )
+
+
+def resolve_document_type(
+    *,
+    source_pdf_relative_path: Path,
+    overlay_entry: DocumentMetadataOverlayEntry | None,
+    term_equivalences: TermEquivalenceSet,
+) -> str | None:
+    """Resolve persisted document type metadata with overlay precedence."""
+
+    if overlay_entry is not None and overlay_entry.document_type is not None:
+        return overlay_entry.document_type
+    return infer_canonical_document_type_from_relative_path(
+        source_pdf_relative_path.as_posix(),
+        term_equivalences=term_equivalences,
+    )
 
 
 def normalize_retrieval_query_with_term_equivalences(
@@ -805,6 +1216,96 @@ def detect_block_kind(block_text: str) -> str:
     return "paragraph"
 
 
+def parse_markdown_table_row(line: str) -> list[str] | None:
+    """Parse one markdown table row into stripped cells."""
+
+    stripped_line = line.strip()
+    if "|" not in stripped_line:
+        return None
+    trimmed_line = stripped_line.strip("|")
+    if not trimmed_line:
+        return None
+    return [cell.strip() for cell in trimmed_line.split("|")]
+
+
+def is_markdown_table_separator(line: str) -> bool:
+    """Return whether one line is a markdown table separator row."""
+
+    return MARKDOWN_TABLE_SEPARATOR_PATTERN.match(line.strip()) is not None
+
+
+def normalize_table_cell_text(value: str) -> str:
+    """Normalize one markdown-table cell into compact semantic text."""
+
+    normalized_value = re.sub(r"\s*[•·]\s*", "; ", value.strip())
+    normalized_value = re.sub(r"\s+", " ", normalized_value)
+    normalized_value = re.sub(r";\s*;", ";", normalized_value)
+    return normalized_value.strip(" ;")
+
+
+def normalize_comparison_table_block(block_text: str) -> str:
+    """Rewrite comparison-oriented markdown tables into plan-centric statements."""
+
+    lines = [line.strip() for line in block_text.splitlines() if line.strip()]
+    if len(lines) < 3:
+        return block_text
+    header_cells = parse_markdown_table_row(lines[0])
+    if header_cells is None or not is_markdown_table_separator(lines[1]):
+        return block_text
+    if len(header_cells) < 3:
+        return block_text
+
+    normalized_header_cells = [normalize_table_cell_text(cell) for cell in header_cells]
+    plan_labels = [
+        header_cell
+        for header_cell in normalized_header_cells[1:]
+        if header_cell.casefold().startswith("plan ")
+    ]
+    if len(plan_labels) < 2:
+        return block_text
+
+    plan_attributes: dict[str, list[str]] = {}
+    plan_order: list[str] = []
+
+    for raw_row in lines[2:]:
+        row_cells = parse_markdown_table_row(raw_row)
+        if row_cells is None:
+            return block_text
+        if len(row_cells) < len(normalized_header_cells):
+            row_cells = [*row_cells, *([""] * (len(normalized_header_cells) - len(row_cells)))]
+
+        row_label = normalize_table_cell_text(row_cells[0])
+        if not row_label:
+            continue
+
+        for plan_label, cell_value in zip(normalized_header_cells[1:], row_cells[1:], strict=False):
+            if not plan_label.casefold().startswith("plan "):
+                continue
+            normalized_cell_value = normalize_table_cell_text(cell_value)
+            if not normalized_cell_value:
+                continue
+            if plan_label not in plan_attributes:
+                plan_attributes[plan_label] = []
+                plan_order.append(plan_label)
+            statement = f"- {row_label}: {normalized_cell_value}"
+            if statement not in plan_attributes[plan_label]:
+                plan_attributes[plan_label].append(statement)
+
+    if not plan_attributes:
+        return block_text
+
+    normalized_sections: list[str] = []
+    for plan_label in plan_order:
+        plan_statements = plan_attributes.get(plan_label, [])
+        if not plan_statements:
+            continue
+        normalized_sections.append(f"{plan_label}\n" + "\n".join(plan_statements))
+
+    if not normalized_sections:
+        return block_text
+    return "\n\n".join(normalized_sections)
+
+
 def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
     """Split cleaned markdown into deterministic text blocks with structural context."""
 
@@ -823,6 +1324,8 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
                 while len(heading_stack) >= level:
                     heading_stack.pop()
                 heading_stack.append(heading_text)
+        else:
+            block = normalize_comparison_table_block(block)
         section = heading_stack[-1] if heading_stack else None
         blocks.append(
             MarkdownBlock(
@@ -892,7 +1395,7 @@ def group_semantic_blocks(blocks: list[MarkdownBlock], chunk_size: int) -> list[
 
     while index < len(blocks):
         current_block = blocks[index]
-        if index + 1 < len(blocks):
+        if current_block.kind in {"heading", "clause_marker"} and index + 1 < len(blocks):
             next_block = blocks[index + 1]
             if can_merge_structural_pair(current_block, next_block, chunk_size):
                 grouped_blocks.append(
@@ -905,10 +1408,71 @@ def group_semantic_blocks(blocks: list[MarkdownBlock], chunk_size: int) -> list[
                 )
                 index += 2
                 continue
+
+        if current_block.kind != "heading":
+            combined_text = current_block.text
+            combined_section = current_block.section
+            combined_section_path = current_block.section_path
+            next_index = index + 1
+
+            while next_index < len(blocks):
+                next_block = blocks[next_index]
+                if next_block.kind == "heading":
+                    break
+                if next_block.section_path != combined_section_path:
+                    break
+                if len(combined_text) + 2 + len(next_block.text) > chunk_size:
+                    break
+                combined_text = f"{combined_text}\n\n{next_block.text}"
+                combined_section = next_block.section or combined_section
+                combined_section_path = next_block.section_path or combined_section_path
+                next_index += 1
+
+            if next_index > index + 1:
+                grouped_blocks.append(
+                    MarkdownBlock(
+                        text=combined_text,
+                        section=combined_section,
+                        section_path=combined_section_path,
+                        kind="grouped",
+                    )
+                )
+                index = next_index
+                continue
         grouped_blocks.append(current_block)
         index += 1
 
     return grouped_blocks
+
+
+def render_section_path_heading_prefix(section_path: Sequence[str]) -> str:
+    """Render one markdown heading prefix from a chunk section path."""
+
+    heading_lines: list[str] = []
+    for index, heading in enumerate(section_path, start=1):
+        normalized_heading = heading.strip()
+        if not normalized_heading:
+            continue
+        heading_lines.append(f"{'#' * min(index, 6)} {normalized_heading}")
+    return "\n\n".join(heading_lines)
+
+
+def ensure_chunk_text_includes_section_context(
+    *,
+    chunk_text: str,
+    section_path: Sequence[str],
+) -> str:
+    """Prefix governing section-path headings when the chunk text is missing them."""
+
+    heading_prefix = render_section_path_heading_prefix(section_path)
+    if not heading_prefix:
+        return chunk_text
+
+    normalized_chunk_text = normalize_equivalence_text(chunk_text)
+    normalized_prefix = normalize_equivalence_text(heading_prefix)
+    if normalized_prefix and normalized_prefix in normalized_chunk_text:
+        return chunk_text
+    return f"{heading_prefix}\n\n{chunk_text}"
 
 
 def build_chunk_records(
@@ -961,6 +1525,10 @@ def build_chunk_records(
         chunk_section_path = next(
             (list(entry.section_path) for entry in reversed(current_entries) if entry.section_path),
             [],
+        )
+        chunk_text = ensure_chunk_text_includes_section_context(
+            chunk_text=chunk_text,
+            section_path=chunk_section_path,
         )
         chunk_records.append(
             ChunkRecord(
@@ -1373,16 +1941,18 @@ def search_qdrant_chunks(
     settings: Settings,
     retrieval_query: RetrievalQuery,
     query_vector: list[float],
+    candidate_limit: int | None = None,
 ) -> list[object]:
     """Execute one Qdrant search for retrieval."""
 
     query_filter = build_qdrant_query_filter(retrieval_query.filters)
+    resolved_limit = candidate_limit or retrieval_query.top_k
     if hasattr(client, "search"):
         return client.search(
             collection_name=settings.qdrant_collection,
             query_vector=query_vector,
             query_filter=query_filter,
-            limit=retrieval_query.top_k,
+            limit=resolved_limit,
             with_payload=True,
         )
     if hasattr(client, "query_points"):
@@ -1390,7 +1960,7 @@ def search_qdrant_chunks(
             collection_name=settings.qdrant_collection,
             query=query_vector,
             query_filter=query_filter,
-            limit=retrieval_query.top_k,
+            limit=resolved_limit,
             with_payload=True,
         )
         points = getattr(response, "points", None)
@@ -1422,9 +1992,14 @@ def retrieve_ranked_chunks(
         resolved_settings = validate_embedding_settings(
             validate_startup_settings(settings or get_settings(), require_qdrant=True)
         )
+        term_equivalences = load_term_equivalences()
         normalized_retrieval_query = normalize_retrieval_query_with_term_equivalences(
             retrieval_query,
-            term_equivalences=load_term_equivalences(),
+            term_equivalences=term_equivalences,
+        )
+        matched_expansion_rules = get_matching_query_expansion_rules(
+            retrieval_query.query,
+            term_equivalences=term_equivalences,
         )
         ensure_qdrant_backend_available()
         resolved_client = client or create_qdrant_client(resolved_settings)
@@ -1432,14 +2007,33 @@ def retrieve_ranked_chunks(
             normalized_retrieval_query.query,
             resolved_settings,
         )
+        candidate_pool_limit = build_candidate_pool_limit(
+            top_k=normalized_retrieval_query.top_k,
+            matched_expansion_rules=matched_expansion_rules,
+        )
         hits = search_qdrant_chunks(
             client=resolved_client,
             settings=resolved_settings,
             retrieval_query=normalized_retrieval_query,
             query_vector=query_vector,
+            candidate_limit=candidate_pool_limit,
+        )
+        retrieved_chunks = [map_search_hit_to_retrieved_chunk(hit) for hit in hits]
+        retrieved_chunks = merge_hybrid_retrieval_candidates(
+            retrieved_chunks,
+            retrieve_local_lexical_candidates(
+                retrieval_query,
+                term_equivalences=term_equivalences,
+                matched_expansion_rules=matched_expansion_rules,
+                candidate_limit=candidate_pool_limit,
+            ),
         )
         result = DocumentRetrievalResult(
-            chunks=[map_search_hit_to_retrieved_chunk(hit) for hit in hits]
+            chunks=rerank_chunks_for_query_expansion_rules(
+                retrieved_chunks,
+                matched_expansion_rules=matched_expansion_rules,
+                top_k=normalized_retrieval_query.top_k,
+            )
         )
         return result
 
@@ -2018,12 +2612,24 @@ def ingest_one_pdf(
     pdf_conversion_backend: str,
     docling_startup_timeout_seconds: float,
     metadata_overlays: dict[str, DocumentMetadataOverlayEntry] | None = None,
+    term_equivalences: TermEquivalenceSet | None = None,
 ) -> ProcessedDocument:
     """Ingest one source PDF according to the deterministic storage rules."""
 
     source_pdf_relative_path = source_pdf_path.relative_to(input_dir)
     source_pdf_id = derive_source_pdf_id(input_dir=input_dir, source_pdf_path=source_pdf_path)
     overlay_entry = (metadata_overlays or {}).get(source_pdf_id)
+    resolved_term_equivalences = term_equivalences or load_term_equivalences()
+    resolved_document_type = resolve_document_type(
+        source_pdf_relative_path=source_pdf_relative_path,
+        overlay_entry=overlay_entry,
+        term_equivalences=resolved_term_equivalences,
+    )
+    resolved_product = resolve_document_product(
+        source_pdf_relative_path=source_pdf_relative_path,
+        overlay_entry=overlay_entry,
+        term_equivalences=resolved_term_equivalences,
+    )
     (
         markdown_output_path,
         cleaned_markdown_output_path,
@@ -2050,8 +2656,8 @@ def ingest_one_pdf(
             cleaned_markdown_output_path=cleaned_markdown_output_path,
             processed_output_path=processed_output_path,
             ingestion_status="skipped",
-            document_type=overlay_entry.document_type if overlay_entry else None,
-            product=overlay_entry.product if overlay_entry else None,
+            document_type=resolved_document_type,
+            product=resolved_product,
         )
 
     raw_markdown_text = convert_pdf_to_markdown_with_backend(
@@ -2081,8 +2687,8 @@ def ingest_one_pdf(
         ingestion_status="succeeded",
         document_name=document_name,
         document_version=document_version,
-        document_type=overlay_entry.document_type if overlay_entry else None,
-        product=overlay_entry.product if overlay_entry else None,
+        document_type=resolved_document_type,
+        product=resolved_product,
     )
     write_processed_metadata(record, processed_output_path)
     chunk_bundle = build_chunk_bundle(
@@ -2111,6 +2717,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
 
     ensure_pdf_conversion_backend_available(backend=args.pdf_conversion_backend)
     metadata_overlays = load_document_metadata_overlays(metadata_overlay_path)
+    term_equivalences = load_term_equivalences()
 
     source_pdfs = iter_source_pdfs(input_dir, args.glob)
     if not source_pdfs:
@@ -2135,6 +2742,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 pdf_conversion_backend=args.pdf_conversion_backend,
                 docling_startup_timeout_seconds=args.docling_startup_timeout_seconds,
                 metadata_overlays=metadata_overlays,
+                term_equivalences=term_equivalences,
             )
         except Exception as exc:
             encountered_failures = True
@@ -2154,6 +2762,16 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 processed_dir=processed_dir,
             )
             overlay_entry = metadata_overlays.get(source_pdf_id)
+            resolved_document_type = resolve_document_type(
+                source_pdf_relative_path=source_pdf_relative_path,
+                overlay_entry=overlay_entry,
+                term_equivalences=term_equivalences,
+            )
+            resolved_product = resolve_document_product(
+                source_pdf_relative_path=source_pdf_relative_path,
+                overlay_entry=overlay_entry,
+                term_equivalences=term_equivalences,
+            )
             remove_artifact_if_exists(cleaned_markdown_output_path)
             remove_artifact_if_exists(processed_output_path)
             remove_artifact_if_exists(chunk_artifact_path)
@@ -2165,8 +2783,8 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 cleaned_markdown_output_path=cleaned_markdown_output_path,
                 processed_output_path=processed_output_path,
                 ingestion_status="failed",
-                document_type=overlay_entry.document_type if overlay_entry else None,
-                product=overlay_entry.product if overlay_entry else None,
+                document_type=resolved_document_type,
+                product=resolved_product,
                 error_message=str(exc),
             )
 

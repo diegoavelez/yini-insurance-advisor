@@ -464,6 +464,7 @@ table at:
 Purpose:
 
 - normalize common Spanish query aliases into canonical retrieval terms;
+- append narrow comparison-oriented term bundles when a curated rule matches;
 - normalize `document_type` and `product` filter aliases into canonical values;
 - keep term reconciliation explicit and editable as the corpus grows.
 
@@ -476,9 +477,21 @@ Important operator rule:
 Current scope:
 
 - query alias expansion is deterministic and retrieval-only;
+- query expansion rules can append small operator-curated comparison bundles;
+- matched comparison bundles can trigger narrow deterministic reranking over a
+  larger candidate pool;
 - metadata filter alias mapping is deterministic and limited to
   `document_type` and `product`;
 - the repository does not attempt automatic taxonomy inference.
+
+Operator guidance:
+
+- use query expansion rules only for repeated retrieval misses with stable
+  operator vocabulary;
+- keep appended canonical terms aligned with real document labels, overlays, or
+  other retrieval-facing names already present in the corpus;
+- treat these rules as narrow retrieval hints, not as guaranteed ranking
+  controls or automatic taxonomy management.
 
 Current limitations:
 

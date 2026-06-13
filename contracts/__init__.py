@@ -40,6 +40,7 @@ from contracts.ingestion import (
     DocumentMetadataOverlaySet,
     IngestionStatus,
     ProcessedDocument,
+    QueryExpansionRule,
     TermEquivalenceSet,
 )
 from contracts.mcp import (
@@ -171,6 +172,7 @@ __all__ = [
     "PolicyComparisonResult",
     "PolicyComparisonToolResult",
     "ProcessedDocument",
+    "QueryExpansionRule",
     "QueryClassificationOptimizationDataset",
     "QueryClassificationCategoryQualityResult",
     "QueryClassificationCostComparisonResult",

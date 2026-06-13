@@ -4,9 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from contracts import RetrievalQuery, TermEquivalenceSet
+from contracts import ChunkRecord, QueryExpansionRule, RetrievalQuery, TermEquivalenceSet
 from core.config import Settings
-from rag.ingestion import build_parser, main, retrieve_ranked_chunks
+from rag.ingestion import build_hybrid_recall_terms, build_parser, main, retrieve_ranked_chunks
 
 
 class FakeQdrantRetrievalClient:
@@ -510,6 +510,439 @@ def test_retrieve_ranked_chunks_applies_operator_term_equivalences_to_query(
     )
 
     assert "Términos equivalentes: auto" in captured_query["query"]
+
+
+def test_retrieve_ranked_chunks_applies_operator_query_expansion_rules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["plan básico", "autos"],
+                    any_of=["diferencias", "otros planes"],
+                    append_terms=[
+                        "diferenciales sura",
+                        "plan autos básico pérdidas totales",
+                        "plan autos global",
+                        "plan autos clásico",
+                        "franquicia",
+                        "nuevo de nuevo",
+                        "pequeños eventos",
+                    ],
+                )
+            ]
+        ),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué diferencias hay entre el plan básico y los otros planes de autos?"
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "diferenciales sura" in captured_query["query"]
+    assert "plan autos básico pérdidas totales" in captured_query["query"]
+    assert "plan autos global" in captured_query["query"]
+    assert "plan autos clásico" in captured_query["query"]
+    assert "franquicia" in captured_query["query"]
+    assert "nuevo de nuevo" in captured_query["query"]
+
+
+def test_build_hybrid_recall_terms_skips_anchor_restatement_append_terms() -> None:
+    terms = build_hybrid_recall_terms(
+        "¿Qué diferencias hay entre el plan básico y los otros planes de autos?",
+        matched_expansion_rules=[
+            QueryExpansionRule(
+                all_of=["plan básico", "autos"],
+                any_of=["diferencias", "otros planes"],
+                append_terms=[
+                    "plan autos básico pérdidas totales",
+                    "plan autos global",
+                    "plan autos clásico",
+                    "franquicia",
+                ],
+            )
+        ],
+    )
+
+    assert "¿Qué diferencias hay entre el plan básico y los otros planes de autos?" in terms
+    assert "plan autos básico pérdidas totales" not in terms
+    assert "plan autos global" in terms
+    assert "plan autos clásico" in terms
+    assert "franquicia" in terms
+
+
+def test_retrieve_ranked_chunks_does_not_apply_comparison_bundle_without_comparison_intent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["plan básico", "autos"],
+                    any_of=["diferencias", "otros planes"],
+                    append_terms=[
+                        "plan autos global",
+                        "plan autos clásico",
+                        "diferenciales planes autos",
+                    ],
+                )
+            ]
+        ),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(query="¿Qué cubre el plan básico de autos?"),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert captured_query["query"] == "¿Qué cubre el plan básico de autos?"
+    assert client.last_query["limit"] == 5
+
+
+def test_retrieve_ranked_chunks_expands_candidate_pool_and_reranks_comparison_hits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "faq:v2:0000",
+                    "source_pdf_id": "faq",
+                    "source_pdf_relative_path": "MOVILIDAD/AUTOS/faq.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 0,
+                    "text": "Plan Autos Básico Pérdidas Totales frente a Autos Global y Clásico.",
+                    "document_name": "Seguro Plan Autos Básico Pérdidas Totales",
+                    "document_version": "2",
+                    "document_type": "faq",
+                    "product": "auto",
+                    "section": "Comparación comercial",
+                    "section_path": [
+                        "Seguro Plan Autos Básico Pérdidas Totales",
+                        "Comparación comercial",
+                    ],
+                },
+                score=0.92,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "diff:v2:0000",
+                    "source_pdf_id": "diff",
+                    "source_pdf_relative_path": "MOVILIDAD/AUTOS/diferenciales.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 0,
+                    "text": (
+                        "Plan Autos Global, Plan Autos Clásico, franquicia, "
+                        "nuevo de nuevo y pequeños eventos."
+                    ),
+                    "document_name": "DIFERENCIALES SURA",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "auto",
+                    "section": "Plan Autos Global",
+                    "section_path": ["DIFERENCIALES SURA", "Plan Autos Global"],
+                },
+                score=0.78,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["plan básico", "autos"],
+                    any_of=["diferencias", "otros planes"],
+                    append_terms=[
+                        "diferenciales sura",
+                        "plan autos global",
+                        "plan autos clásico",
+                        "franquicia",
+                        "nuevo de nuevo",
+                        "pequeños eventos",
+                    ],
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué diferencias hay entre el plan básico y los otros planes de autos?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert client.last_query["limit"] == 6
+    assert result.chunks[0].document_name == "DIFERENCIALES SURA"
+    assert result.chunks[0].score > result.chunks[1].score
+
+
+def test_retrieve_ranked_chunks_adds_local_lexical_candidates_for_comparison_queries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "faq:v2:0000",
+                    "source_pdf_id": "faq",
+                    "source_pdf_relative_path": "MOVILIDAD/AUTOS/faq.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 0,
+                    "text": "El plan básico se diferencia de otros planes en pérdidas totales.",
+                    "document_name": "Seguro Plan Autos Básico Pérdidas Totales",
+                    "document_version": "2",
+                    "document_type": "faq",
+                    "product": "auto",
+                    "section": "Comparación comercial",
+                    "section_path": [
+                        "Seguro Plan Autos Básico Pérdidas Totales",
+                        "Comparación comercial",
+                    ],
+                },
+                score=0.92,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["plan básico", "autos"],
+                    any_of=["diferencias", "otros planes"],
+                    append_terms=[
+                        "diferenciales sura",
+                        "plan autos global",
+                        "plan autos clásico",
+                        "franquicia",
+                        "nuevo de nuevo",
+                        "pequeños eventos",
+                    ],
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="diff:v2:0000",
+                source_pdf_id="diff",
+                document_name="DIFERENCIALES SURA",
+                document_version=None,
+                document_type="guide",
+                product="auto",
+                source_pdf_path="data/raw/MOVILIDAD/AUTOS/diferenciales.pdf",
+                source_pdf_relative_path="MOVILIDAD/AUTOS/diferenciales.pdf",
+                cleaned_markdown_output_path="data/processed/diff.cleaned.md",
+                text=(
+                    "Plan Autos Global. Plan Autos Clásico. Franquicia. "
+                    "Nuevo de nuevo. Pequeños eventos."
+                ),
+                chunk_index=0,
+                chunk_schema_version="v2",
+                section="Plan Autos Global",
+                section_path=["DIFERENCIALES SURA", "Plan Autos Global"],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué diferencias hay entre el plan básico y los otros planes de autos?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].document_name == "DIFERENCIALES SURA"
+    assert result.chunks[0].chunk_id == "diff:v2:0000"
+
+
+def test_retrieve_ranked_chunks_skips_local_lexical_candidates_without_matching_filters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["plan básico", "autos"],
+                    any_of=["diferencias", "otros planes"],
+                    append_terms=["diferenciales sura", "plan autos global"],
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="diff:v2:0000",
+                source_pdf_id="diff",
+                document_name="DIFERENCIALES SURA",
+                document_version=None,
+                document_type="guide",
+                product="health",
+                source_pdf_path="data/raw/autonomia/vida/diff.pdf",
+                source_pdf_relative_path="AUTONOMIA/VIDA/diff.pdf",
+                cleaned_markdown_output_path="data/processed/diff.cleaned.md",
+                text="Plan Autos Global.",
+                chunk_index=0,
+                chunk_schema_version="v2",
+                section="Plan Autos Global",
+                section_path=["DIFERENCIALES SURA", "Plan Autos Global"],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué diferencias hay entre el plan básico y los otros planes de autos?",
+            top_k=2,
+            filters={"product": "auto"},
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks == []
+
+
+def test_retrieve_ranked_chunks_matches_missing_product_from_source_relative_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            filter_aliases={"product": {"auto": ["autos", "carro"]}},
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["plan básico", "autos"],
+                    any_of=["diferencias", "otros planes"],
+                    append_terms=["diferenciales sura", "plan autos global"],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="diff:v2:0000",
+                source_pdf_id="diff",
+                document_name="DIFERENCIALES SURA",
+                document_version=None,
+                document_type="guide",
+                product=None,
+                source_pdf_path="data/raw/MOVILIDAD/AUTOS/diferenciales.pdf",
+                source_pdf_relative_path="MOVILIDAD/AUTOS/diferenciales.pdf",
+                cleaned_markdown_output_path="data/processed/diff.cleaned.md",
+                text="Plan Autos Global. Franquicia.",
+                chunk_index=0,
+                chunk_schema_version="v2",
+                section="Plan Autos Global",
+                section_path=["DIFERENCIALES SURA", "Plan Autos Global"],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué diferencias hay entre el plan básico y los otros planes de autos?",
+            top_k=2,
+            filters={"product": "auto"},
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].chunk_id == "diff:v2:0000"
 
 
 def test_retrieve_ranked_chunks_applies_operator_term_equivalences_to_filters(

@@ -52,3 +52,20 @@ class TermEquivalenceSet(BaseModel):
 
     query_aliases: dict[str, list[str]] = Field(default_factory=dict)
     filter_aliases: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
+    query_expansion_rules: list[QueryExpansionRule] = Field(default_factory=list)
+
+
+class QueryExpansionRule(BaseModel):
+    """Deterministic operator-curated rule for appending retrieval terms."""
+
+    all_of: list[str] = Field(default_factory=list)
+    any_of: list[str] = Field(default_factory=list)
+    append_terms: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_matchers_and_terms(self) -> QueryExpansionRule:
+        if not self.all_of and not self.any_of:
+            raise ValueError("query expansion rules must define all_of or any_of")
+        if not self.append_terms:
+            raise ValueError("query expansion rules must define append_terms")
+        return self
