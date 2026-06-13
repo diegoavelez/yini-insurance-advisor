@@ -566,6 +566,65 @@ def test_retrieve_ranked_chunks_applies_operator_query_expansion_rules(
     assert "nuevo de nuevo" in captured_query["query"]
 
 
+def test_retrieve_ranked_chunks_applies_motos_comparison_query_expansion_rules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["motos"],
+                    any_of=[
+                        "diferencias",
+                        "comparar",
+                        "comparación",
+                        "comparacion",
+                        "comparativo",
+                        "planes",
+                    ],
+                    append_terms=[
+                        "comparativo motos",
+                        "suratech",
+                        "plan total",
+                        "plan premium",
+                        "bajo cilindraje",
+                        "alto cilindraje",
+                        "esencial",
+                    ],
+                )
+            ]
+        ),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(query="¿Qué diferencias hay entre los planes de motos?"),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "comparativo motos" in captured_query["query"]
+    assert "suratech" in captured_query["query"]
+    assert "plan total" in captured_query["query"]
+    assert "plan premium" in captured_query["query"]
+    assert "bajo cilindraje" in captured_query["query"]
+    assert "alto cilindraje" in captured_query["query"]
+
+
 def test_build_hybrid_recall_terms_skips_anchor_restatement_append_terms() -> None:
     terms = build_hybrid_recall_terms(
         "¿Qué diferencias hay entre el plan básico y los otros planes de autos?",

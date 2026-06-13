@@ -47,6 +47,22 @@
     "movilidad__autos__preguntas-frecuentes-plan-autos-basico-pt-v2": {
       "document_type": "faq",
       "product": "auto"
+    },
+    "movilidad__motos__ayudaventas-asistencia-pequenos-eventos-motos": {
+      "document_type": "guide",
+      "product": "moto"
+    },
+    "movilidad__motos__ayudaventas-motos-v2": {
+      "document_type": "guide",
+      "product": "moto"
+    },
+    "movilidad__motos__clausulado-plan-motos": {
+      "document_type": "policy",
+      "product": "moto"
+    },
+    "movilidad__motos__comparativo-motos": {
+      "document_type": "guide",
+      "product": "moto"
     }
   }
 }

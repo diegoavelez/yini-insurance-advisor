@@ -1046,6 +1046,45 @@ def test_ingestion_infers_document_type_for_pv_source_path(
     assert processed_document.document_type == "guide"
 
 
+def test_ingestion_infers_document_type_for_comparativo_source_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_pdf = input_dir / "MOVILIDAD" / "MOTOS" / "comparativo motos.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    processed_output = processed_dir / "movilidad__motos__comparativo-motos.json"
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.document_type == "guide"
+    assert processed_document.product == "moto"
+
+
 def test_ingestion_overlay_document_type_takes_precedence_over_path_inference(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:

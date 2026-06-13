@@ -1249,6 +1249,8 @@ and cite as the real Spanish document set grows.
 - `source-path-product-metadata-backfill`
 - `source-path-document-type-metadata-backfill`
 - `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
+- `motos-corpus-baseline-ingestion-and-retrieval`
+- `motos-plan-comparison-retrieval-alignment`
 
 Current implementation status:
 
@@ -1272,6 +1274,8 @@ completed:
 - `source-path-product-metadata-backfill`
 - `source-path-document-type-metadata-backfill`
 - `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
+- `motos-corpus-baseline-ingestion-and-retrieval`
+- `motos-plan-comparison-retrieval-alignment`
 
 remaining in `Phase 18`:
 

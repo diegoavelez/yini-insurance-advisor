@@ -105,6 +105,28 @@
     },
     {
       "all_of": [
+        "motos"
+      ],
+      "any_of": [
+        "diferencias",
+        "comparar",
+        "comparación",
+        "comparacion",
+        "comparativo",
+        "planes"
+      ],
+      "append_terms": [
+        "comparativo motos",
+        "suratech",
+        "plan total",
+        "plan premium",
+        "bajo cilindraje",
+        "alto cilindraje",
+        "esencial"
+      ]
+    },
+    {
+      "all_of": [
         "deducible"
       ],
       "any_of": [
@@ -154,6 +176,7 @@
         "instructivo",
         "instructivos",
         "ayudaventas",
+        "comparativo",
         "diferenciales",
         "generalidades",
         "pv",

@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Add the `MOVILIDAD/MOTOS` baseline corpus slice by curating overlay metadata for the first four source PDFs, extending `comparativo` path inference to `document_type=guide`, validating category ingestion locally, and evidencing successful embeddings generation plus Qdrant indexing for the new category.
+- Add the follow-on `MOTOS` comparison corrective retrieval slice by activating the existing comparison-intent expansion, candidate-pool, and reranking path for motorcycle plan-difference queries so `comparativo motos.pdf` now surfaces as the primary evidence source in real retrieval and grounded-answer validation.
 - Add a durable category-onboarding playbook that captures the operator workflow for new corpus categories from raw folder taxonomy through ingestion, embeddings, Qdrant indexing, retrieval validation, grounded-answer validation, and narrow corrective-slice escalation based on the implemented `AUTOS` and `BICICLETAS Y PATINETAS` experience.
 - Add the `MOVILIDAD/BICICLETAS Y PATINETAS` baseline corpus slice by onboarding the category into ingestion, embeddings, indexing, product/document-type alias normalization, and real retrieval validation under the existing `movilidad` taxonomy.
 - Add the follow-on `BICICLETAS Y PATINETAS` corrective retrieval slices by aligning supported-scope admission for bike and scooter queries, normalizing the diagrammatic `pv` corpus into semantic `COBERTURAS Y PLANES`, `GENERALIDADES`, `EXPEDICIÓN REQUISITOS`, and `DEDUCIBLE` chunks, and improving deductible-specific recall/reranking so real grounded answers now cite explicit deductible evidence.
