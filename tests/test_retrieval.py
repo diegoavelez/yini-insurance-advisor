@@ -633,6 +633,300 @@ def test_retrieve_ranked_chunks_does_not_apply_comparison_bundle_without_compari
     assert client.last_query["limit"] == 5
 
 
+def test_retrieve_ranked_chunks_applies_deductible_query_expansion_rules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["deducible"],
+                    any_of=["bicicletas", "patinetas"],
+                    append_terms=[
+                        "smlmv",
+                        "pérdida total",
+                        "hurto",
+                        "renta diaria por hospitalización",
+                    ],
+                )
+            ]
+        ),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(query="¿Cuál es el deducible del seguro de bicicletas y patinetas?"),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "smlmv" in captured_query["query"]
+    assert "pérdida total" in captured_query["query"]
+    assert "hurto" in captured_query["query"]
+
+
+def test_retrieve_ranked_chunks_adds_local_lexical_candidates_for_deductible_queries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "guide:v2:0000",
+                    "source_pdf_id": "guide",
+                    "source_pdf_relative_path": "MOVILIDAD/BICICLETAS Y PATINETAS/ayudaventas.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 0,
+                    "text": "Servicios y asistencias para bicicletas y patinetas.",
+                    "document_name": "Sentirte acompañado",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Acompañamiento",
+                    "section_path": ["Sentirte acompañado", "Acompañamiento"],
+                },
+                score=0.92,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["deducible"],
+                    any_of=["bicicletas", "patinetas"],
+                    append_terms=["smlmv", "pérdida total", "hurto"],
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="pv:v2:0008",
+                source_pdf_id="pv",
+                document_name="pv bicis y patinetas v2",
+                document_version="1",
+                document_type="guide",
+                product="movilidad",
+                source_pdf_path="data/raw/MOVILIDAD/BICICLETAS Y PATINETAS/pv.pdf",
+                source_pdf_relative_path="MOVILIDAD/BICICLETAS Y PATINETAS/pv.pdf",
+                cleaned_markdown_output_path="data/processed/pv.cleaned.md",
+                text=(
+                    "DEDUCIBLE. Bicis: Entre $600.000 y $3.000.000. "
+                    "No aplica cobertura 15%. SMLMV. Hurto."
+                ),
+                chunk_index=8,
+                chunk_schema_version="v2",
+                section="DEDUCIBLE",
+                section_path=["pv bicis y patinetas v2", "DEDUCIBLE"],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Cuál es el deducible del seguro de bicicletas y patinetas?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].section == "DEDUCIBLE"
+    assert result.chunks[0].chunk_id == "pv:v2:0008"
+
+
+def test_retrieve_ranked_chunks_biases_explicit_deductible_sections_for_deductible_queries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "guide:v2:0000",
+                    "source_pdf_id": "guide",
+                    "source_pdf_relative_path": "MOVILIDAD/BICICLETAS Y PATINETAS/guide.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 0,
+                    "text": "Valor comercial menos el deducible pactado.",
+                    "document_name": "Sentirte acompañado",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Pérdida total",
+                    "section_path": ["Sentirte acompañado", "Pérdida total"],
+                },
+                score=0.92,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0008",
+                    "source_pdf_id": "pv",
+                    "source_pdf_relative_path": "MOVILIDAD/BICICLETAS Y PATINETAS/pv.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 8,
+                    "text": "DEDUCIBLE. Bicis: Entre $600.000 y $3.000.000.",
+                    "document_name": "pv bicis y patinetas v2",
+                    "document_version": "1",
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "DEDUCIBLE",
+                    "section_path": ["pv bicis y patinetas v2", "DEDUCIBLE"],
+                },
+                score=0.80,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["deducible"],
+                    any_of=["bicicletas", "patinetas"],
+                    append_terms=["smlmv", "pérdida total", "hurto"],
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Cuál es el deducible del seguro de bicicletas y patinetas?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].section == "DEDUCIBLE"
+    assert result.chunks[0].chunk_id == "pv:v2:0008"
+
+
+def test_retrieve_ranked_chunks_prefers_local_deductible_candidate_over_adjacent_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["deducible"],
+                    any_of=["bicicletas", "patinetas"],
+                    append_terms=[
+                        "smlmv",
+                        "pérdida total",
+                        "hurto",
+                        "renta diaria por hospitalización",
+                        "expedición requisitos",
+                    ],
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="pv:v2:0006",
+                source_pdf_id="pv",
+                document_name="pv bicis y patinetas v2",
+                document_version="1",
+                document_type="guide",
+                product="movilidad",
+                source_pdf_path="data/raw/MOVILIDAD/BICICLETAS Y PATINETAS/pv.pdf",
+                source_pdf_relative_path="MOVILIDAD/BICICLETAS Y PATINETAS/pv.pdf",
+                cleaned_markdown_output_path="data/processed/pv.cleaned.md",
+                text="EXPEDICIÓN REQUISITOS. valor comercial menos el deducible pactado.",
+                chunk_index=6,
+                chunk_schema_version="v2",
+                section="EXPEDICIÓN REQUISITOS",
+                section_path=["pv bicis y patinetas v2", "EXPEDICIÓN REQUISITOS"],
+            ),
+            ChunkRecord(
+                chunk_id="pv:v2:0008",
+                source_pdf_id="pv",
+                document_name="pv bicis y patinetas v2",
+                document_version="1",
+                document_type="guide",
+                product="movilidad",
+                source_pdf_path="data/raw/MOVILIDAD/BICICLETAS Y PATINETAS/pv.pdf",
+                source_pdf_relative_path="MOVILIDAD/BICICLETAS Y PATINETAS/pv.pdf",
+                cleaned_markdown_output_path="data/processed/pv.cleaned.md",
+                text="DEDUCIBLE. Bicis: Entre $600.000 y $3.000.000. SMLMV.",
+                chunk_index=8,
+                chunk_schema_version="v2",
+                section="DEDUCIBLE",
+                section_path=["pv bicis y patinetas v2", "DEDUCIBLE"],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Cuál es el deducible del seguro de bicicletas y patinetas?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].section == "DEDUCIBLE"
+    assert result.chunks[0].chunk_id == "pv:v2:0008"
+
+
 def test_retrieve_ranked_chunks_expands_candidate_pool_and_reranks_comparison_hits(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

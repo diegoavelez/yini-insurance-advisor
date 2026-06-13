@@ -62,7 +62,16 @@
     ],
     "movilidad": [
       "asistencia vehicular",
-      "movilidad autos"
+      "movilidad autos",
+      "bicicleta",
+      "bicicletas",
+      "bici",
+      "bicis",
+      "patineta",
+      "patineta electrica",
+      "patineta eléctrica",
+      "patinetas",
+      "micromovilidad"
     ],
     "asistencia pequenos eventos": [
       "asistencia pequeños eventos",
@@ -92,6 +101,26 @@
         "franquicia",
         "nuevo de nuevo",
         "pequeños eventos"
+      ]
+    },
+    {
+      "all_of": [
+        "deducible"
+      ],
+      "any_of": [
+        "bicicleta",
+        "bicicletas",
+        "bici",
+        "bicis",
+        "patineta",
+        "patinetas"
+      ],
+      "append_terms": [
+        "smlmv",
+        "pérdida total",
+        "hurto",
+        "renta diaria por hospitalización",
+        "expedición requisitos"
       ]
     }
   ],
@@ -126,7 +155,9 @@
         "instructivos",
         "ayudaventas",
         "diferenciales",
-        "generalidades"
+        "generalidades",
+        "pv",
+        "propuesta de valor"
       ]
     },
     "product": {
@@ -188,7 +219,16 @@
       ],
       "movilidad": [
         "asistencia vehicular",
-        "movilidad autos"
+        "movilidad autos",
+        "bicicleta",
+        "bicicletas",
+        "bici",
+        "bicis",
+        "patineta",
+        "patineta electrica",
+        "patineta eléctrica",
+        "patinetas",
+        "micromovilidad"
       ]
     }
   }

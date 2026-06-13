@@ -1085,6 +1085,11 @@ Stabilize the project for final delivery.
 - `local-embedding-runtime-remediation`
 - `spanish-query-scope-autos-alignment-remediation`
 - `arl-supported-scope-alignment-remediation`
+- `bicicletas-patinetas-supported-scope-alignment-remediation`
+- `bicicletas-patinetas-pv-diagrammatic-block-normalization-remediation`
+- `bicicletas-patinetas-pv-requirements-and-deductible-linear-normalization`
+- `bicicletas-patinetas-deductible-evidence-bias-remediation`
+- `bicicletas-patinetas-deductible-candidate-recall-remediation`
 
 Current implementation status:
 
@@ -1101,6 +1106,11 @@ completed:
 - `local-embedding-runtime-remediation`
 - `spanish-query-scope-autos-alignment-remediation`
 - `arl-supported-scope-alignment-remediation`
+- `bicicletas-patinetas-supported-scope-alignment-remediation`
+- `bicicletas-patinetas-pv-diagrammatic-block-normalization-remediation`
+- `bicicletas-patinetas-pv-requirements-and-deductible-linear-normalization`
+- `bicicletas-patinetas-deductible-evidence-bias-remediation`
+- `bicicletas-patinetas-deductible-candidate-recall-remediation`
 
 ---
 
@@ -1238,6 +1248,7 @@ and cite as the real Spanish document set grows.
 - `source-path-product-filter-fallback-remediation`
 - `source-path-product-metadata-backfill`
 - `source-path-document-type-metadata-backfill`
+- `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
 
 Current implementation status:
 
@@ -1260,6 +1271,7 @@ completed:
 - `source-path-product-filter-fallback-remediation`
 - `source-path-product-metadata-backfill`
 - `source-path-document-type-metadata-backfill`
+- `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
 
 remaining in `Phase 18`:
 

@@ -419,6 +419,101 @@ def test_split_markdown_blocks_leaves_non_comparison_content_unchanged() -> None
     assert blocks[2].text == "1. Condición especial"
 
 
+def test_split_markdown_blocks_skips_page_heading_blocks_and_promotes_semantic_section() -> None:
+    blocks = split_markdown_blocks(
+        "# pv bicis y patinetas v2\n\n"
+        "## Page 4\n\n"
+        "Daños a Terceros\n"
+        "Con opción de valor asegurado\n"
+        "de $64.000.000 ó $160.000.000\n"
+        "Accidentes personales\n"
+        "Con valor asegurado de\n"
+        "$10.000.000\n"
+        "COBERTURAS Y PLANES\n"
+        "Asistencia\n"
+    )
+
+    assert len(blocks) == 2
+    assert blocks[1].section == "COBERTURAS Y PLANES"
+    assert blocks[1].section_path == ("pv bicis y patinetas v2", "COBERTURAS Y PLANES")
+    assert (
+        "- Daños a Terceros: Con opción de valor asegurado de $64.000.000 ó $160.000.000"
+        in blocks[1].text
+    )
+    assert "- Accidentes personales: Con valor asegurado de $10.000.000" in blocks[1].text
+
+
+def test_build_chunk_records_avoids_page_heading_only_chunks() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="policy-a",
+        document_name="Policy Title",
+        document_version=None,
+        source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
+        cleaned_markdown_text=(
+            "# Policy Title\n\n"
+            "## Page 6\n\n"
+            "GENERALIDADES\n\n"
+            "Bicis: Desde $600mil hasta $30mill.\n"
+        ),
+        chunk_size=200,
+        chunk_overlap=20,
+    )
+
+    assert len(chunk_records) == 1
+    assert chunk_records[0].section == "GENERALIDADES"
+    assert chunk_records[0].section_path == ["Policy Title", "GENERALIDADES"]
+    assert "## Page 6" not in chunk_records[0].text
+
+
+def test_split_markdown_blocks_normalizes_expedition_requirements_linear_grid() -> None:
+    blocks = split_markdown_blocks(
+        "# pv bicis y patinetas v2\n\n"
+        "## Page 6\n\n"
+        "Requisitos Vinculaciones\n"
+        "Bicis\n"
+        "Entre $600.000 y\n"
+        "$3.000.000\n"
+        "• fotos marco\n"
+        "• factura de compra\n"
+        "Todos los clientes\n"
+        "Patinetas\n"
+        "Entre $3.000.001 y\n"
+        "$10.000.000\n"
+        "• Inspección virtual\n"
+        "• factura de compra\n"
+        "EXPEDICIÓN REQUISITOS\n"
+    )
+
+    assert blocks[1].section == "EXPEDICIÓN REQUISITOS"
+    assert "- Bicis / Entre $600.000 y $3.000.000:" in blocks[1].text
+    assert "- Patinetas / Entre $3.000.001 y $10.000.000:" in blocks[1].text
+
+
+def test_split_markdown_blocks_normalizes_deductible_linear_grid() -> None:
+    blocks = split_markdown_blocks(
+        "# pv bicis y patinetas v2\n\n"
+        "## Page 9\n\n"
+        "Bicis\n"
+        "Entre $600.000 y\n"
+        "$3.000.000 $0 No aplica cobertura 15%\n"
+        "A partir de las 48 horas\n"
+        "Patinetas\n"
+        "Entre $3.000.001 y\n"
+        "$10.000.000 $0 No aplica cobertura 15% min 1 SMLMV\n"
+        "A partir de las 48 horas\n"
+        "DEDUCIBLE\n"
+    )
+
+    assert blocks[1].section == "DEDUCIBLE"
+    assert "- Bicis: Entre $600.000 y $3.000.000 $0 No aplica cobertura 15%" in blocks[1].text
+    assert (
+        "- Patinetas: Entre $3.000.001 y $10.000.000 $0 No aplica cobertura 15% min 1 SMLMV"
+        in blocks[1].text
+    )
+
+
 def test_cli_fails_when_input_directory_is_missing(tmp_path, capsys) -> None:
     exit_code = main(
         [
@@ -905,6 +1000,46 @@ def test_ingestion_infers_document_type_for_diferenciales_source_path(
     )
 
     processed_output = processed_dir / "movilidad__autos__diferenciales-planes-autos.json"
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.document_type == "guide"
+
+
+def test_ingestion_infers_document_type_for_pv_source_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_pdf = input_dir / "MOVILIDAD" / "BICICLETAS Y PATINETAS" / "pv bicis y patinetas v2.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    processed_output = (
+        processed_dir / "movilidad__bicicletas-y-patinetas__pv-bicis-y-patinetas-v2.json"
+    )
     processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
 
     assert exit_code == 0

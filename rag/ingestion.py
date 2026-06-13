@@ -58,6 +58,14 @@ DEFAULT_CHUNK_OVERLAP = 200
 CLAUSE_LIKE_PATTERN = re.compile(r"^(?:\d+[.)]|[A-Z][.)]|[IVXLCDM]+[.)])(?:\s+\S.*)?$")
 MAX_STRUCTURAL_BLOCK_LENGTH = 120
 MARKDOWN_TABLE_SEPARATOR_PATTERN = re.compile(r"^\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?$")
+PAGE_HEADING_PATTERN = re.compile(r"(?i)^page\s+\d+$")
+SEMANTIC_SECTION_LABELS = (
+    "propuesta de valor",
+    "coberturas y planes",
+    "generalidades",
+    "expedición requisitos",
+    "deducible",
+)
 EMBEDDING_SCHEMA_VERSION = "v1"
 SUPPORTED_EMBEDDING_PROVIDER = "sentence-transformers"
 DEFAULT_EMBEDDING_DIR = "data/processed/embeddings"
@@ -613,6 +621,11 @@ def normalize_equivalence_text(value: str) -> str:
     return " ".join(ascii_text.strip().lower().split())
 
 
+NORMALIZED_SEMANTIC_SECTION_LABELS = {
+    normalize_equivalence_text(label) for label in SEMANTIC_SECTION_LABELS
+}
+
+
 def load_term_equivalences(term_equivalence_path: Path | None = None) -> TermEquivalenceSet:
     """Load optional operator-curated term equivalences."""
 
@@ -703,6 +716,7 @@ def build_candidate_pool_limit(*, top_k: int, matched_expansion_rules: Sequence[
 def rerank_chunks_for_query_expansion_rules(
     chunks: Sequence[RetrievedChunk],
     *,
+    query: str,
     matched_expansion_rules: Sequence[object],
     top_k: int,
 ) -> list[RetrievedChunk]:
@@ -712,6 +726,7 @@ def rerank_chunks_for_query_expansion_rules(
         return list(chunks[:top_k])
 
     reranked_candidates: list[tuple[float, int, RetrievedChunk]] = []
+    deductible_intent = query_contains_equivalent_phrase(query, "deducible")
     for index, chunk in enumerate(chunks):
         score_bonus = 0.0
         label_surface = "\n".join(
@@ -730,6 +745,8 @@ def rerank_chunks_for_query_expansion_rules(
                     score_bonus += 0.12
                 elif query_contains_equivalent_phrase(body_surface, term):
                     score_bonus += 0.04
+        if deductible_intent and query_contains_equivalent_phrase(label_surface, "deducible"):
+            score_bonus += 0.35
         reranked_candidates.append(
             (
                 chunk.score + score_bonus,
@@ -835,6 +852,7 @@ def chunk_record_matches_filters(
 def score_chunk_record_for_hybrid_recall(
     chunk_record: ChunkRecord,
     *,
+    query: str,
     lexical_terms: Sequence[str],
 ) -> float:
     """Score one local chunk record for deterministic lexical comparison recall."""
@@ -854,8 +872,11 @@ def score_chunk_record_for_hybrid_recall(
     body_surface = chunk_record.text
     label_tokens = tokenize_lexical_surface(label_surface)
     body_tokens = tokenize_lexical_surface(body_surface)
+    deductible_intent = query_contains_equivalent_phrase(query, "deducible")
 
     total_score = 0.0
+    if deductible_intent and query_contains_equivalent_phrase(label_surface, "deducible"):
+        total_score += 2.0
     for term in lexical_terms:
         normalized_term = normalize_equivalence_text(term)
         if not normalized_term:
@@ -932,6 +953,7 @@ def retrieve_local_lexical_candidates(
             continue
         lexical_score = score_chunk_record_for_hybrid_recall(
             chunk_record,
+            query=retrieval_query.query,
             lexical_terms=lexical_terms,
         )
         if lexical_score <= 0:
@@ -1029,7 +1051,7 @@ def infer_canonical_document_type_from_relative_path(
 
     normalized_path = normalize_equivalence_text(source_pdf_relative_path)
     path_tokens = tokenize_lexical_surface(normalized_path)
-    if not path_tokens:
+    if not normalized_path:
         return None
 
     document_type_aliases = term_equivalences.filter_aliases.get("document_type", {})
@@ -1039,6 +1061,8 @@ def infer_canonical_document_type_from_relative_path(
             *aliases,
         )
         for candidate_value in candidate_values:
+            if query_contains_equivalent_phrase(normalized_path, candidate_value):
+                return canonical_document_type
             candidate_tokens = tokenize_lexical_surface(candidate_value)
             if candidate_tokens and candidate_tokens.issubset(path_tokens):
                 return canonical_document_type
@@ -1306,6 +1330,212 @@ def normalize_comparison_table_block(block_text: str) -> str:
     return "\n\n".join(normalized_sections)
 
 
+def is_page_heading_text(value: str) -> bool:
+    """Return whether one heading text is a plain page marker."""
+
+    return PAGE_HEADING_PATTERN.match(value.strip()) is not None
+
+
+def find_semantic_section_label(block_text: str) -> str | None:
+    """Return a stronger semantic section label when present in a block."""
+
+    for raw_line in block_text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        normalized_line = normalize_equivalence_text(line)
+        if normalized_line in NORMALIZED_SEMANTIC_SECTION_LABELS:
+            return line
+    return None
+
+
+def normalize_diagrammatic_coverage_block(block_text: str) -> str:
+    """Rewrite line-grid coverage blocks into more semantic statements."""
+
+    semantic_label = find_semantic_section_label(block_text)
+    if normalize_equivalence_text(semantic_label or "") != "coberturas y planes":
+        return block_text
+
+    raw_lines = [line.strip() for line in block_text.splitlines() if line.strip()]
+    content_lines = [
+        line
+        for line in raw_lines
+        if "todos los derechos reservados" not in normalize_equivalence_text(line)
+        and normalize_equivalence_text(line) != "coberturas y planes"
+    ]
+    if len(content_lines) < 4:
+        return block_text
+
+    statements: list[str] = []
+    index = 0
+    while index < len(content_lines):
+        label = content_lines[index]
+        normalized_label = normalize_equivalence_text(label)
+        if not label or normalized_label == "asistencia":
+            index += 1
+            continue
+        if len(label) > 40 or label.startswith(("Con ", "de ", "$")):
+            index += 1
+            continue
+
+        continuation_lines: list[str] = []
+        cursor = index + 1
+        while cursor < len(content_lines):
+            candidate = content_lines[cursor]
+            normalized_candidate = normalize_equivalence_text(candidate)
+            if normalized_candidate in SEMANTIC_SECTION_LABELS:
+                break
+            if len(candidate) <= 40 and not candidate.startswith(("Con ", "de ", "$")):
+                if continuation_lines:
+                    break
+                if candidate and candidate[0].islower():
+                    label = f"{label} {candidate}"
+                    cursor += 1
+                    continue
+                break
+            continuation_lines.append(candidate)
+            cursor += 1
+
+        if continuation_lines:
+            normalized_value = normalize_table_cell_text(" ".join(continuation_lines))
+            statements.append(f"- {label}: {normalized_value}")
+            index = cursor
+            continue
+        index += 1
+
+    if not statements:
+        return block_text
+    return "COBERTURAS Y PLANES\n" + "\n".join(statements)
+
+
+def normalize_expedition_requirements_block(block_text: str) -> str:
+    """Rewrite the expedition requirements line-grid into statement-style text."""
+
+    semantic_label = normalize_equivalence_text(find_semantic_section_label(block_text) or "")
+    if semantic_label != "expedicion requisitos":
+        return block_text
+
+    raw_lines = [line.strip() for line in block_text.splitlines() if line.strip()]
+    content_lines = [
+        line
+        for line in raw_lines
+        if "todos los derechos reservados" not in normalize_equivalence_text(line)
+        and "actualizado al 2025" not in normalize_equivalence_text(line)
+        and normalize_equivalence_text(line) != "expedicion requisitos"
+    ]
+    if "Requisitos Vinculaciones" not in content_lines:
+        return block_text
+
+    statements: list[str] = []
+    current_product: str | None = None
+    index = 0
+    while index < len(content_lines):
+        line = content_lines[index]
+        normalized_line = normalize_equivalence_text(line)
+        if normalized_line in {"bicis", "patinetas"}:
+            current_product = line
+            index += 1
+            continue
+        if not line.startswith("Entre $"):
+            index += 1
+            continue
+
+        range_parts = [line]
+        cursor = index + 1
+        while cursor < len(content_lines) and not content_lines[cursor].startswith("•"):
+            candidate = content_lines[cursor]
+            normalized_candidate = normalize_equivalence_text(candidate)
+            if normalized_candidate in {"bicis", "patinetas"}:
+                break
+            if candidate.startswith("Entre $"):
+                break
+            range_parts.append(candidate)
+            cursor += 1
+
+        requirement_parts: list[str] = []
+        while cursor < len(content_lines):
+            candidate = content_lines[cursor]
+            normalized_candidate = normalize_equivalence_text(candidate)
+            if normalized_candidate in {"bicis", "patinetas"}:
+                break
+            if candidate.startswith("Entre $"):
+                break
+            if (
+                requirement_parts
+                and not candidate.startswith("•")
+                and "vinculaciones minimas" not in normalized_candidate
+                and "todos los clientes" not in normalized_candidate
+                and not candidate.startswith(("de $", "$"))
+            ):
+                break
+            requirement_parts.append(candidate)
+            cursor += 1
+
+        if current_product and requirement_parts:
+            normalized_range = normalize_table_cell_text(" ".join(range_parts))
+            normalized_requirements = normalize_table_cell_text(" ".join(requirement_parts))
+            statements.append(
+                f"- {current_product} / {normalized_range}: {normalized_requirements}"
+            )
+        index = cursor
+
+    if not statements:
+        return block_text
+    return "EXPEDICIÓN REQUISITOS\n" + "\n".join(statements)
+
+
+def normalize_deductible_block(block_text: str) -> str:
+    """Rewrite the deductible line-grid into statement-style text."""
+
+    semantic_label = normalize_equivalence_text(find_semantic_section_label(block_text) or "")
+    if semantic_label != "deducible":
+        return block_text
+
+    raw_lines = [line.strip() for line in block_text.splitlines() if line.strip()]
+    content_lines = [
+        line
+        for line in raw_lines
+        if "todos los derechos reservados" not in normalize_equivalence_text(line)
+        and normalize_equivalence_text(line) != "deducible"
+    ]
+    current_product: str | None = None
+    statements: list[str] = []
+    index = 0
+    while index < len(content_lines):
+        line = content_lines[index]
+        normalized_line = normalize_equivalence_text(line)
+        if normalized_line in {"bicis", "patinetas"}:
+            current_product = line
+            index += 1
+            continue
+        if not line.startswith("Entre $"):
+            index += 1
+            continue
+
+        row_parts = [line]
+        cursor = index + 1
+        while cursor < len(content_lines):
+            candidate = content_lines[cursor]
+            normalized_candidate = normalize_equivalence_text(candidate)
+            if normalized_candidate in {"bicis", "patinetas"}:
+                break
+            if candidate.startswith("Entre $"):
+                break
+            if normalized_candidate.startswith("es el valor que"):
+                break
+            row_parts.append(candidate)
+            cursor += 1
+
+        if current_product and len(row_parts) > 1:
+            normalized_row = normalize_table_cell_text(" ".join(row_parts))
+            statements.append(f"- {current_product}: {normalized_row}")
+        index = cursor
+
+    if not statements:
+        return block_text
+    return "DEDUCIBLE\n" + "\n".join(statements)
+
+
 def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
     """Split cleaned markdown into deterministic text blocks with structural context."""
 
@@ -1324,14 +1554,37 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
                 while len(heading_stack) >= level:
                     heading_stack.pop()
                 heading_stack.append(heading_text)
+            if is_page_heading_text(heading_text):
+                continue
         else:
             block = normalize_comparison_table_block(block)
-        section = heading_stack[-1] if heading_stack else None
+            block = normalize_diagrammatic_coverage_block(block)
+            block = normalize_expedition_requirements_block(block)
+            block = normalize_deductible_block(block)
+        semantic_section = find_semantic_section_label(block)
+        if semantic_section and normalize_equivalence_text(block) == normalize_equivalence_text(
+            semantic_section
+        ):
+            if heading_stack and is_page_heading_text(heading_stack[-1]):
+                heading_stack[-1] = semantic_section
+            elif not heading_stack or heading_stack[-1] != semantic_section:
+                heading_stack.append(semantic_section)
+            continue
+        if normalize_equivalence_text(block) == "gracias":
+            continue
+        effective_section_path = tuple(heading_stack)
+        if (
+            semantic_section
+            and effective_section_path
+            and is_page_heading_text(effective_section_path[-1])
+        ):
+            effective_section_path = (*effective_section_path[:-1], semantic_section)
+        section = effective_section_path[-1] if effective_section_path else None
         blocks.append(
             MarkdownBlock(
                 text=block,
                 section=section,
-                section_path=tuple(heading_stack),
+                section_path=effective_section_path,
                 kind=detect_block_kind(block),
             )
         )
@@ -1509,6 +1762,8 @@ def build_chunk_records(
 
         while end_index < len(blocks):
             block = blocks[end_index]
+            if current_entries and block.section_path != current_entries[-1].section_path:
+                break
             separator_length = 2 if current_entries else 0
             next_length = current_length + separator_length + len(block.text)
             if current_entries and next_length > chunk_size:
@@ -2031,6 +2286,7 @@ def retrieve_ranked_chunks(
         result = DocumentRetrievalResult(
             chunks=rerank_chunks_for_query_expansion_rules(
                 retrieved_chunks,
+                query=retrieval_query.query,
                 matched_expansion_rules=matched_expansion_rules,
                 top_k=normalized_retrieval_query.top_k,
             )
