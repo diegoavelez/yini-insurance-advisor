@@ -1508,6 +1508,13 @@ Implementation note:
   financing follow-on section `13.1.2` ahead of lateral collective-policy
   material such as `14.1`, and grounded answers now expose a financing-focused
   documentary basis and citation set when direct support is already sufficient.
+- That transversal leading-preamble normalization slice is now closed: the two
+  `choque simple` process guides no longer emit a leading chunk with
+  `section = None`, `proceso atencion choque simple v2` now drops the noisy
+  `Normatividad vigente` preamble in favor of a stable `EN EVENTOS DE CHOQUES`
+  root heading, and `proceso recobro choque simple v2` now promotes a stable
+  root heading so its opening advisory text no longer escapes semantic section
+  lineage.
 - `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
   `Cobertura` sections instead of adjacent generic sections when operators ask
   what the product covers.

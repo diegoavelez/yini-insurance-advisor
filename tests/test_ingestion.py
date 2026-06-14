@@ -586,6 +586,49 @@ def test_split_markdown_blocks_uses_semantic_suscripcion_headings_after_normaliz
     )
 
 
+def test_normalize_known_document_markdown_promotes_root_heading_for_choque_simple_atencion(
+) -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "proceso atencion choque simple v2.pdf",
+        cleaned_markdown_text=(
+            "Normatividad vigente\n\n"
+            "## EN EVENTOS DE CHOQUES\n\n"
+            "Solo danos materiales\n"
+        ),
+    )
+
+    blocks = split_markdown_blocks(normalized)
+
+    assert normalized.startswith("# EN EVENTOS DE CHOQUES")
+    assert "Normatividad vigente" not in normalized
+    assert blocks[1].section == "EN EVENTOS DE CHOQUES"
+    assert blocks[1].section_path == ("EN EVENTOS DE CHOQUES",)
+
+
+def test_normalize_known_document_markdown_promotes_root_heading_for_choque_simple_recobro(
+) -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "proceso recobro choque simple v2.pdf",
+        cleaned_markdown_text=(
+            "SURA te asignará un abogado para acompañarte.\n\n"
+            "## Servicios de recobro para accidentes\n\n"
+            "## Solo daños materiales\n\n"
+            "CHOQUE SIMPLE: definición.\n"
+        ),
+    )
+
+    blocks = split_markdown_blocks(normalized)
+
+    assert normalized.startswith("# Servicios de recobro para accidentes")
+    assert blocks[0].section == "Servicios de recobro para accidentes"
+    assert blocks[0].section_path == ("Servicios de recobro para accidentes",)
+    assert blocks[1].section == "Solo daños materiales"
+    assert blocks[1].section_path == (
+        "Servicios de recobro para accidentes",
+        "Solo daños materiales",
+    )
+
+
 def test_normalize_known_document_markdown_rewrites_collective_nested_headings() -> None:
     normalized = normalize_known_document_markdown(
         source_pdf_path=Path(".") / "politicas de suscripcion de movilidad.pdf",

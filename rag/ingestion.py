@@ -985,6 +985,60 @@ def normalize_suscripcion_policy_markdown(cleaned_markdown_text: str) -> str:
     return f"{normalized_text}\n"
 
 
+def normalize_choque_simple_process_markdown(
+    cleaned_markdown_text: str,
+    *,
+    root_heading: str,
+    drop_leading_lines: set[str] | None = None,
+) -> str:
+    """Promote one stable root heading and trim noisy preamble lines."""
+
+    normalized_drop_lines = {
+        normalize_equivalence_text(line) for line in (drop_leading_lines or set())
+    }
+    raw_lines = cleaned_markdown_text.splitlines()
+    normalized_lines: list[str] = []
+    emitted_root_heading = False
+    skipped_leading_noise = False
+
+    def emit_root_heading() -> None:
+        nonlocal emitted_root_heading
+        if emitted_root_heading:
+            return
+        normalized_lines.append(f"# {root_heading}")
+        emitted_root_heading = True
+
+    for raw_line in raw_lines:
+        stripped_line = raw_line.strip()
+        normalized_line = normalize_equivalence_text(stripped_line.lstrip("#").strip())
+
+        if not stripped_line:
+            if normalized_lines and normalized_lines[-1] != "":
+                normalized_lines.append("")
+            continue
+
+        if not skipped_leading_noise and normalized_line in normalized_drop_lines:
+            skipped_leading_noise = True
+            continue
+
+        if normalized_line == normalize_equivalence_text(root_heading):
+            emit_root_heading()
+            continue
+
+        if stripped_line.startswith("#"):
+            emit_root_heading()
+            normalized_lines.append(raw_line)
+            continue
+
+        emit_root_heading()
+        normalized_lines.append(raw_line)
+
+    normalized_text = "\n".join(normalized_lines).strip()
+    if not normalized_text:
+        return cleaned_markdown_text
+    return f"{normalized_text}\n"
+
+
 def normalize_known_document_markdown(
     *,
     source_pdf_path: Path,
@@ -995,6 +1049,17 @@ def normalize_known_document_markdown(
     normalized_stem = normalize_equivalence_text(source_pdf_path.stem)
     if "politicas de suscripcion de movilidad" in normalized_stem:
         return normalize_suscripcion_policy_markdown(cleaned_markdown_text)
+    if "proceso atencion choque simple" in normalized_stem:
+        return normalize_choque_simple_process_markdown(
+            cleaned_markdown_text,
+            root_heading="EN EVENTOS DE CHOQUES",
+            drop_leading_lines={"Normatividad vigente"},
+        )
+    if "proceso recobro choque simple" in normalized_stem:
+        return normalize_choque_simple_process_markdown(
+            cleaned_markdown_text,
+            root_heading="Servicios de recobro para accidentes",
+        )
     if "como tomar fotos choque simple" not in normalized_stem:
         return cleaned_markdown_text
 
