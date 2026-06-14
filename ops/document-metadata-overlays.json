@@ -36,6 +36,22 @@
       "document_type": "guide",
       "product": "pac"
     },
+    "eps__plan-complementario-pac__formato-firma-cliente-pac-v1": {
+      "document_type": "form",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__formulario-de-afiliacion-pac-v2": {
+      "document_type": "form",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__politica-cambio-de-asesor-pac-v4": {
+      "document_type": "policy",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__tips-medios-de-pago-v3": {
+      "document_type": "guide",
+      "product": "pac"
+    },
     "movilidad__autos__ayudaventas-asistencia-pequenos-eventos": {
       "document_type": "guide",
       "product": "auto"

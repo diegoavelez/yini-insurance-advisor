@@ -1683,6 +1683,123 @@ def test_normalize_retrieval_query_applies_pac_asegurabilidad_document_name() ->
     assert normalized_query.filters.document_name == "Plan Complementario 60 más"
 
 
+def test_normalize_retrieval_query_applies_pac_afiliacion_form_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cómo diligencio el formulario de afiliación PAC?",
+            filters={"product": "pac"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["afiliacion"],
+                    any_of=["formulario", "diligencio", "pac"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "form",
+                        "document_name": "SOLICITUD DE AFILIACIÓN PARA PLANES COMPLEMENTARIOS",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "form"
+    assert (
+        normalized_query.filters.document_name
+        == "SOLICITUD DE AFILIACIÓN PARA PLANES COMPLEMENTARIOS"
+    )
+
+
+def test_normalize_retrieval_query_applies_pac_firma_form_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cómo funciona el formato de firma del cliente PAC?",
+            filters={"product": "pac"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["firma"],
+                    any_of=["cliente", "pac"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "form",
+                        "document_name": (
+                            "CONFIRMACIÓN DEL CONTENIDO DE LA SOLICITUD ELECTRÓNICA DE SEGURO"
+                        ),
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "form"
+    assert (
+        normalized_query.filters.document_name
+        == "CONFIRMACIÓN DEL CONTENIDO DE LA SOLICITUD ELECTRÓNICA DE SEGURO"
+    )
+
+
+def test_normalize_retrieval_query_applies_pac_cambio_asesor_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cómo se hace el cambio de asesor en PAC?",
+            filters={"product": "pac"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["cambio de asesor"],
+                    any_of=["pac", "plan complementario"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "PAC EPS SURA - Política Cambio de Asesor",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "PAC EPS SURA - Política Cambio de Asesor"
+
+
+def test_normalize_retrieval_query_applies_pac_medios_pago_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué medios de pago tiene PAC?",
+            filters={"product": "pac"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["medios de pago"],
+                    any_of=["pac", "plan complementario"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "guide",
+                        "document_name": (
+                            "Por eso queremos presentarte los medios de pago que más se ajustan a sus necesidades."
+                        ),
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "guide"
+    assert (
+        normalized_query.filters.document_name
+        == "Por eso queremos presentarte los medios de pago que más se ajustan a sus necesidades."
+    )
+
+
 def test_retrieve_ranked_chunks_maps_search_hits_in_ranked_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

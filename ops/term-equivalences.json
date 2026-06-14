@@ -429,6 +429,67 @@
     },
     {
       "all_of": [
+        "afiliacion"
+      ],
+      "any_of": [
+        "formulario",
+        "diligencio",
+        "diligenciar",
+        "pac",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "form",
+        "document_name": "SOLICITUD DE AFILIACIÓN PARA PLANES COMPLEMENTARIOS"
+      }
+    },
+    {
+      "all_of": [
+        "firma"
+      ],
+      "any_of": [
+        "cliente",
+        "solicitud electronica",
+        "pac",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "form",
+        "document_name": "CONFIRMACIÓN DEL CONTENIDO DE LA SOLICITUD ELECTRÓNICA DE SEGURO"
+      }
+    },
+    {
+      "all_of": [
+        "cambio de asesor"
+      ],
+      "any_of": [
+        "pac",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "policy",
+        "document_name": "PAC EPS SURA - Política Cambio de Asesor"
+      }
+    },
+    {
+      "all_of": [
+        "medios de pago"
+      ],
+      "any_of": [
+        "pac",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "guide",
+        "document_name": "Por eso queremos presentarte los medios de pago que más se ajustan a sus necesidades."
+      }
+    },
+    {
+      "all_of": [
         "viaje",
         "internacional"
       ],

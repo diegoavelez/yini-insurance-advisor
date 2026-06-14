@@ -2216,6 +2216,24 @@ def test_repository_overlay_covers_eps_pac_60_mas_core_documents() -> None:
         assert documents[source_pdf_id]["document_type"] == expected_document_type
 
 
+def test_repository_overlay_covers_eps_pac_formularios_y_gestion_basica_documents() -> None:
+    overlay_path = Path("ops/document-metadata-overlays.json")
+    overlay_payload = json.loads(overlay_path.read_text(encoding="utf-8"))
+    documents = overlay_payload["documents"]
+
+    expected_documents = {
+        "eps__plan-complementario-pac__formato-firma-cliente-pac-v1": "form",
+        "eps__plan-complementario-pac__formulario-de-afiliacion-pac-v2": "form",
+        "eps__plan-complementario-pac__politica-cambio-de-asesor-pac-v4": "policy",
+        "eps__plan-complementario-pac__tips-medios-de-pago-v3": "guide",
+    }
+
+    for source_pdf_id, expected_document_type in expected_documents.items():
+        assert source_pdf_id in documents
+        assert documents[source_pdf_id]["product"] == "pac"
+        assert documents[source_pdf_id]["document_type"] == expected_document_type
+
+
 def test_ingestion_applies_movilidad_viajes_overlay_metadata(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
@@ -2300,6 +2318,49 @@ def test_ingestion_applies_eps_pac_60_mas_overlay_metadata(
     assert exit_code == 0
     assert processed_document.product == "pac"
     assert processed_document.document_type == "guide"
+
+
+def test_ingestion_applies_eps_pac_formularios_y_gestion_basica_overlay_metadata(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_pdf = input_dir / "EPS" / "PLAN COMPLEMENTARIO PAC" / "formulario de afiliacion pac v2.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+            "--metadata-overlay-path",
+            "ops/document-metadata-overlays.json",
+        ]
+    )
+
+    processed_output = (
+        processed_dir / "eps__plan-complementario-pac__formulario-de-afiliacion-pac-v2.json"
+    )
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.product == "pac"
+    assert processed_document.document_type == "form"
 
 
 def test_ingestion_applies_movilidad_utilitarios_pesados_overlay_metadata(

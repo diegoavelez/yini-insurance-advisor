@@ -1114,7 +1114,7 @@ Operational category rollup:
 - `SOAT` onboarding + coverage alignment: completed
 - `VIAJES` onboarding + baseline retrieval: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
-- `EPS/PAC 60+` baseline onboarding + retrieval hardening: completed
+- `EPS/PAC` follow-on cohort onboarding: active (`PAC 60+ core` and `formularios / gestión básica` completed)
 
 Completed slice index:
 
@@ -1136,6 +1136,7 @@ Completed slice index:
 - `bicicletas-patinetas-deductible-candidate-recall-remediation`
 - `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
 - `eps-pac-60-mas-policy-family-coverage-alignment`
+- `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
 
 ---
 
@@ -1194,7 +1195,7 @@ Operational category rollup:
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
-- `EPS/PAC 60+` baseline onboarding + retrieval hardening: completed
+- `EPS/PAC` follow-on cohort onboarding: active (`PAC 60+ core` and `formularios / gestión básica` completed)
 
 Completed slice index:
 
@@ -1206,6 +1207,7 @@ Completed slice index:
 - `docling-timeout-pdfium-fallback-remediation`
 - `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
 - `eps-pac-60-mas-policy-family-coverage-alignment`
+- `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
 
 remaining in `Phase 16`:
 
@@ -1356,7 +1358,7 @@ Operational category rollup:
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
-- `EPS/PAC 60+` baseline onboarding + retrieval hardening: completed
+- `EPS/PAC` follow-on cohort onboarding: active (`PAC 60+ core` and `formularios / gestión básica` completed)
 
 Completed slice index:
 
@@ -1409,6 +1411,7 @@ Completed slice index:
 - `soat-coverage-evidence-prioritization-alignment`
 - `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
 - `eps-pac-60-mas-policy-family-coverage-alignment`
+- `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
 
 remaining in `Phase 18`:
 
