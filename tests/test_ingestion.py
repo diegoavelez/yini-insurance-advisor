@@ -235,6 +235,51 @@ def test_normalize_known_document_markdown_rewrites_choque_simple_photo_guide() 
     assert "segurossura.com.co" not in normalized
 
 
+def test_normalize_known_document_markdown_rewrites_suscripcion_pdfium_surface() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "politicas de suscripcion de movilidad.pdf",
+        cleaned_markdown_text=(
+            "# politicas de suscripcion de movilidad\n\n"
+            "## Page 1\n\n"
+            "1\n"
+            "Volver\n"
+            "al inicio\n"
+            "Versión 6 5 – abril 202 6\n\n"
+            "## Page 2\n\n"
+            "2\n"
+            "Volver\n"
+            "al inicio\n"
+            "Tabla de contenido\n"
+            "1. DEFINICIÓN DE RIESGO ESTÁNDAR ................................ 5\n\n"
+            "## Page 5\n\n"
+            "5\n"
+            "Volver\n"
+            "al inicio\n"
+            "1. DEFINICIÓN DE RIESGO ESTÁNDAR\n"
+            "Texto de política.\n\n"
+            "## Page 31\n\n"
+            "31\n"
+            "Volver\n"
+            "al inicio\n"
+            "13. PROCEDIMIENTOS\n"
+            "13.1. Lineamientos de suscripción.\n"
+            "El intermediario será responsable.\n"
+        ),
+    )
+
+    assert normalized.startswith(
+        "# politicas de suscripcion de movilidad\n\nVersión 6 5 – abril 202 6"
+    )
+    assert "## Page 1" not in normalized
+    assert "## Page 2" not in normalized
+    assert "Tabla de contenido" not in normalized
+    assert "Volver" not in normalized
+    assert "................................" not in normalized
+    assert "## 1. DEFINICIÓN DE RIESGO ESTÁNDAR" in normalized
+    assert "## 13. PROCEDIMIENTOS" in normalized
+    assert "### 13.1. Lineamientos de suscripción." in normalized
+
+
 def test_build_chunk_records_is_deterministic() -> None:
     cleaned_markdown_text = (
         "# Policy Title\n\n"
@@ -503,6 +548,97 @@ def test_split_markdown_blocks_skips_page_heading_blocks_and_promotes_semantic_s
         in blocks[1].text
     )
     assert "- Accidentes personales: Con valor asegurado de $10.000.000" in blocks[1].text
+
+
+def test_split_markdown_blocks_uses_semantic_suscripcion_headings_after_normalization() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "politicas de suscripcion de movilidad.pdf",
+        cleaned_markdown_text=(
+            "# politicas de suscripcion de movilidad\n\n"
+            "## Page 5\n\n"
+            "5\n"
+            "Volver\n"
+            "al inicio\n"
+            "1. DEFINICIÓN DE RIESGO ESTÁNDAR\n"
+            "Texto de política.\n\n"
+            "## Page 31\n\n"
+            "31\n"
+            "Volver\n"
+            "al inicio\n"
+            "13. PROCEDIMIENTOS\n"
+            "13.1. Lineamientos de suscripción.\n"
+            "El intermediario será responsable.\n"
+        ),
+    )
+
+    blocks = split_markdown_blocks(normalized)
+
+    assert blocks[1].section == "1. DEFINICIÓN DE RIESGO ESTÁNDAR"
+    assert blocks[1].section_path == (
+        "politicas de suscripcion de movilidad",
+        "1. DEFINICIÓN DE RIESGO ESTÁNDAR",
+    )
+    assert blocks[-1].section == "13.1. Lineamientos de suscripción."
+    assert blocks[-1].section_path == (
+        "politicas de suscripcion de movilidad",
+        "13. PROCEDIMIENTOS",
+        "13.1. Lineamientos de suscripción.",
+    )
+
+
+def test_normalize_known_document_markdown_rewrites_collective_nested_headings() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "politicas de suscripcion de movilidad.pdf",
+        cleaned_markdown_text=(
+            "# politicas de suscripcion de movilidad\n\n"
+            "## Page 60\n\n"
+            "60\n"
+            "Volver\n"
+            "al inicio\n"
+            "14. PÓLIZAS COLECTIVAS\n"
+            "14.6. Modalidades de facturación – Autos Colectivos :\n"
+            "En el negocio de autos colectivos se definen las siguientes modalidades.\n"
+            "2.1. Facturación agrupada\n"
+            "El sistema factura en un único documento.\n"
+            "2.2. Facturación (cobro) agrupada con devolución por asegurado\n"
+            "El sistema genera una única factura diaria.\n"
+        ),
+    )
+
+    assert "### 14.6. Modalidades de facturación – Autos Colectivos :" in normalized
+    assert "#### 14.6.1. Facturación agrupada" in normalized
+    assert (
+        "#### 14.6.2. Facturación (cobro) agrupada con devolución por asegurado"
+        in normalized
+    )
+    assert "### 2.1. Facturación agrupada" not in normalized
+    assert (
+        "### 2.2. Facturación (cobro) agrupada con devolución por asegurado"
+        not in normalized
+    )
+
+
+def test_split_markdown_blocks_uses_normalized_suscripcion_collective_nested_path() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "politicas de suscripcion de movilidad.pdf",
+        cleaned_markdown_text=(
+            "# politicas de suscripcion de movilidad\n\n"
+            "14. PÓLIZAS COLECTIVAS\n"
+            "14.6. Modalidades de facturación – Autos Colectivos :\n"
+            "2.1. Facturación agrupada\n"
+            "El sistema factura en un único documento.\n"
+        ),
+    )
+
+    blocks = split_markdown_blocks(normalized)
+
+    assert blocks[-1].section == "14.6.1. Facturación agrupada"
+    assert blocks[-1].section_path == (
+        "politicas de suscripcion de movilidad",
+        "14. PÓLIZAS COLECTIVAS",
+        "14.6. Modalidades de facturación – Autos Colectivos :",
+        "14.6.1. Facturación agrupada",
+    )
 
 
 def test_build_chunk_records_avoids_page_heading_only_chunks() -> None:

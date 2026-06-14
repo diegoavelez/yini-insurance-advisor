@@ -1332,7 +1332,7 @@ completed:
 
 remaining in `Phase 18`:
 
-- `movilidad-suscripcion-corpus-baseline-ingestion-and-retrieval`
+- none
 
 Implementation note:
 
@@ -1459,6 +1459,37 @@ Implementation note:
 - The next operational transversal cohort after financing remains
   `suscripción`, using `politicas de suscripcion de movilidad.pdf` before
   broadening into other shared mobility process materials.
+- That suscripción baseline cohort is now operationally onboarded through
+  ingestion, embeddings, and Qdrant indexing, using the existing PDFium
+  fallback path after a lower operational Docling timeout for the 64-page
+  source document.
+- Live suscripción retrieval now stays inside the correct policy family, so
+  there is no first-pass cross-document leakage issue.
+- The remaining suscripción gap is intra-document structure quality: fallback
+  chunks still surface as generic `Page N` sections with page boilerplate and
+  weak residual fragments, so the next narrow slice is semantic
+  section-structure remediation rather than document-family alignment.
+- That suscripción section-structure slice is now closed: the cleaned markdown
+  head starts from semantic policy sections, chunk metadata now reflects
+  numbered policy headings instead of `Page N`, and live retrieval no longer
+  returns page-label fragments.
+- That suscripción heading-stub slice is now closed: broad policy retrieval
+  can expand its candidate pool and prefer contentful policy evidence ahead of
+  bare heading-only stubs from the same family.
+- That suscripción breadth-diversification slice is now closed: broad policy
+  retrieval no longer lets repeated `14.1` collective-policy chunks dominate
+  the first results before other distinct policy sections appear.
+- That suscripción subsection-lineage slice is now closed: the collective
+  billing subtree under `14.6` now preserves normalized child lineage such as
+  `14.6.1` and `14.6.2` in cleaned markdown, chunk metadata, and live
+  retrieval results.
+- That suscripción collective-billing intent slice is now closed: explicit
+  billing prompts now rank `14.6.*` collective billing sections ahead of
+  `13.11. Financiación de Pólizas Individuales`.
+- That suscripción leading-chunk slice is now closed: explicit collective
+  billing retrieval can recover the exact `14.6.2` subsection from local
+  lexical recall and prefer the cleaner billing lead ahead of later fragmentary
+  continuations from the same subsection.
 - `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
   `Cobertura` sections instead of adjacent generic sections when operators ask
   what the product covers.

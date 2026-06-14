@@ -809,6 +809,182 @@ def select_best_document_name_heading(
     return max(heading_candidates, key=score_heading)
 
 
+SUSCRIPCION_TOP_LEVEL_HEADING_PATTERN = re.compile(r"^(?P<number>\d{1,2})\.?\s+(?P<title>.+)$")
+SUSCRIPCION_SUBSECTION_HEADING_PATTERN = re.compile(
+    r"^(?P<number>\d{1,2}\.\d{1,2})\.?\s+(?P<title>.+)$"
+)
+SUSCRIPCION_NESTED_SUBSECTION_HEADING_PATTERN = re.compile(
+    r"^(?P<number>\d{1,2}\.\d{1,2}\.\d{1,2})\.?\s+(?P<title>.+)$"
+)
+SUSCRIPCION_PAGE_HEADING_PATTERN = re.compile(r"^##\s+Page\s+\d+\s*$", re.IGNORECASE)
+SUSCRIPCION_TOC_ENTRY_PATTERN = re.compile(
+    r"^\d{1,2}(?:\.\d{1,2})?\.?\s+.+\.{5,}\s*\d+\s*$"
+)
+
+
+def suscripcion_heading_has_uppercase_surface(value: str) -> bool:
+    """Return whether one suscripción heading candidate has heading-like casing."""
+
+    alphabetic_characters = [character for character in value if character.isalpha()]
+    if not alphabetic_characters:
+        return False
+    uppercase_characters = sum(character.isupper() for character in alphabetic_characters)
+    return (uppercase_characters / len(alphabetic_characters)) >= 0.6
+
+
+def normalize_suscripcion_policy_markdown(cleaned_markdown_text: str) -> str:
+    """Normalize the suscripción policy fallback surface into semantic headings."""
+
+    raw_lines = cleaned_markdown_text.splitlines()
+    root_heading = "# politicas de suscripcion de movilidad"
+    version_line: str | None = None
+    normalized_lines: list[str] = [root_heading]
+    started_semantic_body = False
+    current_subsection_number: str | None = None
+
+    def append_line(line: str) -> None:
+        stripped_line = line.strip()
+        if not stripped_line:
+            if normalized_lines and normalized_lines[-1] != "":
+                normalized_lines.append("")
+            return
+        if normalized_lines and normalized_lines[-1] == stripped_line:
+            return
+        normalized_lines.append(stripped_line)
+
+    def append_numbered_heading(level: str, number: str, title: str) -> None:
+        append_line("")
+        append_line(f"{level} {number}. {title.strip()}")
+
+    def rewrite_collective_nested_subsection_heading(
+        *,
+        number: str,
+        title: str,
+    ) -> tuple[str, str] | None:
+        if current_subsection_number not in {"14.6", "14.6.1", "14.6.2"}:
+            return None
+        if number == "2.1":
+            return ("14.6.1", title)
+        if number == "2.2":
+            return ("14.6.2", title)
+        return None
+
+    for raw_line in raw_lines:
+        stripped_line = raw_line.strip()
+        normalized_line = normalize_equivalence_text(stripped_line)
+        if not stripped_line:
+            continue
+        if stripped_line.startswith("# politicas de suscripcion de movilidad"):
+            continue
+        if SUSCRIPCION_PAGE_HEADING_PATTERN.match(stripped_line):
+            continue
+        if normalized_line in {"volver", "al inicio", "tabla de contenido"}:
+            continue
+        if re.fullmatch(r"\d+", stripped_line):
+            continue
+        if SUSCRIPCION_TOC_ENTRY_PATTERN.match(stripped_line):
+            continue
+        if version_line is None and "version" in normalized_line:
+            version_line = stripped_line
+            continue
+        if not started_semantic_body:
+            nested_subsection_match = SUSCRIPCION_NESTED_SUBSECTION_HEADING_PATTERN.match(
+                stripped_line
+            )
+            if nested_subsection_match is not None and len(stripped_line) <= 140:
+                started_semantic_body = True
+                current_subsection_number = nested_subsection_match.group("number")
+                append_numbered_heading(
+                    "####",
+                    nested_subsection_match.group("number"),
+                    nested_subsection_match.group("title"),
+                )
+                continue
+            subsection_match = SUSCRIPCION_SUBSECTION_HEADING_PATTERN.match(stripped_line)
+            if subsection_match is not None:
+                started_semantic_body = True
+                current_subsection_number = subsection_match.group("number")
+                append_numbered_heading(
+                    "###",
+                    subsection_match.group("number"),
+                    subsection_match.group("title"),
+                )
+                continue
+            top_level_match = SUSCRIPCION_TOP_LEVEL_HEADING_PATTERN.match(stripped_line)
+            if (
+                top_level_match is not None
+                and len(stripped_line) <= 100
+                and suscripcion_heading_has_uppercase_surface(top_level_match.group("title"))
+            ):
+                started_semantic_body = True
+                current_subsection_number = None
+                append_numbered_heading(
+                    "##",
+                    top_level_match.group("number"),
+                    top_level_match.group("title"),
+                )
+                continue
+            continue
+
+        nested_subsection_match = SUSCRIPCION_NESTED_SUBSECTION_HEADING_PATTERN.match(
+            stripped_line
+        )
+        if nested_subsection_match is not None and len(stripped_line) <= 140:
+            current_subsection_number = nested_subsection_match.group("number")
+            append_numbered_heading(
+                "####",
+                nested_subsection_match.group("number"),
+                nested_subsection_match.group("title"),
+            )
+            continue
+
+        subsection_match = SUSCRIPCION_SUBSECTION_HEADING_PATTERN.match(stripped_line)
+        if subsection_match is not None and len(stripped_line) <= 120:
+            rewritten_nested_subsection = rewrite_collective_nested_subsection_heading(
+                number=subsection_match.group("number"),
+                title=subsection_match.group("title"),
+            )
+            if rewritten_nested_subsection is not None:
+                current_subsection_number = rewritten_nested_subsection[0]
+                append_numbered_heading(
+                    "####",
+                    rewritten_nested_subsection[0],
+                    rewritten_nested_subsection[1],
+                )
+                continue
+            current_subsection_number = subsection_match.group("number")
+            append_numbered_heading(
+                "###",
+                subsection_match.group("number"),
+                subsection_match.group("title"),
+            )
+            continue
+
+        top_level_match = SUSCRIPCION_TOP_LEVEL_HEADING_PATTERN.match(stripped_line)
+        if (
+            top_level_match is not None
+            and len(stripped_line) <= 100
+            and suscripcion_heading_has_uppercase_surface(top_level_match.group("title"))
+        ):
+            current_subsection_number = None
+            append_numbered_heading(
+                "##",
+                top_level_match.group("number"),
+                top_level_match.group("title"),
+            )
+            continue
+        append_line(stripped_line)
+
+    if version_line is not None:
+        normalized_lines.insert(1, "")
+        normalized_lines.insert(2, version_line)
+
+    normalized_text = "\n".join(normalized_lines).strip()
+    if not normalized_text:
+        return cleaned_markdown_text
+    return f"{normalized_text}\n"
+
+
 def normalize_known_document_markdown(
     *,
     source_pdf_path: Path,
@@ -817,6 +993,8 @@ def normalize_known_document_markdown(
     """Apply narrow document-specific markdown normalization for known noisy guides."""
 
     normalized_stem = normalize_equivalence_text(source_pdf_path.stem)
+    if "politicas de suscripcion de movilidad" in normalized_stem:
+        return normalize_suscripcion_policy_markdown(cleaned_markdown_text)
     if "como tomar fotos choque simple" not in normalized_stem:
         return cleaned_markdown_text
 
@@ -965,10 +1143,19 @@ def get_matching_query_expansion_rules(
     return matched_rules
 
 
-def build_candidate_pool_limit(*, top_k: int, matched_expansion_rules: Sequence[object]) -> int:
+def build_candidate_pool_limit(
+    *,
+    query: str,
+    top_k: int,
+    matched_expansion_rules: Sequence[object],
+) -> int:
     """Return the Qdrant candidate-pool limit for one retrieval query."""
 
     if not matched_expansion_rules:
+        if query_has_movilidad_suscripcion_policy_intent(
+            query
+        ) or query_has_movilidad_suscripcion_collective_billing_intent(query):
+            return min(max(top_k * 3, top_k + 6), 20)
         return top_k
     return min(max(top_k * 3, top_k + 4), 20)
 
@@ -983,7 +1170,16 @@ def rerank_chunks_for_query_expansion_rules(
     """Apply deterministic lexical reranking based on matched curated expansion rules."""
 
     if not matched_expansion_rules:
-        return list(chunks[:top_k])
+        ranked_chunks = list(chunks)
+        if query_has_movilidad_suscripcion_policy_intent(
+            query
+        ) or query_has_movilidad_suscripcion_collective_billing_intent(query):
+            return prioritize_movilidad_suscripcion_policy_evidence(
+                ranked_chunks,
+                query=query,
+                top_k=top_k,
+            )
+        return ranked_chunks[:top_k]
 
     reranked_candidates: list[tuple[float, int, RetrievedChunk]] = []
     deductible_intent = query_contains_equivalent_phrase(query, "deducible")
@@ -1043,6 +1239,14 @@ def rerank_chunks_for_query_expansion_rules(
         return diversify_explicit_coverage_sections(ranked_chunks, top_k=top_k)
     if query_has_movilidad_pv_benefit_intent(query):
         return diversify_movilidad_pv_benefit_sections(ranked_chunks, top_k=top_k)
+    if query_has_movilidad_suscripcion_policy_intent(
+        query
+    ) or query_has_movilidad_suscripcion_collective_billing_intent(query):
+        return prioritize_movilidad_suscripcion_policy_evidence(
+            ranked_chunks,
+            query=query,
+            top_k=top_k,
+        )
     return ranked_chunks[:top_k]
 
 
@@ -1092,6 +1296,29 @@ def build_hybrid_recall_terms(
     for matched_rule in matched_expansion_rules:
         for term in matched_rule.append_terms:
             append_term_if_new(term)
+    return ordered_terms
+
+
+def build_collective_billing_hybrid_recall_terms(query: str) -> list[str]:
+    """Return narrow lexical recall terms for suscripción collective billing queries."""
+
+    if not query_has_movilidad_suscripcion_collective_billing_intent(query):
+        return []
+
+    ordered_terms: list[str] = []
+    seen_terms: set[str] = set()
+    for term in (
+        query,
+        "pólizas colectivas",
+        "modalidades de facturación",
+        "facturación agrupada con devolución por asegurado",
+        "devolución por asegurado",
+    ):
+        normalized_term = normalize_equivalence_text(term)
+        if not normalized_term or normalized_term in seen_terms:
+            continue
+        seen_terms.add(normalized_term)
+        ordered_terms.append(term)
     return ordered_terms
 
 
@@ -1229,13 +1456,20 @@ def retrieve_local_lexical_candidates(
 ) -> list[RetrievedChunk]:
     """Return deterministic local lexical candidates for comparison-oriented queries."""
 
-    if not matched_expansion_rules or candidate_limit < 1:
+    if candidate_limit < 1:
         return []
 
     lexical_terms = build_hybrid_recall_terms(
         retrieval_query.query,
         matched_expansion_rules=matched_expansion_rules,
     )
+    if not lexical_terms:
+        lexical_terms = build_collective_billing_hybrid_recall_terms(
+            retrieval_query.query
+        )
+    if not lexical_terms:
+        return []
+
     scored_candidates: list[tuple[float, int, RetrievedChunk]] = []
     for index, chunk_record in enumerate(load_local_chunk_corpus()):
         if not chunk_record_matches_filters(
@@ -1395,6 +1629,207 @@ def is_movilidad_pv_document_family_chunk(chunk: RetrievedChunk) -> bool:
     """Return whether one retrieved chunk belongs to the movilidad PV family."""
 
     return normalize_equivalence_text(chunk.document_name) == "propuesta de valor movilidad"
+
+
+def query_has_movilidad_suscripcion_policy_intent(query: str) -> bool:
+    """Return whether one query broadly asks for movilidad suscripción policies."""
+
+    if not query_contains_equivalent_phrase(query, "suscripcion"):
+        return False
+    if not query_contains_equivalent_phrase(query, "movilidad"):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in (
+            "politicas",
+            "reglas",
+            "lineamientos",
+            "criterios",
+        )
+    )
+
+
+def query_has_movilidad_suscripcion_collective_billing_intent(query: str) -> bool:
+    """Return whether one query explicitly asks about collective billing."""
+
+    if not query_contains_equivalent_phrase(query, "movilidad"):
+        return False
+    if not query_contains_equivalent_phrase(query, "polizas colectivas"):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in (
+            "facturacion",
+            "cobro",
+            "factura",
+            "pago",
+        )
+    )
+
+
+def is_movilidad_suscripcion_document_family_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one retrieved chunk belongs to the suscripción policy family."""
+
+    return (
+        normalize_equivalence_text(chunk.document_name)
+        == "politicas de suscripcion de movilidad"
+    )
+
+
+def build_chunk_body_without_markdown_headings(text: str) -> str:
+    """Return chunk body lines after removing markdown heading-only lines."""
+
+    return "\n".join(
+        stripped_line
+        for stripped_line in (line.strip() for line in text.splitlines())
+        if stripped_line and not stripped_line.startswith("#")
+    )
+
+
+def score_movilidad_suscripcion_evidence_richness(chunk: RetrievedChunk) -> float:
+    """Return a deterministic preference score for richer suscripción evidence."""
+
+    body_surface = build_chunk_body_without_markdown_headings(chunk.text)
+    normalized_body = normalize_equivalence_text(body_surface)
+    if not normalized_body:
+        return -3.0
+
+    body_lines = [line for line in body_surface.splitlines() if line.strip()]
+    total_score = 0.0
+    if len(normalized_body) >= 32:
+        total_score += 1.0
+    else:
+        total_score -= 1.0
+    if len(normalized_body) >= 96:
+        total_score += 0.8
+    if len(normalized_body) >= 180:
+        total_score += 0.6
+    if len(body_lines) >= 2:
+        total_score += 0.35
+    if count_bullet_lines(body_surface) > 0:
+        total_score += 0.25
+    return total_score
+
+
+def is_movilidad_suscripcion_collective_billing_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to the collective billing subtree."""
+
+    normalized_labels = [
+        normalize_equivalence_text(value)
+        for value in (chunk.section, *chunk.section_path)
+        if value
+    ]
+    return any(label.startswith("14 6") or label.startswith("14.6") for label in normalized_labels)
+
+
+def is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(
+    chunk: RetrievedChunk,
+) -> bool:
+    """Return whether one chunk belongs to the documented grouped-refund billing subsection."""
+
+    normalized_labels = [
+        normalize_equivalence_text(value)
+        for value in (chunk.section, *chunk.section_path)
+        if value
+    ]
+    return any(
+        label.startswith("14.6.2.")
+        and "facturacion" in label
+        and "devolucion por asegurado" in label
+        for label in normalized_labels
+    )
+
+
+def is_movilidad_suscripcion_individual_financing_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to the individual financing subsection."""
+
+    normalized_labels = [
+        normalize_equivalence_text(value)
+        for value in (chunk.section, *chunk.section_path)
+        if value
+    ]
+    return any("13 11 financiacion de polizas individuales" == label for label in normalized_labels)
+
+
+def score_movilidad_suscripcion_collective_billing_intent_alignment(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> float:
+    """Return a narrow preference score for collective billing prompts."""
+
+    if not query_has_movilidad_suscripcion_collective_billing_intent(query):
+        return 0.0
+    if is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(chunk):
+        return 2.5
+    if is_movilidad_suscripcion_collective_billing_chunk(chunk):
+        return 1.0
+    if is_movilidad_suscripcion_individual_financing_chunk(chunk):
+        return -1.5
+    return 0.0
+
+
+def extract_chunk_body_lead_line(text: str) -> str:
+    """Return the first meaningful body line from one chunk."""
+
+    body_surface = build_chunk_body_without_markdown_headings(text)
+    for line in body_surface.splitlines():
+        stripped_line = line.strip()
+        if not stripped_line:
+            continue
+        normalized_line = stripped_line.lstrip("-•➢* ").strip()
+        if normalized_line:
+            return normalized_line
+    return ""
+
+
+def score_movilidad_suscripcion_collective_billing_lead_quality(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> float:
+    """Return a local lead-quality preference for grouped-refund billing chunks."""
+
+    if not query_has_movilidad_suscripcion_collective_billing_intent(query):
+        return 0.0
+    if not is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(chunk):
+        return 0.0
+
+    lead_line = extract_chunk_body_lead_line(chunk.text)
+    if not lead_line:
+        return -2.0
+
+    lead_score = 0.0
+    if lead_line[0].islower():
+        lead_score -= 1.0
+    else:
+        lead_score += 0.5
+    if len(lead_line) >= 48:
+        lead_score += 0.25
+    return lead_score
+
+
+def build_movilidad_suscripcion_policy_priority_key(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> tuple[float, float, int, float, float]:
+    """Return the deterministic ranking key for suscripción policy prioritization."""
+
+    chunk_index = chunk.chunk_index if isinstance(chunk.chunk_index, int) else 10**9
+    return (
+        score_movilidad_suscripcion_collective_billing_intent_alignment(
+            chunk,
+            query=query,
+        ),
+        score_movilidad_suscripcion_collective_billing_lead_quality(
+            chunk,
+            query=query,
+        ),
+        -chunk_index,
+        score_movilidad_suscripcion_evidence_richness(chunk),
+        chunk.score,
+    )
 
 
 def count_bullet_lines(text: str) -> int:
@@ -1568,6 +2003,71 @@ def diversify_movilidad_pv_benefit_sections(
             if section_id in seen_pv_section_ids:
                 continue
             seen_pv_section_ids.add(section_id)
+        final_chunks.append(chunk)
+        seen_chunk_ids.add(chunk.chunk_id)
+        if len(final_chunks) >= top_k:
+            break
+    return final_chunks
+
+
+def prioritize_movilidad_suscripcion_policy_evidence(
+    ranked_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Prefer richer and broader suscripción policy chunks ahead of duplicates."""
+
+    if top_k < 1:
+        return []
+
+    best_by_section: dict[tuple[str, ...], RetrievedChunk] = {}
+    section_order: list[tuple[str, ...]] = []
+    deferred_duplicate_chunks: list[RetrievedChunk] = []
+    remaining_chunks: list[RetrievedChunk] = []
+
+    for chunk in ranked_chunks:
+        if not is_movilidad_suscripcion_document_family_chunk(chunk):
+            remaining_chunks.append(chunk)
+            continue
+        section_id = coverage_section_identity(chunk)
+        existing_chunk = best_by_section.get(section_id)
+        if existing_chunk is None:
+            best_by_section[section_id] = chunk
+            section_order.append(section_id)
+            continue
+        candidate_key = build_movilidad_suscripcion_policy_priority_key(
+            chunk,
+            query=query,
+        )
+        existing_key = build_movilidad_suscripcion_policy_priority_key(
+            existing_chunk,
+            query=query,
+        )
+        if candidate_key > existing_key:
+            deferred_duplicate_chunks.append(existing_chunk)
+            best_by_section[section_id] = chunk
+            continue
+        deferred_duplicate_chunks.append(chunk)
+
+    prioritized_suscripcion_chunks = sorted(
+        (best_by_section[section_id] for section_id in section_order),
+        key=lambda chunk: build_movilidad_suscripcion_policy_priority_key(
+            chunk,
+            query=query,
+        ),
+        reverse=True,
+    )
+
+    final_chunks: list[RetrievedChunk] = []
+    seen_chunk_ids: set[str] = set()
+    for chunk in (
+        *prioritized_suscripcion_chunks,
+        *deferred_duplicate_chunks,
+        *remaining_chunks,
+    ):
+        if chunk.chunk_id in seen_chunk_ids:
+            continue
         final_chunks.append(chunk)
         seen_chunk_ids.add(chunk.chunk_id)
         if len(final_chunks) >= top_k:
@@ -3258,6 +3758,7 @@ def retrieve_ranked_chunks(
             resolved_settings,
         )
         candidate_pool_limit = build_candidate_pool_limit(
+            query=normalized_retrieval_query.query,
             top_k=normalized_retrieval_query.top_k,
             matched_expansion_rules=matched_expansion_rules,
         )
