@@ -1902,6 +1902,15 @@ def is_movilidad_suscripcion_individual_payment_change_chunk(chunk: RetrievedChu
     )
 
 
+def is_movilidad_suscripcion_direct_financing_support_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk directly supports financing-individual answers."""
+
+    return (
+        is_movilidad_suscripcion_individual_financing_chunk(chunk)
+        or is_movilidad_suscripcion_individual_payment_change_chunk(chunk)
+    )
+
+
 def is_movilidad_suscripcion_billing_by_insured_chunk(chunk: RetrievedChunk) -> bool:
     """Return whether one chunk contains billing-by-insured evidence."""
 
@@ -1963,8 +1972,10 @@ def score_movilidad_suscripcion_individual_financing_intent_alignment(
         return 0.0
     if is_movilidad_suscripcion_individual_financing_chunk(chunk):
         return 3.0
+    if is_movilidad_suscripcion_individual_payment_change_chunk(chunk):
+        return 2.0
     if is_movilidad_suscripcion_collective_billing_chunk(chunk):
-        return -1.0
+        return -2.0
     return 0.0
 
 
@@ -2318,6 +2329,27 @@ def prioritize_movilidad_suscripcion_policy_evidence(
         if len(final_chunks) >= top_k:
             break
     return final_chunks
+
+
+def select_answer_evidence_chunks(
+    retrieved_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+) -> list[RetrievedChunk]:
+    """Return the answer-facing evidence subset for one retrieval query."""
+
+    ranked_chunks = list(retrieved_chunks)
+    if not query_has_movilidad_suscripcion_individual_financing_intent(query):
+        return ranked_chunks
+
+    direct_financing_chunks = [
+        chunk
+        for chunk in ranked_chunks
+        if is_movilidad_suscripcion_direct_financing_support_chunk(chunk)
+    ]
+    if len(direct_financing_chunks) < MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE:
+        return ranked_chunks
+    return direct_financing_chunks
 
 
 def infer_canonical_document_type_from_relative_path(
@@ -4330,44 +4362,51 @@ def generate_grounded_answer(
             request_id=request_id,
         )
         retrieved_chunks = resolved_retrieval_result.chunks
-        if not retrieved_chunks:
+        answer_evidence_chunks = select_answer_evidence_chunks(
+            retrieved_chunks,
+            query=retrieval_query.query,
+        )
+        if not answer_evidence_chunks:
             result = build_insufficient_evidence_response(
                 query=retrieval_query.query,
-                retrieved_chunks=retrieved_chunks,
+                retrieved_chunks=answer_evidence_chunks,
             )
             return result
-        if len(retrieved_chunks) < MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE:
+        if len(answer_evidence_chunks) < MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE:
             result = build_insufficient_evidence_response(
                 query=retrieval_query.query,
-                retrieved_chunks=retrieved_chunks,
+                retrieved_chunks=answer_evidence_chunks,
                 limitation_note=(
                     "Retrieved evidence is too limited to support a strong grounded answer."
                 ),
             )
             return result
 
-        citations = build_citations_from_chunks(retrieved_chunks)
+        citations = build_citations_from_chunks(answer_evidence_chunks)
         if not citations:
             log_event(
                 RAG_LOGGER,
                 event_type="citation_presence_guardrail_triggered",
                 request_id=request_id,
                 guardrail_surface="grounded_answer_generation",
-                retrieved_chunk_count=len(retrieved_chunks),
+                retrieved_chunk_count=len(answer_evidence_chunks),
                 citation_count=0,
             )
             result = build_missing_citation_guardrail_response(
                 query=retrieval_query.query,
-                retrieved_chunks=retrieved_chunks,
+                retrieved_chunks=answer_evidence_chunks,
             )
             return result
         prompt = build_grounded_prompt(
             query=retrieval_query.query,
-            retrieved_chunks=retrieved_chunks,
+            retrieved_chunks=answer_evidence_chunks,
         )
         completion_fn = completion_generator or generate_grounded_completion
         suggested_answer = completion_fn(prompt, resolved_settings)
-        verification = assess_grounding(retrieved_chunks=retrieved_chunks, citations=citations)
+        verification = assess_grounding(
+            retrieved_chunks=answer_evidence_chunks,
+            citations=citations,
+        )
 
         limitations: list[str] = []
         confidence = verification.confidence
@@ -4380,7 +4419,7 @@ def generate_grounded_answer(
             query=retrieval_query.query,
             response=AdvisorDraftResponse(
                 suggested_answer=suggested_answer,
-                documentary_basis=build_documentary_basis(retrieved_chunks),
+                documentary_basis=build_documentary_basis(answer_evidence_chunks),
                 citations=citations,
                 confidence=confidence,
                 limitations=limitations,

@@ -1503,6 +1503,11 @@ Implementation note:
   into the unrelated financing manual, live retrieval now restores direct
   `13.11. Financiación de Pólizas Individuales` evidence, and grounded answers
   lead with that subsection as their primary documentary basis.
+- That suscripción financing-evidence precision slice is now closed: live
+  financing-individual retrieval keeps `13.11` first, promotes the direct
+  financing follow-on section `13.1.2` ahead of lateral collective-policy
+  material such as `14.1`, and grounded answers now expose a financing-focused
+  documentary basis and citation set when direct support is already sufficient.
 - `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
   `Cobertura` sections instead of adjacent generic sections when operators ask
   what the product covers.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from types import SimpleNamespace
 
 import pytest
 
@@ -187,6 +188,114 @@ def test_generate_grounded_answer_returns_typed_response_with_citations(
     assert result.response.documentary_basis[0].document_type == "policy"
     assert result.response.documentary_basis[0].product == "health"
     assert result.verification.confidence == "high"
+
+
+def test_generate_grounded_answer_filters_lateral_suscripcion_financing_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.classify_query_scope",
+        lambda _query: SimpleNamespace(scope="supported", reason="supported"),
+    )
+
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="suscripcion:v2:0095",
+                source_pdf_id="suscripcion",
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=95,
+                text="13.11. Financiación de Pólizas Individuales. Prima inferior a 30 SMMLV.",
+                document_name="politicas de suscripcion de movilidad",
+                document_version="6",
+                document_type="policy",
+                product="movilidad",
+                page=None,
+                section="13.11. Financiación de Pólizas Individuales",
+                section_path=[
+                    "politicas de suscripcion de movilidad",
+                    "13. PROCEDIMIENTOS",
+                    "13.11. Financiación de Pólizas Individuales",
+                ],
+                clause_id=None,
+                score=0.95,
+            ),
+            RetrievedChunk(
+                chunk_id="suscripcion:v2:0097",
+                source_pdf_id="suscripcion",
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=97,
+                text="13.1. 2. Cambio de Plan de Pagos Anual Financiado. Cambio dentro de 30 días.",
+                document_name="politicas de suscripcion de movilidad",
+                document_version="6",
+                document_type="policy",
+                product="movilidad",
+                page=None,
+                section="13.1. 2. Cambio de Plan de Pagos Anual Financiado",
+                section_path=[
+                    "politicas de suscripcion de movilidad",
+                    "13. PROCEDIMIENTOS",
+                    "13.1. 2. Cambio de Plan de Pagos Anual Financiado",
+                ],
+                clause_id=None,
+                score=0.90,
+            ),
+            RetrievedChunk(
+                chunk_id="suscripcion:v2:0102",
+                source_pdf_id="suscripcion",
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=102,
+                text="14.1. Cotización de Pólizas Colectivas. Las cotizaciones siguen otra ruta.",
+                document_name="politicas de suscripcion de movilidad",
+                document_version="6",
+                document_type="policy",
+                product="movilidad",
+                page=None,
+                section="14.1. Cotización de Pólizas Colectivas",
+                section_path=[
+                    "politicas de suscripcion de movilidad",
+                    "14. PÓLIZAS COLECTIVAS",
+                    "14.1. Cotización de Pólizas Colectivas",
+                ],
+                clause_id=None,
+                score=0.85,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(
+            query="¿Cómo funciona la financiación de pólizas individuales en movilidad?"
+        ),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=(lambda prompt, settings: "Respuesta de financiación."),
+    )
+
+    assert [citation.chunk_id for citation in result.response.citations] == [
+        "suscripcion:v2:0095",
+        "suscripcion:v2:0097",
+    ]
+    assert [item.section for item in result.response.documentary_basis] == [
+        "13.11. Financiación de Pólizas Individuales",
+        "13.1. 2. Cambio de Plan de Pagos Anual Financiado",
+    ]
+    assert result.response.confidence == "high"
 
 
 def test_generate_grounded_answer_downgrades_answerable_response_without_citations(

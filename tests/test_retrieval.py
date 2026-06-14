@@ -1213,6 +1213,40 @@ def test_retrieve_ranked_chunks_recovers_suscripcion_individual_financing_eviden
                     "14.1. Cotización de Pólizas Colectivas",
                 ],
             ),
+            ChunkRecord(
+                chunk_id="suscripcion:v2:0097",
+                source_pdf_id="suscripcion",
+                document_name="politicas de suscripcion de movilidad",
+                document_version="6",
+                document_type="policy",
+                product="movilidad",
+                source_pdf_path=(
+                    "data/raw/MOVILIDAD/TRANSVERSALES/"
+                    "politicas de suscripcion de movilidad.pdf"
+                ),
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                ),
+                cleaned_markdown_output_path=(
+                    "data/processed/markdown/"
+                    "movilidad__transversales__politicas-de-suscripcion-de-movilidad.cleaned.md"
+                ),
+                text=(
+                    "# politicas de suscripcion de movilidad\n\n"
+                    "## 13. PROCEDIMIENTOS\n\n"
+                    "### 13.1. 2. Cambio de Plan de Pagos Anual Financiado\n\n"
+                    "Luego de la expedición, la póliza puede pasar a anual financiada"
+                    " si cumple las condiciones del proceso."
+                ),
+                chunk_index=97,
+                chunk_schema_version="v2",
+                section="13.1. 2. Cambio de Plan de Pagos Anual Financiado",
+                section_path=[
+                    "politicas de suscripcion de movilidad",
+                    "13. PROCEDIMIENTOS",
+                    "13.1. 2. Cambio de Plan de Pagos Anual Financiado",
+                ],
+            ),
         ),
     )
 
@@ -1232,6 +1266,8 @@ def test_retrieve_ranked_chunks_recovers_suscripcion_individual_financing_eviden
 
     chunk_ids = [chunk.chunk_id for chunk in result.chunks]
     assert chunk_ids[0] == "suscripcion:v2:0095"
+    assert chunk_ids[1] == "suscripcion:v2:0097"
+    assert chunk_ids.index("suscripcion:v2:0097") < chunk_ids.index("suscripcion:v2:0102")
     assert "suscripcion:v2:0096" in chunk_ids
 
 
