@@ -18,6 +18,12 @@
       "muévete libre",
       "muevete libre"
     ],
+    "viajes": [
+      "viaje",
+      "seguro de viaje",
+      "seguro de viajes",
+      "travel insurance"
+    ],
     "utilitarios y pesados": [
       "utilitario y pesados",
       "seguro de autos utilitarios y pesados"
@@ -356,6 +362,48 @@
       "filters": {
         "document_name": "Manual Procedimiento Financiacion de polizas individuales"
       }
+    },
+    {
+      "all_of": [
+        "viaje",
+        "internacional"
+      ],
+      "any_of": [
+        "clausulado",
+        "condicionado",
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "filters": {
+        "product": "viajes",
+        "document_type": "policy",
+        "document_name": "CONDICIONADO SEGURO VIAJE INTERNACIONAL"
+      }
+    },
+    {
+      "all_of": [
+        "viaje",
+        "nacional"
+      ],
+      "any_of": [
+        "clausulado",
+        "condicionado",
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "filters": {
+        "product": "viajes",
+        "document_type": "policy",
+        "document_name": "CONDICIONADO SEGURO VIAJE NACIONAL"
+      }
     }
   ],
   "filter_aliases": {
@@ -414,6 +462,12 @@
     "muevete libre": [
       "muévete libre",
       "muevete libre"
+    ],
+    "viajes": [
+      "viaje",
+      "seguro de viaje",
+      "seguro de viajes",
+      "travel insurance"
     ],
     "utilitarios y pesados": [
       "utilitario y pesados",

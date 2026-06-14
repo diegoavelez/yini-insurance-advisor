@@ -157,6 +157,26 @@ def test_normalize_retrieval_query_applies_muevete_libre_coverage_document_type_
     assert normalized_query.filters.document_type == "policy"
 
 
+def test_normalize_retrieval_query_canonicalizes_viajes_product_alias() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(query="¿Qué cubre el seguro de viajes?", filters={"product": "seguro de viajes"}),
+        term_equivalences=TermEquivalenceSet(
+            filter_aliases={
+                "product": {
+                    "viajes": [
+                        "viaje",
+                        "seguro de viaje",
+                        "seguro de viajes",
+                        "travel insurance",
+                    ]
+                }
+            }
+        ),
+    )
+
+    assert normalized_query.filters.product == "viajes"
+
+
 def test_normalize_retrieval_query_applies_choque_simple_defaults() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(query="¿Qué debo hacer en un choque simple?"),
@@ -1496,6 +1516,99 @@ def test_normalize_retrieval_query_does_not_override_explicit_financing_document
     assert normalized_query.filters.document_name == "Documento Operador"
 
 
+def test_normalize_retrieval_query_applies_viajes_international_policy_document_name(
+) -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el clausulado de viaje internacional?",
+            filters={"product": "viajes", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["viaje", "internacional"],
+                    any_of=["clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "viajes",
+                        "document_type": "policy",
+                        "document_name": "CONDICIONADO SEGURO VIAJE INTERNACIONAL",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "viajes"
+    assert normalized_query.filters.document_type == "policy"
+    assert (
+        normalized_query.filters.document_name
+        == "CONDICIONADO SEGURO VIAJE INTERNACIONAL"
+    )
+
+
+def test_normalize_retrieval_query_applies_viajes_national_policy_document_name(
+) -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el clausulado de viaje nacional?",
+            filters={"product": "viajes", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["viaje", "nacional"],
+                    any_of=["clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "viajes",
+                        "document_type": "policy",
+                        "document_name": "CONDICIONADO SEGURO VIAJE NACIONAL",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "viajes"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "CONDICIONADO SEGURO VIAJE NACIONAL"
+
+
+def test_normalize_retrieval_query_keeps_broad_viajes_policy_query_without_document_name(
+) -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el clausulado de viaje?",
+            filters={"product": "viajes", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["viaje", "internacional"],
+                    any_of=["clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "viajes",
+                        "document_type": "policy",
+                        "document_name": "CONDICIONADO SEGURO VIAJE INTERNACIONAL",
+                    },
+                ),
+                QueryFilterRule(
+                    all_of=["viaje", "nacional"],
+                    any_of=["clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "viajes",
+                        "document_type": "policy",
+                        "document_name": "CONDICIONADO SEGURO VIAJE NACIONAL",
+                    },
+                ),
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "viajes"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name is None
+
+
 def test_retrieve_ranked_chunks_maps_search_hits_in_ranked_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2350,6 +2463,118 @@ def test_retrieve_ranked_chunks_applies_financing_guide_document_family_filter(
         ("document_type", "guide"),
         ("product", "movilidad"),
         ("document_name", "Manual Procedimiento Financiacion de polizas individuales"),
+    ]
+
+
+def test_retrieve_ranked_chunks_applies_viajes_international_document_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["viaje", "internacional"],
+                    any_of=["clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "viajes",
+                        "document_type": "policy",
+                        "document_name": "CONDICIONADO SEGURO VIAJE INTERNACIONAL",
+                    },
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué cubre el clausulado de viaje internacional?",
+            filters={"product": "viajes", "document_type": "policy"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    query_filter = client.last_query["query_filter"]
+    assert [
+        (condition.key, condition.match.value) for condition in query_filter.must
+    ] == [
+        ("document_type", "policy"),
+        ("product", "viajes"),
+        ("document_name", "CONDICIONADO SEGURO VIAJE INTERNACIONAL"),
+    ]
+
+
+def test_retrieve_ranked_chunks_applies_viajes_national_document_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["viaje", "nacional"],
+                    any_of=["clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "viajes",
+                        "document_type": "policy",
+                        "document_name": "CONDICIONADO SEGURO VIAJE NACIONAL",
+                    },
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué cubre el clausulado de viaje nacional?",
+            filters={"product": "viajes", "document_type": "policy"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    query_filter = client.last_query["query_filter"]
+    assert [
+        (condition.key, condition.match.value) for condition in query_filter.must
+    ] == [
+        ("document_type", "policy"),
+        ("product", "viajes"),
+        ("document_name", "CONDICIONADO SEGURO VIAJE NACIONAL"),
     ]
 
 

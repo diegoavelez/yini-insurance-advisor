@@ -12,6 +12,7 @@
 - Add the follow-on `utilitarios y pesados` guide-family corrective slice by curating a `document_name` filter rule for explicit benefit/assistance queries, extending focused retrieval regression coverage for normalization/Qdrant/local-lexical paths, and validating live that guide retrieval now stays inside `Seguro de Autos Utilitarios y Pesados` while the policy path remains unchanged.
 - Add the `financiación` mobility transversal onboarding sequence by documenting the single-document cohort commands and evidence, then tracing the first live gap from baseline ingestion/indexing into a separate extraction-readiness corrective slice.
 - Add the follow-on `financiación` corrective slices by retrying Docling with full-page OCR when the initial markdown surface is insufficient, recovering the financing guide into meaningful chunks, curating a `document_name` family rule for explicit financing-guide intent, and validating live that financing retrieval now stays inside `Manual Procedimiento Financiacion de polizas individuales`.
+- Add the `MOVILIDAD/VIAJES` onboarding and first corrective retrieval slice by curating canonical overlays and term-equivalence aliases for the four-document cohort, admitting viajes queries into supported scope, validating ingestion plus live embeddings/Qdrant retrieval for the new category, and then narrowing explicit `viaje internacional` versus `viaje nacional` policy queries to their correct clausulado families through focused normalization/Qdrant-filter regressions and live retrieval evidence.
 
 ## 2026-06-13
 

@@ -1112,6 +1112,7 @@ Operational category rollup:
 - `movilidad-transversales` baseline onboarding: completed
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
+- `VIAJES` onboarding + baseline retrieval: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
 
 Completed slice index:
@@ -1186,6 +1187,7 @@ Operational category rollup:
 - `movilidad-financiacion` onboarding + extraction/guide-family hardening:
   completed
 - `movilidad-transversales` baseline onboarding: completed
+- `VIAJES` onboarding + policy-variant disambiguation: completed
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
@@ -1320,6 +1322,8 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `movilidad-financiacion-extraction-readiness-remediation`
 - `movilidad-financiacion-guide-family-ranking-alignment`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-viajes-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-viajes-international-policy-disambiguation-alignment`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-coverage-breadth-evidence-balancing`
 - `muevete-libre-intrasection-coverage-chunk-prioritization`

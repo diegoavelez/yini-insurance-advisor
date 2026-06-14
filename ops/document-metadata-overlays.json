@@ -76,6 +76,22 @@
       "document_type": "guide",
       "product": "soat"
     },
+    "movilidad__viajes__ayudaventas-viaje-ingles-v2": {
+      "document_type": "guide",
+      "product": "viajes"
+    },
+    "movilidad__viajes__ayudaventas-viajes-espanol-v2": {
+      "document_type": "guide",
+      "product": "viajes"
+    },
+    "movilidad__viajes__clausulado-viaje-internacional-v1": {
+      "document_type": "policy",
+      "product": "viajes"
+    },
+    "movilidad__viajes__clausulado-viaje-nacional-v1": {
+      "document_type": "policy",
+      "product": "viajes"
+    },
     "movilidad__transversales__circular-choque-simple": {
       "document_type": "guide",
       "product": "movilidad"
