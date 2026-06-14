@@ -1268,6 +1268,9 @@ and cite as the real Spanish document set grows.
 - `movilidad-pv-benefit-breadth-and-duplicate-section-diversification`
 - `movilidad-utilitarios-pesados-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-utilitarios-pesados-guide-family-ranking-alignment`
+- `movilidad-financiacion-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-financiacion-extraction-readiness-remediation`
+- `movilidad-financiacion-guide-family-ranking-alignment`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-coverage-breadth-evidence-balancing`
@@ -1318,6 +1321,9 @@ completed:
 - `movilidad-pv-benefit-breadth-and-duplicate-section-diversification`
 - `movilidad-utilitarios-pesados-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-utilitarios-pesados-guide-family-ranking-alignment`
+- `movilidad-financiacion-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-financiacion-extraction-readiness-remediation`
+- `movilidad-financiacion-guide-family-ranking-alignment`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `soat-corpus-baseline-ingestion-and-retrieval`
@@ -1326,7 +1332,7 @@ completed:
 
 remaining in `Phase 18`:
 
-- no remaining narrow slices currently tracked
+- `movilidad-suscripcion-corpus-baseline-ingestion-and-retrieval`
 
 Implementation note:
 
@@ -1430,6 +1436,29 @@ Implementation note:
   benefit/assistance queries stay within
   `Seguro de Autos Utilitarios y Pesados` while the policy path remains
   unchanged.
+- The next operational transversal cohort after `utilitarios y pesados` is now
+  `financiación`, starting with the single-document guide
+  `instructivo financiacion de polizas v1.pdf` before broadening into
+  `suscripción`.
+- That financing baseline cohort has now completed ingestion, embeddings, and
+  Qdrant indexing, but the current extraction surface collapsed to a one-token
+  artifact (`sura`) and one meaningless chunk, so the next narrow slice is
+  extraction readiness rather than retrieval-family alignment.
+- That extraction-readiness slice is now closed: when initial Docling output is
+  mostly image placeholders with too little text, ingestion retries Docling
+  with full-page OCR, which recovered the financing guide into meaningful
+  sections and retrieval-visible chunks.
+- The remaining financing gap is now a narrow guide-family ranking issue:
+  explicit financing queries can surface the financing guide, but `PV`
+  financing mentions still outrank it unless the existing curated
+  `document_name` filter seam is used.
+- That financing guide-family ranking slice is now closed: explicit
+  financing-guide queries are constrained to
+  `Manual Procedimiento Financiacion de polizas individuales`, and live
+  top-k retrieval no longer leaks `PV` financing mentions ahead of the guide.
+- The next operational transversal cohort after financing remains
+  `suscripción`, using `politicas de suscripcion de movilidad.pdf` before
+  broadening into other shared mobility process materials.
 - `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
   `Cobertura` sections instead of adjacent generic sections when operators ask
   what the product covers.

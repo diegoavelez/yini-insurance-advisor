@@ -333,6 +333,24 @@
       "filters": {
         "document_name": "Seguro de Autos Utilitarios y Pesados"
       }
+    },
+    {
+      "all_of": [
+        "financiacion"
+      ],
+      "any_of": [
+        "como funciona",
+        "opciones",
+        "cuotas",
+        "paso a paso",
+        "procedimiento",
+        "expedicion",
+        "cotizacion",
+        "financiada"
+      ],
+      "filters": {
+        "document_name": "Manual Procedimiento Financiacion de polizas individuales"
+      }
     }
   ],
   "filter_aliases": {

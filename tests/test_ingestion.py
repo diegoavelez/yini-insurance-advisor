@@ -925,12 +925,61 @@ def test_convert_pdf_to_markdown_docling_backend_still_fails_for_non_timeout_doc
         lambda _path, **_kwargs: (_ for _ in ()).throw(RuntimeError("docling parse failure")),
     )
 
-    with pytest.raises(RuntimeError, match="Docling conversion did not complete"):
+    with pytest.raises(RuntimeError, match="Docling conversion did not produce"):
         convert_pdf_to_markdown_with_backend(
             Path("policy-a.pdf"),
             backend="docling",
             docling_startup_timeout_seconds=1800.0,
         )
+
+
+def test_convert_pdf_to_markdown_retries_docling_with_full_page_ocr_when_output_is_insufficient(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.pdfium_backend_is_available", lambda: True)
+
+    def fake_docling(_path, **kwargs):
+        if kwargs.get("force_full_page_ocr") is True:
+            return "# financing guide\n\nFinanciación de pólizas\n"
+        return "<!-- image -->\n\n<!-- image -->\n\nsura\n"
+
+    monkeypatch.setattr("rag.ingestion.convert_pdf_to_markdown_with_docling", fake_docling)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_pdfium",
+        lambda _path: pytest.fail("pdfium fallback should not run when OCR rerun succeeds"),
+    )
+
+    rendered = convert_pdf_to_markdown_with_backend(
+        Path("policy-a.pdf"),
+        backend="docling",
+        docling_startup_timeout_seconds=1800.0,
+    )
+
+    assert rendered == "# financing guide\n\nFinanciación de pólizas\n"
+
+
+def test_convert_pdf_to_markdown_falls_back_to_pdfium_when_docling_ocr_retry_is_still_insufficient(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.pdfium_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_docling",
+        lambda _path, **_kwargs: "<!-- image -->\n\n<!-- image -->\n\nsura\n",
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_pdfium",
+        lambda _path: "# fallback markdown\n\nFinanciación de pólizas\n",
+    )
+
+    rendered = convert_pdf_to_markdown_with_backend(
+        Path("policy-a.pdf"),
+        backend="docling",
+        docling_startup_timeout_seconds=1800.0,
+    )
+
+    assert rendered == "# fallback markdown\n\nFinanciación de pólizas\n"
 
 
 def test_cli_fails_when_no_matching_pdfs_are_found(
