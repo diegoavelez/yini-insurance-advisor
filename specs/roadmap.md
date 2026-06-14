@@ -1251,7 +1251,9 @@ and cite as the real Spanish document set grows.
 - `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
 - `motos-corpus-baseline-ingestion-and-retrieval`
 - `motos-plan-comparison-retrieval-alignment`
+- `movilidad-choque-simple-corpus-completion-baseline`
 - `movilidad-choque-simple-evidence-structuring-remediation`
+- `movilidad-choque-simple-photo-guide-title-and-structure-remediation`
 - `movilidad-choque-simple-supported-scope-and-retrieval`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
@@ -1336,6 +1338,13 @@ Implementation note:
   `product=movilidad` + `document_type=guide` scope through hybrid local
   lexical recall, preventing `auto`/`moto` policy chunks from leaking ahead of
   the transversal circular in live queries.
+- The operator batch workflow can now target the remaining `choque simple`
+  transversal PDFs as one cohort through committed raw/artifact glob controls,
+  so ingestion, embeddings, and indexing can be completed before wider
+  `TRANSVERSALES` onboarding.
+- The `como tomar fotos choque simple` guide can now reject its noisy
+  promotional heading as `document_name` and avoid duplicated leading section
+  headings inside chunk text after section-path prefixing.
 - `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
   `Cobertura` sections instead of adjacent generic sections when operators ask
   what the product covers.

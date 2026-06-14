@@ -169,6 +169,19 @@ Important rule:
 - use `--overwrite true` only when reprocessing an existing category after a
   code or metadata change.
 
+### 6.2.1 Example: ingest only the `choque simple` transversal cohort
+
+```bash
+make batch-ingest \
+  BATCH_VENV=/private/tmp/yini-fast-venv311 \
+  BATCH_INPUT_DIR=data/raw \
+  BATCH_MARKDOWN_DIR=data/markdown \
+  BATCH_PROCESSED_DIR=data/processed \
+  BATCH_METADATA_OVERLAY_PATH=ops/document-metadata-overlays.json \
+  BATCH_GLOB='MOVILIDAD/TRANSVERSALES/*choque simple*.pdf' \
+  BATCH_OVERWRITE=false
+```
+
 ### 6.3 Generate embeddings only for the category
 
 ```bash
@@ -181,6 +194,16 @@ Important rule:
   --fail-fast true
 ```
 
+Example for the `choque simple` transversal cohort:
+
+```bash
+make batch-embeddings \
+  BATCH_VENV=/private/tmp/yini-fast-venv311 \
+  BATCH_PROCESSED_DIR=data/processed \
+  BATCH_CHUNK_GLOB='movilidad__transversales__*choque-simple*.chunks.json' \
+  BATCH_OVERWRITE=false
+```
+
 ### 6.4 Index only the category into Qdrant
 
 ```bash
@@ -189,6 +212,15 @@ Important rule:
   --manifest-path data/processed/qdrant-indexing-manifest.jsonl \
   --glob "movilidad__bicicletas-y-patinetas__*.embeddings.json" \
   --fail-fast true
+```
+
+Example for the `choque simple` transversal cohort:
+
+```bash
+make batch-index \
+  BATCH_VENV=/private/tmp/yini-fast-venv311 \
+  BATCH_PROCESSED_DIR=data/processed \
+  BATCH_EMBEDDING_GLOB='movilidad__transversales__*choque-simple*.embeddings.json'
 ```
 
 ## 7. Inspection Gates

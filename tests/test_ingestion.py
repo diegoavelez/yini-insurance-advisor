@@ -18,6 +18,7 @@ from rag.ingestion import (
     docling_is_available,
     extract_document_metadata,
     main,
+    normalize_known_document_markdown,
     parse_bool,
     split_markdown_blocks,
 )
@@ -197,6 +198,42 @@ def test_extract_document_metadata_rejects_noisy_media_heading() -> None:
     assert document_version is None
 
 
+def test_extract_document_metadata_rejects_noisy_promotional_heading() -> None:
+    document_name, document_version = extract_document_metadata(
+        source_pdf_path=Path(".") / "como tomar fotos choque simple v2.pdf",
+        cleaned_markdown_text=(
+            "## estas recomendaciones para en un choque simple "
+            "Ten en cuenta tomar fotos y videos\n\n"
+            "Todas las fotos y videos que tomes nos ayudan a entender cómo fue el choque.\n\n"
+            "## ¿Cómo tomar fotos y videos?\n"
+        ),
+    )
+
+    assert document_name == "¿Cómo tomar fotos y videos?"
+    assert document_version is None
+
+
+def test_normalize_known_document_markdown_rewrites_choque_simple_photo_guide() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "como tomar fotos choque simple v2.pdf",
+        cleaned_markdown_text=(
+            "## estas recomendaciones para en un choque simple "
+            "Ten en cuenta tomar fotos y videos\n\n"
+            "Texto introductorio.\n\n"
+            "## ¿Cómo tomar fotos y videos?\n\n"
+            "## Antes de tomar las evidencias:\n\n"
+            "Pon los conos.\n\n"
+            "## Asegúrate de vivir\n\n"
+            "segurossura.com.co\n"
+        ),
+    )
+
+    assert normalized.startswith("# ¿Cómo tomar fotos y videos?\n\nTexto introductorio.")
+    assert "## ¿Cómo tomar fotos y videos?" not in normalized
+    assert "## Asegúrate de vivir" not in normalized
+    assert "segurossura.com.co" not in normalized
+
+
 def test_build_chunk_records_is_deterministic() -> None:
     cleaned_markdown_text = (
         "# Policy Title\n\n"
@@ -257,6 +294,29 @@ def test_build_chunk_records_keeps_heading_with_following_body_when_it_fits() ->
     assert "## Coverage\n\nCoverage applies to outpatient care." in chunk_records[0].text
     assert chunk_records[0].section == "Coverage"
     assert chunk_records[0].section_path == ["Policy Title", "Coverage"]
+
+
+def test_build_chunk_records_deduplicates_leading_section_heading_from_chunk_body() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="guide-a",
+        document_name="Guide A",
+        document_version=None,
+        source_pdf_path=Path("data/raw/guide-a.pdf"),
+        source_pdf_relative_path=Path("guide-a.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/guide-a.cleaned.md"),
+        cleaned_markdown_text=(
+            "# Guide A\n\n"
+            "## Before taking evidence\n\n"
+            "## Before taking evidence\n\n"
+            "Place safety cones first."
+        ),
+        chunk_size=400,
+        chunk_overlap=20,
+    )
+
+    assert len(chunk_records) == 1
+    assert chunk_records[0].text.startswith("# Guide A\n\n## Before taking evidence\n\n")
+    assert "## Before taking evidence\n\n## Before taking evidence" not in chunk_records[0].text
 
 
 def test_build_chunk_records_keeps_clause_marker_with_following_text_when_it_fits() -> None:

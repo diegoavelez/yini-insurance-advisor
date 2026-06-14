@@ -18,6 +18,9 @@ BATCH_SAMPLE_PDF ?= $(BATCH_INPUT_DIR)/MOVILIDAD/AUTOS/ayudaventas asistencia pe
 BATCH_PDF_BACKEND ?= docling
 BATCH_DOCLING_TIMEOUT ?= 1800
 BATCH_OVERWRITE ?= false
+BATCH_GLOB ?= **/*.pdf
+BATCH_CHUNK_GLOB ?= *.chunks.json
+BATCH_EMBEDDING_GLOB ?= *.embeddings.json
 
 .PHONY: setup lint test app run batch-setup batch-warmup batch-ingest batch-embeddings batch-index
 
@@ -54,6 +57,7 @@ batch-ingest:
 		--markdown-dir "$(BATCH_MARKDOWN_DIR)" \
 		--processed-dir "$(BATCH_PROCESSED_DIR)" \
 		--manifest-path "$(BATCH_INGEST_MANIFEST)" \
+		--glob "$(BATCH_GLOB)" \
 		--metadata-overlay-path "$(BATCH_METADATA_OVERLAY_PATH)" \
 		--overwrite "$(BATCH_OVERWRITE)" \
 		--fail-fast true \
@@ -64,6 +68,7 @@ batch-embeddings:
 	$(BATCH_PYTHON) -m rag.ingestion generate-embeddings \
 		--chunk-dir "$(BATCH_PROCESSED_DIR)/chunks" \
 		--manifest-path "$(BATCH_EMBEDDING_MANIFEST)" \
+		--glob "$(BATCH_CHUNK_GLOB)" \
 		--overwrite "$(BATCH_OVERWRITE)" \
 		--fail-fast true
 
@@ -71,4 +76,5 @@ batch-index:
 	$(BATCH_PYTHON) -m rag.ingestion index-embeddings \
 		--embedding-dir "$(BATCH_PROCESSED_DIR)/embeddings" \
 		--manifest-path "$(BATCH_INDEX_MANIFEST)" \
+		--glob "$(BATCH_EMBEDDING_GLOB)" \
 		--fail-fast true

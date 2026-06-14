@@ -2,6 +2,8 @@
 
 ## 2026-06-13
 
+- Add the `choque simple` cohort-completion operator slice by introducing committed batch-glob controls for narrow raw/artifact cohorts, documenting the exact ingestion/embedding/index commands for the transversal `choque simple` PDFs, and validating that the five-document cohort can now be onboarded independently from the rest of `MOVILIDAD/TRANSVERSALES`.
+- Add the follow-on `choque simple` photo-guide remediation by normalizing the `como tomar fotos choque simple` markdown root heading into a readable document title, suppressing duplicated structural headings after section-prefixing, and reindexing the updated guide so live retrieval now cites `¿Cómo tomar fotos y videos?` instead of the noisy promotional heading.
 - Add the `MUEVETE LIBRE` and `MOVILIDAD/TRANSVERSALES` mobility slices by onboarding both corpora into the shared `movilidad` taxonomy, extending supported-scope and term-equivalence normalization for `choque simple`, and documenting the new roadmap/spec bundles.
 - Add the follow-on `choque simple` corrective retrieval and evidence-structuring slices by routing those queries toward transversal `guide` evidence, suppressing circular-specific boilerplate, promoting stronger semantic sections, and enforcing the normalized `movilidad + guide` scope through hybrid local lexical recall so live retrieval no longer leaks `auto`/`moto` policy chunks ahead of the transversal circular.
 - Add the follow-on `MUEVETE LIBRE` quality slices by biasing coverage-intent retrieval toward explicit policy coverage sections, balancing breadth across distinct coverage sections, and preferring richer intra-section evidence over reminder-style chunks.

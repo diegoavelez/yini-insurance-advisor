@@ -595,13 +595,20 @@ def extract_document_metadata(
     document_name = source_pdf_path.stem
     document_version = None
 
-    for line in cleaned_markdown_text.splitlines()[:20]:
+    heading_candidates: list[str] = []
+    for line in cleaned_markdown_text.splitlines()[:40]:
         stripped_line = line.strip()
-        if stripped_line.startswith("#"):
-            heading_text = stripped_line.lstrip("#").strip()
-            if is_safe_document_name_heading(heading_text):
-                document_name = heading_text
-                break
+        if not stripped_line.startswith("#"):
+            continue
+        heading_text = stripped_line.lstrip("#").strip()
+        if is_safe_document_name_heading(heading_text):
+            heading_candidates.append(heading_text)
+
+    if heading_candidates:
+        document_name = select_best_document_name_heading(
+            source_pdf_path=source_pdf_path,
+            heading_candidates=heading_candidates,
+        )
 
     version_match = VERSION_PATTERN.search("\n".join(cleaned_markdown_text.splitlines()[:40]))
     if version_match:
@@ -623,6 +630,9 @@ def is_safe_document_name_heading(heading_text: str) -> bool:
         "grabacion:",
         "video:",
         "vídeo:",
+        "estas recomendaciones",
+        "asegurate de vivir",
+        "asegúrate de vivir",
     )
     if normalized_lower.startswith(noisy_prefixes):
         return False
@@ -635,6 +645,76 @@ def is_safe_document_name_heading(heading_text: str) -> bool:
         return False
 
     return True
+
+
+def select_best_document_name_heading(
+    *,
+    source_pdf_path: Path,
+    heading_candidates: Sequence[str],
+) -> str:
+    """Select the safest heading candidate using conservative filename overlap."""
+
+    source_tokens = set(tokenize_lexical_surface(source_pdf_path.stem))
+
+    def score_heading(heading_text: str) -> tuple[int, int, int]:
+        heading_tokens = set(tokenize_lexical_surface(heading_text))
+        overlap = len(source_tokens & heading_tokens)
+        question_bonus = 1 if "?" in heading_text or "¿" in heading_text else 0
+        brevity_bonus = 1 if len(heading_text) <= 60 else 0
+        return (overlap, question_bonus, brevity_bonus)
+
+    return max(heading_candidates, key=score_heading)
+
+
+def normalize_known_document_markdown(
+    *,
+    source_pdf_path: Path,
+    cleaned_markdown_text: str,
+) -> str:
+    """Apply narrow document-specific markdown normalization for known noisy guides."""
+
+    normalized_stem = normalize_equivalence_text(source_pdf_path.stem)
+    if "como tomar fotos choque simple" not in normalized_stem:
+        return cleaned_markdown_text
+
+    normalized_lines: list[str] = []
+    replaced_root_heading = False
+
+    for raw_line in cleaned_markdown_text.splitlines():
+        stripped_line = raw_line.strip()
+        normalized_line = normalize_equivalence_text(stripped_line.lstrip("#").strip())
+        tokenized_line = tokenize_lexical_surface(stripped_line.lstrip("#").strip())
+
+        if (
+            stripped_line.startswith("#")
+            and normalized_line
+            == "estas recomendaciones para en un choque simple ten en cuenta tomar fotos y videos"
+        ):
+            if not replaced_root_heading:
+                normalized_lines.append("# ¿Cómo tomar fotos y videos?")
+                replaced_root_heading = True
+            continue
+
+        if (
+            stripped_line.startswith("#")
+            and tokenized_line == {"como", "tomar", "fotos", "videos"}
+        ):
+            continue
+
+        if stripped_line == "segurossura.com.co":
+            continue
+        if (
+            stripped_line.startswith("#")
+            and normalized_line in {"asegurate de vivir", "asegúrate de vivir"}
+        ):
+            continue
+
+        normalized_lines.append(raw_line)
+
+    normalized_text = "\n".join(normalized_lines).strip()
+    if not normalized_text:
+        return cleaned_markdown_text
+    return f"{normalized_text}\n"
 
 
 def load_document_metadata_overlays(
@@ -2007,6 +2087,58 @@ def render_section_path_heading_prefix(section_path: Sequence[str]) -> str:
     return "\n\n".join(heading_lines)
 
 
+def strip_duplicate_prefixed_headings(
+    *,
+    chunk_text: str,
+    section_path: Sequence[str],
+) -> str:
+    """Remove duplicated leading headings already represented in section-path prefix."""
+
+    remaining_text = chunk_text
+    section_headings = [
+        heading.strip()
+        for heading in section_path
+        if heading.strip()
+    ]
+    if not section_headings:
+        return chunk_text
+
+    for index, heading in enumerate(section_headings):
+        heading = section_headings[index]
+        level = min(index + 1, 6)
+        heading_line = f"{'#' * level} {heading}"
+        lines = remaining_text.splitlines()
+        if not lines:
+            break
+        if normalize_equivalence_text(lines[0]) != normalize_equivalence_text(heading_line):
+            break
+        remaining_text = "\n".join(lines[1:]).lstrip("\n")
+
+    return remaining_text or chunk_text
+
+
+def collapse_consecutive_duplicate_heading_lines(chunk_text: str) -> str:
+    """Collapse repeated consecutive markdown headings conservatively."""
+
+    collapsed_lines: list[str] = []
+    previous_heading: str | None = None
+
+    for raw_line in chunk_text.splitlines():
+        stripped_line = raw_line.strip()
+        if stripped_line.startswith("#"):
+            normalized_heading = normalize_equivalence_text(stripped_line)
+            if normalized_heading == previous_heading:
+                continue
+            previous_heading = normalized_heading
+            collapsed_lines.append(raw_line)
+            continue
+        if stripped_line:
+            previous_heading = None
+        collapsed_lines.append(raw_line)
+
+    return "\n".join(collapsed_lines)
+
+
 def ensure_chunk_text_includes_section_context(
     *,
     chunk_text: str,
@@ -2018,11 +2150,17 @@ def ensure_chunk_text_includes_section_context(
     if not heading_prefix:
         return chunk_text
 
+    chunk_text = strip_duplicate_prefixed_headings(
+        chunk_text=chunk_text,
+        section_path=section_path,
+    )
+    chunk_text = collapse_consecutive_duplicate_heading_lines(chunk_text)
+
     normalized_chunk_text = normalize_equivalence_text(chunk_text)
     normalized_prefix = normalize_equivalence_text(heading_prefix)
     if normalized_prefix and normalized_prefix in normalized_chunk_text:
         return chunk_text
-    return f"{heading_prefix}\n\n{chunk_text}"
+    return collapse_consecutive_duplicate_heading_lines(f"{heading_prefix}\n\n{chunk_text}")
 
 
 def build_chunk_records(
@@ -3221,7 +3359,10 @@ def ingest_one_pdf(
     markdown_output_path.parent.mkdir(parents=True, exist_ok=True)
     markdown_output_path.write_text(raw_markdown_text, encoding="utf-8")
 
-    cleaned_markdown_text = clean_markdown(raw_markdown_text)
+    cleaned_markdown_text = normalize_known_document_markdown(
+        source_pdf_path=source_pdf_path,
+        cleaned_markdown_text=clean_markdown(raw_markdown_text),
+    )
     document_name, document_version = extract_document_metadata(
         source_pdf_path,
         cleaned_markdown_text,
