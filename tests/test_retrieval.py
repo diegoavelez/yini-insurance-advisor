@@ -177,6 +177,29 @@ def test_normalize_retrieval_query_canonicalizes_viajes_product_alias() -> None:
     assert normalized_query.filters.product == "viajes"
 
 
+def test_normalize_retrieval_query_canonicalizes_pac_product_alias() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(query="¿Qué cubre el PAC 60 Más?", filters={"product": "pac 60 más"}),
+        term_equivalences=TermEquivalenceSet(
+            filter_aliases={
+                "product": {
+                    "pac": [
+                        "plan complementario",
+                        "plan complementario pac",
+                        "plan pac",
+                        "pac 60 mas",
+                        "pac 60 más",
+                        "plan complementario pac 60 mas",
+                        "plan complementario pac 60 más",
+                    ]
+                }
+            }
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+
+
 def test_normalize_retrieval_query_applies_choque_simple_defaults() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(query="¿Qué debo hacer en un choque simple?"),
@@ -1607,6 +1630,57 @@ def test_normalize_retrieval_query_keeps_broad_viajes_policy_query_without_docum
     assert normalized_query.filters.product == "viajes"
     assert normalized_query.filters.document_type == "policy"
     assert normalized_query.filters.document_name is None
+
+
+def test_normalize_retrieval_query_applies_pac_clausulado_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el PAC 60 Más?",
+            filters={"product": "pac", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["pac"],
+                    any_of=["clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "Es tiempo devIvIr mas historias.",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "Es tiempo devIvIr mas historias."
+
+
+def test_normalize_retrieval_query_applies_pac_asegurabilidad_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué condiciones de asegurabilidad tiene PAC 60 Más?",
+            filters={"product": "pac", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["asegurabilidad", "pac"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "Plan Complementario 60 más",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "Plan Complementario 60 más"
 
 
 def test_retrieve_ranked_chunks_maps_search_hits_in_ranked_order(

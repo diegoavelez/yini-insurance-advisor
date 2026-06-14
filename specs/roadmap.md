@@ -1114,6 +1114,7 @@ Operational category rollup:
 - `SOAT` onboarding + coverage alignment: completed
 - `VIAJES` onboarding + baseline retrieval: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
+- `EPS/PAC 60+` baseline onboarding + retrieval hardening: completed
 
 Completed slice index:
 
@@ -1133,6 +1134,8 @@ Completed slice index:
 - `bicicletas-patinetas-pv-requirements-and-deductible-linear-normalization`
 - `bicicletas-patinetas-deductible-evidence-bias-remediation`
 - `bicicletas-patinetas-deductible-candidate-recall-remediation`
+- `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-60-mas-policy-family-coverage-alignment`
 
 ---
 
@@ -1191,6 +1194,7 @@ Operational category rollup:
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
+- `EPS/PAC 60+` baseline onboarding + retrieval hardening: completed
 
 Completed slice index:
 
@@ -1200,6 +1204,8 @@ Completed slice index:
 - `qdrant-point-id-normalization`
 - `qdrant-retrieval-client-compatibility`
 - `docling-timeout-pdfium-fallback-remediation`
+- `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-60-mas-policy-family-coverage-alignment`
 
 remaining in `Phase 16`:
 
@@ -1350,6 +1356,7 @@ Operational category rollup:
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
+- `EPS/PAC 60+` baseline onboarding + retrieval hardening: completed
 
 Completed slice index:
 
@@ -1400,6 +1407,8 @@ Completed slice index:
 - `soat-corpus-baseline-ingestion-and-retrieval`
 - `soat-coverage-document-type-alignment`
 - `soat-coverage-evidence-prioritization-alignment`
+- `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-60-mas-policy-family-coverage-alignment`
 
 remaining in `Phase 18`:
 

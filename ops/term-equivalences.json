@@ -36,7 +36,11 @@
     "pac": [
       "plan complementario",
       "plan complementario pac",
-      "plan pac"
+      "plan pac",
+      "pac 60 mas",
+      "pac 60 más",
+      "plan complementario pac 60 mas",
+      "plan complementario pac 60 más"
     ],
     "arl": [
       "riesgos laborales",
@@ -365,6 +369,66 @@
     },
     {
       "all_of": [
+        "pac"
+      ],
+      "any_of": [
+        "clausulado",
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "policy",
+        "document_name": "Es tiempo devIvIr mas historias."
+      }
+    },
+    {
+      "all_of": [
+        "plan complementario"
+      ],
+      "any_of": [
+        "clausulado",
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "policy",
+        "document_name": "Es tiempo devIvIr mas historias."
+      }
+    },
+    {
+      "all_of": [
+        "asegurabilidad",
+        "pac"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "policy",
+        "document_name": "Plan Complementario 60 más"
+      }
+    },
+    {
+      "all_of": [
+        "asegurabilidad",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "policy",
+        "document_name": "Plan Complementario 60 más"
+      }
+    },
+    {
+      "all_of": [
         "viaje",
         "internacional"
       ],
@@ -481,7 +545,11 @@
       "pac": [
         "plan complementario",
         "plan complementario pac",
-        "plan pac"
+        "plan pac",
+        "pac 60 mas",
+        "pac 60 más",
+        "plan complementario pac 60 mas",
+        "plan complementario pac 60 más"
       ],
       "arl": [
         "riesgos laborales",

@@ -2,6 +2,7 @@
 
 ## 2026-06-14
 
+- Add the `EPS/PAC 60+` baseline onboarding and corrective closure sequence by curating PAC overlays, aliases, and supported-scope tokens, documenting the narrow five-PDF cohort plus deferred follow-on cohorts, hardening incremental ingestion/embedding reruns to regenerate stale metadata-mismatched artifacts, pinning PAC coverage versus asegurabilidad queries to the correct policy family, and validating the resulting live retrieval behavior against Qdrant.
 - Tighten the category-onboarding documentation policy by switching future corrective bundles from query-sized to root-cause-sized scope, capping active onboarding/remediation bundles per cohort, adding a compact operational rollup view to the roadmap, and documenting the deferred post-onboarding `rag` decoupling candidates separately from active category work.
 - Reclassify `UTILITARIO Y PESADOS` from a mistaken `MOVILIDAD/TRANSVERSALES` cohort into its own canonical category by adding dedicated product normalization and overlays, updating roadmap/spec traceability plus ingestion/retrieval regression coverage, and validating the canonical reingestion/embedding/index/retrieval flow against the live Qdrant corpus.
 - Add a preventive `rag` lexical-normalization seam by extracting the shared term-equivalence helpers into `rag/term_equivalences.py`, preserving retrieval-time query/filter normalization behavior through focused regression coverage, and documenting the corrective slice in the roadmap/spec bundle so new category onboarding does not keep growing `rag/ingestion.py` coupling.

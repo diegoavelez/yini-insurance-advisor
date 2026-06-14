@@ -65,6 +65,20 @@ def test_classify_query_scope_supports_viajes_queries() -> None:
     assert decision.scope == "supported"
 
 
+def test_classify_query_scope_supports_pac_queries() -> None:
+    decision = classify_query_scope("¿Qué cubre el PAC 60 Más?")
+
+    assert decision.scope == "supported"
+
+
+def test_classify_query_scope_supports_pac_operational_queries() -> None:
+    decision = classify_query_scope(
+        "¿Cómo actualizar el correo para factura global web del plan complementario PAC?"
+    )
+
+    assert decision.scope == "supported"
+
+
 def test_classify_query_scope_supports_suscripcion_facturacion_por_asegurado_queries() -> None:
     decision = classify_query_scope(
         "¿Qué condiciones aplican a la facturación por asegurado en pólizas colectivas?"

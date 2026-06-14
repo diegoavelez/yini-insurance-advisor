@@ -4550,6 +4550,78 @@ def load_embedding_bundle(embedding_artifact_path: Path) -> EmbeddingBundle:
     return EmbeddingBundle.model_validate_json(embedding_artifact_path.read_text(encoding="utf-8"))
 
 
+def existing_ingestion_artifacts_match_resolved_metadata(
+    *,
+    processed_output_path: Path,
+    chunk_artifact_path: Path,
+    resolved_document_type: str | None,
+    resolved_product: str | None,
+) -> bool:
+    """Return whether persisted ingestion artifacts still match current metadata."""
+
+    try:
+        processed_document = ProcessedDocument.model_validate_json(
+            processed_output_path.read_text(encoding="utf-8")
+        )
+        chunk_bundle = load_chunk_bundle(chunk_artifact_path)
+    except Exception:
+        return False
+
+    return (
+        processed_document.document_type == resolved_document_type
+        and processed_document.product == resolved_product
+        and chunk_bundle.document_type == resolved_document_type
+        and chunk_bundle.product == resolved_product
+    )
+
+
+def existing_embedding_artifact_matches_chunk_bundle(
+    *,
+    embedding_artifact_path: Path,
+    chunk_bundle: ChunkBundle,
+) -> bool:
+    """Return whether one persisted embedding artifact still matches its chunk bundle."""
+
+    try:
+        embedding_bundle = load_embedding_bundle(embedding_artifact_path)
+    except Exception:
+        return False
+
+    if (
+        embedding_bundle.document_name != chunk_bundle.document_name
+        or embedding_bundle.document_version != chunk_bundle.document_version
+        or embedding_bundle.document_type != chunk_bundle.document_type
+        or embedding_bundle.product != chunk_bundle.product
+        or embedding_bundle.chunk_schema_version != chunk_bundle.chunk_schema_version
+    ):
+        return False
+
+    expected_chunk_ids = [chunk.chunk_id for chunk in chunk_bundle.chunks]
+    actual_chunk_ids = [record.chunk_id for record in embedding_bundle.embeddings]
+    if actual_chunk_ids != expected_chunk_ids:
+        return False
+
+    actual_payload_metadata = [
+        (
+            record.payload.document_name,
+            record.payload.document_version,
+            record.payload.document_type,
+            record.payload.product,
+        )
+        for record in embedding_bundle.embeddings
+    ]
+    expected_payload_metadata = [
+        (
+            chunk.document_name,
+            chunk.document_version,
+            chunk.document_type,
+            chunk.product,
+        )
+        for chunk in chunk_bundle.chunks
+    ]
+    return actual_payload_metadata == expected_payload_metadata
+
+
 def iter_embedding_artifacts(embedding_dir: Path, glob_pattern: str) -> list[Path]:
     """Return sorted matching embedding artifacts under the configured directory."""
 
@@ -5364,7 +5436,14 @@ def generate_embeddings_for_chunk_bundle(
     chunk_bundle = load_chunk_bundle(chunk_artifact_path)
     embedding_artifact_path = embedding_dir / f"{chunk_bundle.source_pdf_id}.embeddings.json"
 
-    if not overwrite and embedding_artifact_path.exists():
+    if (
+        not overwrite
+        and embedding_artifact_path.exists()
+        and existing_embedding_artifact_matches_chunk_bundle(
+            embedding_artifact_path=embedding_artifact_path,
+            chunk_bundle=chunk_bundle,
+        )
+    ):
         return build_embedding_generation_record(
             chunk_bundle=chunk_bundle,
             embedding_artifact_path=embedding_artifact_path,
@@ -5433,6 +5512,12 @@ def ingest_one_pdf(
         and cleaned_markdown_output_path.exists()
         and processed_output_path.exists()
         and chunk_artifact_path.exists()
+        and existing_ingestion_artifacts_match_resolved_metadata(
+            processed_output_path=processed_output_path,
+            chunk_artifact_path=chunk_artifact_path,
+            resolved_document_type=resolved_document_type,
+            resolved_product=resolved_product,
+        )
     ):
         return build_processed_document(
             source_pdf_id=source_pdf_id,

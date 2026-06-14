@@ -4,7 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from contracts import ChunkBundle, ChunkRecord, EmbeddingBundle, EmbeddingGenerationRecord
+from contracts import (
+    ChunkBundle,
+    ChunkRecord,
+    EmbeddingBundle,
+    EmbeddingGenerationRecord,
+    EmbeddingRecord,
+    VectorPayload,
+)
 from core.config import DEFAULT_EMBEDDING_MODEL, Settings, clear_settings_cache
 from rag.ingestion import build_parser, load_sentence_transformer, main
 
@@ -317,7 +324,69 @@ def test_embedding_generation_skips_existing_artifact_when_overwrite_is_false(
     embedding_dir = tmp_path / "embeddings"
     embedding_dir.mkdir()
     artifact_path = embedding_dir / "policy-a.embeddings.json"
-    artifact_path.write_text("existing artifact", encoding="utf-8")
+    valid_existing_bundle = EmbeddingBundle(
+        source_pdf_id="policy-a",
+        document_name="Policy A",
+        document_version="2026-01",
+        document_type="policy",
+        product="health",
+        source_chunk_artifact_path=str(chunk_artifact_path),
+        embedding_artifact_path=str(artifact_path),
+        embedding_schema_version="v1",
+        chunk_schema_version="v2",
+        embedding_provider="sentence-transformers",
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        vector_dimension=3,
+        embeddings=[
+            EmbeddingRecord(
+                chunk_id="policy-a:v2:0000",
+                source_pdf_id="policy-a",
+                chunk_schema_version="v2",
+                embedding_provider="sentence-transformers",
+                embedding_model=DEFAULT_EMBEDDING_MODEL,
+                vector_dimension=3,
+                vector=[1.0, 0.5, 1.0],
+                payload=VectorPayload(
+                    chunk_id="policy-a:v2:0000",
+                    source_pdf_id="policy-a",
+                    source_pdf_relative_path="policy-a.pdf",
+                    chunk_schema_version="v2",
+                    chunk_index=0,
+                    document_name="Policy A",
+                    document_version="2026-01",
+                    document_type="policy",
+                    product="health",
+                    section="Coverage",
+                    section_path=["Policy A", "Coverage"],
+                    text="Coverage applies to outpatient care.",
+                ),
+            ),
+            EmbeddingRecord(
+                chunk_id="policy-a:v2:0001",
+                source_pdf_id="policy-a",
+                chunk_schema_version="v2",
+                embedding_provider="sentence-transformers",
+                embedding_model=DEFAULT_EMBEDDING_MODEL,
+                vector_dimension=3,
+                vector=[2.0, 0.5, 1.0],
+                payload=VectorPayload(
+                    chunk_id="policy-a:v2:0001",
+                    source_pdf_id="policy-a",
+                    source_pdf_relative_path="policy-a.pdf",
+                    chunk_schema_version="v2",
+                    chunk_index=1,
+                    document_name="Policy A",
+                    document_version="2026-01",
+                    document_type="policy",
+                    product="health",
+                    section="Exclusions",
+                    section_path=["Policy A", "Exclusions"],
+                    text="Exclusions apply to cosmetic procedures.",
+                ),
+            ),
+        ],
+    )
+    artifact_path.write_text(valid_existing_bundle.model_dump_json(indent=2), encoding="utf-8")
     manifest_path = tmp_path / "embedding-manifest.jsonl"
     monkeypatch.setattr(
         "rag.ingestion.get_settings",
@@ -346,8 +415,87 @@ def test_embedding_generation_skips_existing_artifact_when_overwrite_is_false(
     )
 
     assert exit_code == 0
-    assert artifact_path.read_text(encoding="utf-8") == "existing artifact"
+    assert (
+        EmbeddingBundle.model_validate_json(artifact_path.read_text(encoding="utf-8")).document_name
+        == "Policy A"
+    )
     assert manifest_record.generation_status == "skipped"
+
+
+def test_embedding_generation_regenerates_stale_existing_artifact_when_metadata_differs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    clear_settings_cache()
+    chunk_dir = tmp_path / "chunks"
+    chunk_dir.mkdir()
+    chunk_artifact_path = chunk_dir / "policy-a.chunks.json"
+    chunk_bundle = build_chunk_bundle_artifact(chunk_artifact_path)
+    chunk_artifact_path.write_text(
+        chunk_bundle.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    embedding_dir = tmp_path / "embeddings"
+    embedding_dir.mkdir()
+    artifact_path = embedding_dir / "policy-a.embeddings.json"
+    stale_bundle = EmbeddingBundle(
+        source_pdf_id="policy-a",
+        document_name="Stale Policy",
+        document_version="2026-01",
+        document_type=None,
+        product=None,
+        source_chunk_artifact_path=str(chunk_artifact_path),
+        embedding_artifact_path=str(artifact_path),
+        embedding_schema_version="v1",
+        chunk_schema_version="v2",
+        embedding_provider="sentence-transformers",
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        vector_dimension=3,
+        embeddings=[],
+    )
+    artifact_path.write_text(stale_bundle.model_dump_json(indent=2), encoding="utf-8")
+    manifest_path = tmp_path / "embedding-manifest.jsonl"
+    monkeypatch.setattr(
+        "rag.ingestion.get_settings",
+        lambda: Settings(
+            _env_file=None,
+            embedding_provider="sentence-transformers",
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
+        ),
+    )
+    monkeypatch.setattr("rag.ingestion.embedding_backend_is_available", lambda settings: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [float(len(text)), 0.5, 1.0],
+    )
+
+    exit_code = main(
+        [
+            "generate-embeddings",
+            "--chunk-dir",
+            str(chunk_dir),
+            "--embedding-dir",
+            str(embedding_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    embedding_bundle = EmbeddingBundle.model_validate_json(
+        artifact_path.read_text(encoding="utf-8")
+    )
+    manifest_record = EmbeddingGenerationRecord.model_validate_json(
+        manifest_path.read_text(encoding="utf-8").splitlines()[0]
+    )
+
+    assert exit_code == 0
+    assert manifest_record.generation_status == "succeeded"
+    assert embedding_bundle.document_name == "Policy A"
+    assert embedding_bundle.document_type == "policy"
+    assert embedding_bundle.product == "health"
+    assert [record.chunk_id for record in embedding_bundle.embeddings] == [
+        "policy-a:v2:0000",
+        "policy-a:v2:0001",
+    ]
 
 
 def test_embedding_generation_failure_removes_partial_artifact_and_records_failure(

@@ -16,6 +16,26 @@
       "document_type": "faq",
       "product": "arl"
     },
+    "eps__plan-complementario-pac__clausulado-pac-60-mas-sura-v1": {
+      "document_type": "policy",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__politicas-asegurabilidad-pac-60-mas": {
+      "document_type": "policy",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__preguntas-frecuentes-pac-60-mas": {
+      "document_type": "faq",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__tarifas-pac-con-iva-2026": {
+      "document_type": "guide",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__tips-asesores-pac-60-mas-v2": {
+      "document_type": "guide",
+      "product": "pac"
+    },
     "movilidad__autos__ayudaventas-asistencia-pequenos-eventos": {
       "document_type": "guide",
       "product": "auto"
