@@ -1237,6 +1237,7 @@ and cite as the real Spanish document set grows.
 - `operator-curated-document-metadata-overlays`
 - `document-metadata-filter-enablement`
 - `operator-curated-term-equivalence-normalization`
+- `rag-lexical-normalization-seam-extraction`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
 - `autos-plan-comparison-retrieval-alignment`
@@ -1290,6 +1291,7 @@ completed:
 - `operator-curated-document-metadata-overlays`
 - `document-metadata-filter-enablement`
 - `operator-curated-term-equivalence-normalization`
+- `rag-lexical-normalization-seam-extraction`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
 - `autos-plan-comparison-retrieval-alignment`
@@ -1347,6 +1349,9 @@ Implementation note:
 - Retrieval normalization can also carry narrow operator-curated comparison
   bundles when repeated AUTOS comparison queries need stronger lexical
   alignment with comparative documents.
+- The shared lexical term-equivalence helpers now live behind a dedicated
+  `rag/term_equivalences.py` seam, reducing further coupling growth inside
+  `rag/ingestion.py` while additional categories continue onboarding.
 - When those comparison bundles match, retrieval can use a larger candidate
   pool plus deterministic lexical reranking before returning the final top-k.
 - Chunk text can now be prefixed with its governing `section_path` headings
