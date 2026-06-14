@@ -352,14 +352,37 @@ Open a new dated spec bundle when:
 - answer generation cites the wrong evidence even though retrieval contains the
   right document.
 
+Open that bundle only when the root-cause family is meaningfully different from
+the current active slice. Use these families:
+
+- `taxonomy/scope`
+- `ingestion/extraction`
+- `index/runtime`
+- `retrieval/ranking/answering`
+
+Do not open a new dated bundle only because another query variant appears
+inside the same root-cause family. Record those variants first in
+`validation.md`.
+
 Do not fold unrelated fixes into one category spec.
 
 Preferred pattern:
 
-1. identify one narrow failure;
-2. open one dated spec bundle;
-3. validate with a real query tied to that failure;
-4. close the slice before moving to the next issue.
+1. identify one root-cause-sized failure family;
+2. open one dated spec bundle for that family;
+3. capture multiple representative query variants in `validation.md`;
+4. validate with one or more real queries tied to that family;
+5. close the slice before opening another bundle in the same category unless
+   the seam changes.
+
+Operational cap:
+
+- keep at most `1` active onboarding bundle and `1` active remediation bundle
+  per category at the same time;
+- prefer at most `3` total bundles per category lifecycle:
+  1. `baseline onboarding`
+  2. `artifact/extraction remediation` when needed
+  3. `retrieval/answer hardening`
 
 ## 12. Definition of Ready for a New Category
 
@@ -401,6 +424,14 @@ For future onboarding, use this default sequence:
 5. validate retrieval before validating full answers;
 6. use overlays for metadata truth, equivalence rules for vocabulary truth, and
    ingestion code changes only for structural extraction defects;
-7. document each narrow corrective slice separately.
+7. document each root-cause-sized corrective slice separately.
+
+Default documentation shape for a new category:
+
+1. one `baseline onboarding` bundle;
+2. optionally one `artifact/extraction remediation` bundle if the extracted
+   artifacts are not usable;
+3. optionally one `retrieval/answer hardening` bundle that captures multiple
+   query variants in the same seam before splitting again.
 
 That is the route this repository should follow for every new category.

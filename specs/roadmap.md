@@ -1072,7 +1072,11 @@ Stabilize the project for final delivery.
 - demo is stable;
 - deployment and evaluation artifacts are consistent.
 
-## Narrow Slices
+## Dated Slice Index
+
+This list is a traceability index of dated slice slugs, not the preferred
+operational view for category onboarding. Future category work should prefer
+root-cause-sized bundles rather than query-sized micro-slices.
 
 - `spanish-demo-ui-localization`
 - `spanish-retrieval-and-embedding-alignment`
@@ -1093,7 +1097,23 @@ Stabilize the project for final delivery.
 
 Current implementation status:
 
-completed:
+Operational category rollup:
+
+- metadata and retrieval foundations: completed
+- AUTOS comparison hardening: completed
+- BICICLETAS Y PATINETAS onboarding + retrieval hardening: completed
+- MOTOS onboarding + comparison alignment: completed
+- `choque simple` transversal onboarding + retrieval hardening: completed
+- `movilidad-pv` onboarding + retrieval hardening: completed
+- `utilitarios y pesados` onboarding + guide-family alignment: completed
+- `movilidad-financiacion` onboarding + extraction/guide-family hardening:
+  completed
+- `movilidad-transversales` baseline onboarding: completed
+- `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
+- `SOAT` onboarding + coverage alignment: completed
+- `movilidad-suscripcion` onboarding + retrieval hardening: active
+
+Completed slice index:
 
 - `spanish-demo-ui-localization`
 - `spanish-retrieval-and-embedding-alignment`
@@ -1137,7 +1157,11 @@ reasonable development loop.
 - the remediation is evidenced, not speculative;
 - the chosen ingestion path is documented and testable.
 
-## Narrow Slices
+## Dated Slice Index
+
+This list is a traceability index of dated slice slugs, not the preferred
+operational view for category onboarding. Future category work should prefer
+root-cause-sized bundles rather than query-sized micro-slices.
 
 - `docling-ingestion-startup-remediation`
 - `docling-primary-local-ingestion-policy`
@@ -1148,7 +1172,23 @@ reasonable development loop.
 
 Current implementation status:
 
-completed:
+Operational category rollup:
+
+- metadata and retrieval foundations: completed
+- AUTOS comparison hardening: completed
+- BICICLETAS Y PATINETAS onboarding + retrieval hardening: completed
+- MOTOS onboarding + comparison alignment: completed
+- `choque simple` transversal onboarding + retrieval hardening: completed
+- `movilidad-pv` onboarding + retrieval hardening: completed
+- `utilitarios y pesados` onboarding + guide-family alignment: completed
+- `movilidad-financiacion` onboarding + extraction/guide-family hardening:
+  completed
+- `movilidad-transversales` baseline onboarding: completed
+- `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
+- `SOAT` onboarding + coverage alignment: completed
+- `movilidad-suscripcion` onboarding + retrieval hardening: active
+
+Completed slice index:
 
 - `docling-ingestion-startup-remediation`
 - `docling-primary-local-ingestion-policy`
@@ -1229,7 +1269,11 @@ and cite as the real Spanish document set grows.
   document identity surface for future retrieval-facing improvements;
 - the first metadata-enrichment seam remains narrow and locally testable.
 
-## Narrow Slices
+## Dated Slice Index
+
+This list is a traceability index of dated slice slugs, not the preferred
+operational view for category onboarding. Future category work should prefer
+root-cause-sized bundles rather than query-sized micro-slices.
 
 - `document-metadata-contract-baseline`
 - `source-relative-path-through-retrieval-payloads`
@@ -1283,7 +1327,23 @@ and cite as the real Spanish document set grows.
 
 Current implementation status:
 
-completed:
+Operational category rollup:
+
+- metadata and retrieval foundations: completed
+- AUTOS comparison hardening: completed
+- BICICLETAS Y PATINETAS onboarding + retrieval hardening: completed
+- MOTOS onboarding + comparison alignment: completed
+- `choque simple` transversal onboarding + retrieval hardening: completed
+- `movilidad-pv` onboarding + retrieval hardening: completed
+- `utilitarios y pesados` onboarding + guide-family alignment: completed
+- `movilidad-financiacion` onboarding + extraction/guide-family hardening:
+  completed
+- `movilidad-transversales` baseline onboarding: completed
+- `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
+- `SOAT` onboarding + coverage alignment: completed
+- `movilidad-suscripcion` onboarding + retrieval hardening: active
+
+Completed slice index:
 
 - `document-metadata-contract-baseline`
 - `source-relative-path-through-retrieval-payloads`
@@ -1352,6 +1412,12 @@ Implementation note:
 - The shared lexical term-equivalence helpers now live behind a dedicated
   `rag/term_equivalences.py` seam, reducing further coupling growth inside
   `rag/ingestion.py` while additional categories continue onboarding.
+- Additional `rag/ingestion.py` decoupling is still intentionally deferred
+  until the current category-onboarding wave settles. The next documented
+  post-onboarding refactor candidates are:
+  - `rag-document-canonicalization-seam-extraction`
+  - `rag-markdown-chunk-normalization-seam-extraction`
+  - `rag-arl-remuneration-domain-seam-extraction`
 - When those comparison bundles match, retrieval can use a larger candidate
   pool plus deterministic lexical reranking before returning the final top-k.
 - Chunk text can now be prefixed with its governing `section_path` headings
