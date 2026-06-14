@@ -4327,3 +4327,241 @@ def test_retrieve_cli_prints_typed_result(
 
     assert exit_code == 0
     assert '"chunk_id": "policy-a:v2:0000"' in captured.out
+
+
+def test_retrieve_ranked_chunks_prioritizes_arl_remuneration_policy_intent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "arl:v2:0001",
+                    "source_pdf_id": "arl__politica-de-remuneracion-canal-externo-v4",
+                    "source_pdf_relative_path": (
+                        "ARL/politica de remuneracion canal externo v4.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 1,
+                    "text": (
+                        "# Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan\n\n"
+                        "## Canales para la afiliación a ARL SURA\n\n"
+                        "En ARL SURA tenemos definidos diversos canales para la afiliación."
+                    ),
+                    "document_name": (
+                        "Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan"
+                    ),
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "arl",
+                    "section": "Canales para la afiliación a ARL SURA",
+                    "section_path": [
+                        "Canal Externo ARL V1 Esquema remuneración y políticas que lo complementan",
+                        "Canales para la afiliación a ARL SURA",
+                    ],
+                },
+                score=0.92,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "arl:v2:0010",
+                    "source_pdf_id": "arl__politica-de-remuneracion-canal-externo-v4",
+                    "source_pdf_relative_path": (
+                        "ARL/politica de remuneracion canal externo v4.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 10,
+                    "text": (
+                        "# Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan\n\n"
+                        "## Pago de comisiones por Atracción\n\n"
+                        "| Sector económico | % Comisión Asesor independiente y agencia |\n"
+                        "|---|---|\n"
+                        "| TIC | 12.00% |"
+                    ),
+                    "document_name": (
+                        "Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan"
+                    ),
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "arl",
+                    "section": "Pago de comisiones por Atracción",
+                    "section_path": [
+                        "Canal Externo ARL V1 Esquema remuneración y políticas que lo complementan",
+                        "Pago de comisiones por Atracción",
+                    ],
+                },
+                score=0.71,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "arl:v2:0008",
+                    "source_pdf_id": "arl__politica-de-remuneracion-canal-externo-v4",
+                    "source_pdf_relative_path": (
+                        "ARL/politica de remuneracion canal externo v4.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 8,
+                    "text": (
+                        "# Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan\n\n"
+                        "## Clientes nuevos (venta) para el Canal Externo\n\n"
+                        "90% ARL SURA paga comisión al Canal Externo por la "
+                        "atracción de clientes nuevos."
+                    ),
+                    "document_name": (
+                        "Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan"
+                    ),
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "arl",
+                    "section": "Clientes nuevos (venta) para el Canal Externo",
+                    "section_path": [
+                        "Canal Externo ARL V1 Esquema remuneración y políticas que lo complementan",
+                        "Clientes nuevos (venta) para el Canal Externo",
+                    ],
+                },
+                score=0.72,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.load_term_equivalences", lambda: TermEquivalenceSet())
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Cuál es el esquema de remuneración del canal externo ARL?",
+            filters={"product": "arl", "document_type": "policy"},
+            top_k=3,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.chunk_id for chunk in result.chunks] == [
+        "arl:v2:0008",
+        "arl:v2:0010",
+        "arl:v2:0001",
+    ]
+
+
+def test_retrieve_ranked_chunks_preserves_arl_remuneration_table_intent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "arl:v2:0008",
+                    "source_pdf_id": "arl__politica-de-remuneracion-canal-externo-v4",
+                    "source_pdf_relative_path": (
+                        "ARL/politica de remuneracion canal externo v4.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 8,
+                    "text": (
+                        "# Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan\n\n"
+                        "## Clientes nuevos (venta) para el Canal Externo\n\n"
+                        "90% ARL SURA paga comisión al Canal Externo por la "
+                        "atracción de clientes nuevos."
+                    ),
+                    "document_name": (
+                        "Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan"
+                    ),
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "arl",
+                    "section": "Clientes nuevos (venta) para el Canal Externo",
+                    "section_path": [
+                        "Canal Externo ARL V1 Esquema remuneración y políticas que lo complementan",
+                        "Clientes nuevos (venta) para el Canal Externo",
+                    ],
+                },
+                score=0.78,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "arl:v2:0010",
+                    "source_pdf_id": "arl__politica-de-remuneracion-canal-externo-v4",
+                    "source_pdf_relative_path": (
+                        "ARL/politica de remuneracion canal externo v4.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 10,
+                    "text": (
+                        "# Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan\n\n"
+                        "## Pago de comisiones por Atracción\n\n"
+                        "| Sector económico | % Comisión Asesor independiente y agencia |\n"
+                        "|---|---|\n"
+                        "| TIC | 12.00% |"
+                    ),
+                    "document_name": (
+                        "Canal Externo ARL V1 Esquema remuneración y políticas "
+                        "que lo complementan"
+                    ),
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "arl",
+                    "section": "Pago de comisiones por Atracción",
+                    "section_path": [
+                        "Canal Externo ARL V1 Esquema remuneración y políticas que lo complementan",
+                        "Pago de comisiones por Atracción",
+                    ],
+                },
+                score=0.71,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.load_term_equivalences", lambda: TermEquivalenceSet())
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query=(
+                "¿Qué porcentajes de comisión por sector tiene ARL en el canal "
+                "externo?"
+            ),
+            filters={"product": "arl", "document_type": "policy"},
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.chunk_id for chunk in result.chunks] == [
+        "arl:v2:0010",
+        "arl:v2:0008",
+    ]

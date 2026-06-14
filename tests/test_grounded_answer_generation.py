@@ -298,6 +298,281 @@ def test_generate_grounded_answer_filters_lateral_suscripcion_financing_evidence
     assert result.response.confidence == "high"
 
 
+def test_generate_grounded_answer_narrows_arl_rui_normativity_citations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.classify_query_scope",
+        lambda _query: SimpleNamespace(scope="supported", reason="supported"),
+    )
+
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="arl-rui:v2:0001",
+                source_pdf_id="arl__preguntas-frecuentes-registro-unico-de-intermediacion-rui",
+                source_pdf_relative_path=(
+                    "ARL/preguntas frecuentes registro unico de intermediacion - rui.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=1,
+                text=(
+                    "# Preguntas frecuentes registro único de intermediación - RUI\n\n"
+                    "## 1. ¿Cuál es la normatividad que rige el registro único de "
+                    "intermediarios?\n\n"
+                    "- Ley 1562 de 2012\n"
+                    "- Decreto 1117 de 2016\n"
+                    "- Resolución 0136 de 2024\n"
+                ),
+                document_name="preguntas frecuentes registro unico de intermediacion - rui",
+                document_version=None,
+                document_type="faq",
+                product="arl",
+                page=None,
+                section="1. ¿Cuál es la normatividad que rige el registro único de intermediarios?",
+                section_path=[
+                    "Preguntas frecuentes registro único de intermediación - RUI",
+                    "1. ¿Cuál es la normatividad que rige el registro único de intermediarios?",
+                ],
+                clause_id=None,
+                score=0.95,
+            ),
+            RetrievedChunk(
+                chunk_id="arl-rui:v2:0018",
+                source_pdf_id="arl__preguntas-frecuentes-registro-unico-de-intermediacion-rui",
+                source_pdf_relative_path=(
+                    "ARL/preguntas frecuentes registro unico de intermediacion - rui.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=18,
+                text="## 18. ¿Qué sucede si tengo un RUI no aprobado?",
+                document_name="preguntas frecuentes registro unico de intermediacion - rui",
+                document_version=None,
+                document_type="faq",
+                product="arl",
+                page=None,
+                section=(
+                    "18. ¿Que sucede si tengo un RUI, pero este no esta Aprobado, "
+                    "es decir no figuro en el listado que publica el ministerio?"
+                ),
+                section_path=[
+                    "Preguntas frecuentes registro único de intermediación - RUI",
+                    (
+                        "18. ¿Que sucede si tengo un RUI, pero este no esta Aprobado, "
+                        "es decir no figuro en el listado que publica el ministerio?"
+                    ),
+                ],
+                clause_id=None,
+                score=0.61,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(query="¿Cuál es la normatividad que rige el RUI?"),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=(lambda prompt, settings: "Respuesta ARL/RUI."),
+    )
+
+    assert result.response.confidence == "high"
+    assert [citation.chunk_id for citation in result.response.citations] == ["arl-rui:v2:0001"]
+    assert [item.section for item in result.response.documentary_basis] == [
+        "1. ¿Cuál es la normatividad que rige el registro único de intermediarios?"
+    ]
+
+
+def test_generate_grounded_answer_narrows_arl_commissions_guide_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.classify_query_scope",
+        lambda _query: SimpleNamespace(scope="supported", reason="supported"),
+    )
+
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="arl-guide:v2:0000",
+                source_pdf_id="arl__instructivos-consulta-de-comisiones-arl-sura-v2",
+                source_pdf_relative_path=(
+                    "ARL/instructivos consulta de comisiones arl sura v2.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=0,
+                text=(
+                    "## Consulta liquidación de comisiones para intermediarios "
+                    "de Riesgos Laborales\n\n"
+                    "- Ingresar a www.arlsura.com.\n"
+                    "- Seleccionar el módulo Intermediarios.\n"
+                    "- Consultar Pago de Comisiones.\n"
+                ),
+                document_name=(
+                    "Consulta liquidación de comisiones para intermediarios "
+                    "de Riesgos Laborales"
+                ),
+                document_version=None,
+                document_type="guide",
+                product="arl",
+                page=None,
+                section=(
+                    "Consulta liquidación de comisiones para intermediarios "
+                    "de Riesgos Laborales"
+                ),
+                section_path=[
+                    (
+                        "Consulta liquidación de comisiones para intermediarios "
+                        "de Riesgos Laborales"
+                    )
+                ],
+                clause_id=None,
+                score=0.88,
+            ),
+            RetrievedChunk(
+                chunk_id="arl-guide:v2:0001",
+                source_pdf_id="arl__instructivos-actualizacion-cuenta-bancaria-v2",
+                source_pdf_relative_path=(
+                    "ARL/instructivos actualizacion cuenta bancaria v2.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=0,
+                text="## Actualización de cuenta bancaria para pago de comisiones ARL SURA",
+                document_name="Actualización de cuenta bancaria para pago de comisiones ARL SURA",
+                document_version=None,
+                document_type="guide",
+                product="arl",
+                page=None,
+                section="Actualización de cuenta bancaria para pago de comisiones ARL SURA",
+                section_path=[
+                    "Actualización de cuenta bancaria para pago de comisiones ARL SURA"
+                ],
+                clause_id=None,
+                score=0.81,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(query="¿Cómo consulto la liquidación de comisiones ARL?"),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=(lambda prompt, settings: "Respuesta comisiones."),
+    )
+
+    assert result.response.confidence == "high"
+    assert [citation.chunk_id for citation in result.response.citations] == [
+        "arl-guide:v2:0000"
+    ]
+    assert [item.document_name for item in result.response.documentary_basis] == [
+        "Consulta liquidación de comisiones para intermediarios de Riesgos Laborales"
+    ]
+
+
+def test_generate_grounded_answer_narrows_arl_account_update_guide_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.classify_query_scope",
+        lambda _query: SimpleNamespace(scope="supported", reason="supported"),
+    )
+
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="arl-bank:v2:0000",
+                source_pdf_id="arl__instructivos-actualizacion-cuenta-bancaria-v2",
+                source_pdf_relative_path=(
+                    "ARL/instructivos actualizacion cuenta bancaria v2.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=0,
+                text=(
+                    "## Actualización de cuenta bancaria para pago de comisiones ARL SURA\n\n"
+                    "Enviar solicitud desde correo oficial del asesor y adjuntar "
+                    "certificado bancario.\n"
+                ),
+                document_name="Actualización de cuenta bancaria para pago de comisiones ARL SURA",
+                document_version=None,
+                document_type="guide",
+                product="arl",
+                page=None,
+                section="Actualización de cuenta bancaria para pago de comisiones ARL SURA",
+                section_path=[
+                    "Actualización de cuenta bancaria para pago de comisiones ARL SURA"
+                ],
+                clause_id=None,
+                score=0.9,
+            ),
+            RetrievedChunk(
+                chunk_id="arl-bank:v2:0001",
+                source_pdf_id="arl__instructivos-consulta-de-comisiones-arl-sura-v2",
+                source_pdf_relative_path=(
+                    "ARL/instructivos consulta de comisiones arl sura v2.pdf"
+                ),
+                chunk_schema_version="v2",
+                chunk_index=0,
+                text=(
+                    "## Consulta liquidación de comisiones para intermediarios "
+                    "de Riesgos Laborales"
+                ),
+                document_name=(
+                    "Consulta liquidación de comisiones para intermediarios "
+                    "de Riesgos Laborales"
+                ),
+                document_version=None,
+                document_type="guide",
+                product="arl",
+                page=None,
+                section=(
+                    "Consulta liquidación de comisiones para intermediarios "
+                    "de Riesgos Laborales"
+                ),
+                section_path=[
+                    (
+                        "Consulta liquidación de comisiones para intermediarios "
+                        "de Riesgos Laborales"
+                    )
+                ],
+                clause_id=None,
+                score=0.82,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(query="¿Cómo actualizo la cuenta bancaria para pago de comisiones ARL?"),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=(lambda prompt, settings: "Respuesta cuenta bancaria."),
+    )
+
+    assert result.response.confidence == "high"
+    assert [citation.chunk_id for citation in result.response.citations] == [
+        "arl-bank:v2:0000"
+    ]
+    assert [item.document_name for item in result.response.documentary_basis] == [
+        "Actualización de cuenta bancaria para pago de comisiones ARL SURA"
+    ]
+
+
 def test_generate_grounded_answer_downgrades_answerable_response_without_citations(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,

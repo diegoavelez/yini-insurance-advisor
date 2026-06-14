@@ -1523,6 +1523,60 @@ Implementation note:
 - When multiple chunks represent the same explicit coverage section, retrieval
   can now prefer the more descriptive chunk over reminder-style operational
   follow-up text.
+- The current four-document `ARL` cohort is now operationally live: existing
+  embeddings have been indexed into Qdrant Cloud, representative `guide`,
+  `faq`, and `policy` retrieval queries succeed under `product=arl`, and a
+  representative `ARL/RUI` grounded answer completes successfully through
+  Groq.
+- That `arl-rui-faq-heading-and-citation-precision` slice is now closed: the
+  RUI FAQ rewrites into numbered semantic question headings, the noisy
+  Vimeo/portal/table interruption no longer survives as retrieval sections, the
+  live normativity query now retrieves the exact question section first, and
+  the live grounded answer now cites only that direct normativity chunk in its
+  documentary basis and citation list.
+- That `arl-comisiones-guide-ui-boilerplate-normalization` slice is now
+  closed: the commissions guide no longer preserves `Capacidad ARL` or
+  standalone `sura` UI leftovers in its only chunk, and live retrieval now
+  returns the same guide first with a cleaner procedural surface.
+- That `arl-comisiones-guide-family-answer-evidence-alignment` slice is now
+  closed: explicit commissions-guide answers keep high confidence while
+  narrowing their documentary basis and citations to only
+  `Consulta liquidación de comisiones para intermediarios de Riesgos Laborales`
+  when that guide already contains the full answer.
+- That `arl-cuenta-bancaria-guide-family-answer-evidence-alignment` slice is
+  now closed: explicit account-update guide answers keep high confidence while
+  narrowing their documentary basis and citations to only
+  `Actualización de cuenta bancaria para pago de comisiones ARL SURA` when that
+  guide already contains the full answer.
+- That `arl-remuneracion-policy-heading-dedup` slice is now closed: the
+  remuneration-policy chunk surface no longer repeats known section headings
+  such as `## Canales para la afiliación a ARL SURA`, `## Clientes nuevos
+  (venta) para el Canal Externo`, or `## Por cambio de intermediario`, and the
+  refreshed Qdrant retrieval surface stays operational with cleaner policy
+  text.
+- That `arl-remuneracion-policy-parent-child-heading-compaction` slice is now
+  closed: heading-only overlap chunks are no longer emitted for the ARL
+  remuneration policy, so the previous standalone `Clientes nuevos` scaffold no
+  longer appears in the rebuilt bundle or in live retrieval for that section.
+- That `arl-remuneracion-policy-intent-retrieval-alignment` slice is now
+  closed: broad ARL remuneration-policy retrieval now surfaces explicit
+  remuneration sections before introductory channel sections, both in focused
+  tests and in live Qdrant retrieval for
+  `¿Cuál es el esquema de remuneración del canal externo ARL?`.
+- That `arl-remuneracion-policy-overview-vs-table-priority` slice is now
+  closed: broad ARL remuneration queries now lead with the explanatory
+  `Clientes nuevos (venta) para el Canal Externo` chunk, while explicit
+  percentage/sector queries still lead with `Pago de comisiones por
+  Atracción`.
+- The ARL folder is now operationally corrected for the current MVP scope:
+  representative `retrieve-chunks` and `answer-query` flows succeed for the
+  FAQ, both guides, and the remuneration policy with the intended evidence
+  ordering.
+- The next optional ARL refinement is
+  `arl-remuneracion-policy-broad-answer-citation-compaction`: broad policy
+  answers are already supported and grounded, but they still cite several
+  complementary chunks; a future slice could compact documentary basis/citation
+  breadth if operators want a shorter evidence trail for overview questions.
 - Broader taxonomy inference, automatic classification, and UI filter work
   remain intentionally out of scope.
 

@@ -235,6 +235,284 @@ def test_normalize_known_document_markdown_rewrites_choque_simple_photo_guide() 
     assert "segurossura.com.co" not in normalized
 
 
+def test_normalize_known_document_markdown_rewrites_arl_rui_faq_structure() -> None:
+    source_pdf_path = (
+        Path(".") / "preguntas frecuentes registro unico de intermediacion - rui.pdf"
+    )
+    question_1 = "## 1. ¿Cuál es la normatividad que rige el registro único de intermediarios?"
+    question_2 = "## 2. Teniendo en cuenta la resolución 0136 de 2024, ¿cómo sé mi vigencia?"
+    question_3 = (
+        "## 3. ¿Si realice el diplomado el 15 de enero del 2024 "
+        "aplica el vencimiento de 4 años?"
+    )
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=source_pdf_path,
+        cleaned_markdown_text=(
+            "Memorias Streaming, conoce las novedades para la intermediación de seguros.\n\n"
+            "Resolución 0136 de 2024.\n\n"
+            "## Grabación: https:/ /player.vimeo.com/video/943790015\n\n"
+            "Preguntas:\n\n"
+            "1. ¿Cuál es la normatividad que rige el registro único de intermediarios?\n"
+            "- Ley 1562 de 2012\n\n"
+            "2. Teniendo en cuenta la resolución 0136 de 2024, ¿cómo sé mi vigencia?\n"
+            "Revisando el reporte.\n\n"
+            "LINK:\n\n"
+            "https:/ /www.fondoriesgoslaborales.gov.co/sin-categoria/apoya-eltalento/\n\n"
+            "## iRegistro Unico de Intermediarios! Consulte aqui el estado de su registro\n\n"
+            "Ingresa al RUI\n\n"
+            "## MINISTERIODELTRABAJO\n\n"
+            "| ITEM | ESTADO |\n"
+            "|------|--------|\n"
+            "| 1 | APROBADO |\n\n"
+            "3. ¿Si realice el diplomado el 15 de enero del 2024 aplica el vencimiento de 4 años?\n"
+            "No.\n"
+        ),
+    )
+
+    assert normalized.startswith("# Preguntas frecuentes registro único de intermediación - RUI")
+    assert question_1 in normalized
+    assert question_2 in normalized
+    assert question_3 in normalized
+    assert "## Grabación:" not in normalized
+    assert "## MINISTERIODELTRABAJO" not in normalized
+    assert "iRegistro Unico de Intermediarios" not in normalized
+    assert "| ITEM | ESTADO |" not in normalized
+
+
+def test_normalize_known_document_markdown_rewrites_arl_commissions_guide() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "instructivos consulta de comisiones arl sura v2.pdf",
+        cleaned_markdown_text=(
+            "## Consulta liquidación de comisiones para intermediarios de Riesgos Laborales\n\n"
+            "C a p a c i d a d :   A R L\n\n"
+            "[   C a p a c i d a d   -   A R L ]\n\n"
+            "- Ingresar a www.arlsura.com.\n"
+            "- Selecciona iniciar sesión.\n\n"
+            "sura\n\n"
+            "- Seleccionar el módulo Intermediarios.\n\n"
+            "sura sura\n\n"
+            "- Diligenciar oficina, fecha inicial y fecha final.\n"
+        ),
+    )
+
+    assert "C a p a c i d a d" not in normalized
+    assert "[   C a p a c i d a d" not in normalized
+    assert "\nsura\n" not in normalized
+    assert "sura sura" not in normalized
+    assert "- Ingresar a www.arlsura.com." in normalized
+    assert "- Seleccionar el módulo Intermediarios." in normalized
+
+
+def test_split_markdown_blocks_uses_semantic_arl_rui_question_sections() -> None:
+    source_pdf_path = (
+        Path(".") / "preguntas frecuentes registro unico de intermediacion - rui.pdf"
+    )
+    question_1 = "1. ¿Cuál es la normatividad que rige el registro único de intermediarios?"
+    question_2 = "2. Teniendo en cuenta la resolución 0136 de 2024, ¿cómo sé mi vigencia?"
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=source_pdf_path,
+        cleaned_markdown_text=(
+            "Memorias Streaming, conoce las novedades para la intermediación de seguros.\n\n"
+            "## Grabación: https:/ /player.vimeo.com/video/943790015\n\n"
+            "1. ¿Cuál es la normatividad que rige el registro único de intermediarios?\n"
+            "- Ley 1562 de 2012\n"
+            "- Decreto 1117 de 2016\n\n"
+            "2. Teniendo en cuenta la resolución 0136 de 2024, ¿cómo sé mi vigencia?\n"
+            "Revisando el reporte.\n"
+        ),
+    )
+
+    blocks = split_markdown_blocks(normalized)
+
+    assert blocks[1].section == question_1
+    assert blocks[1].section_path == (
+        "Preguntas frecuentes registro único de intermediación - RUI",
+        question_1,
+    )
+    assert blocks[2].section == question_2
+    assert all(block.section != "MINISTERIODELTRABAJO" for block in blocks if block.section)
+
+
+def test_build_chunk_records_disables_overlap_between_arl_rui_questions() -> None:
+    source_pdf_path = (
+        Path("data/raw")
+        / "ARL/preguntas frecuentes registro unico de intermediacion - rui.pdf"
+    )
+    source_pdf_relative_path = Path(
+        "ARL/preguntas frecuentes registro unico de intermediacion - rui.pdf"
+    )
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / source_pdf_relative_path,
+        cleaned_markdown_text=(
+            "Memorias Streaming, conoce las novedades.\n\n"
+            "1. ¿Cuál es la normatividad que rige el registro único de intermediarios?\n"
+            "- Ley 1562 de 2012\n"
+            "- Decreto 1117 de 2016\n"
+            "- Resolución 0136 de 2024\n\n"
+            "2. Teniendo en cuenta la resolución 0136 de 2024, ¿cómo sé mi vigencia?\n"
+            "Revisando el reporte de asesores aprobados.\n"
+        ),
+    )
+
+    chunk_records = build_chunk_records(
+        source_pdf_id="arl__preguntas-frecuentes-registro-unico-de-intermediacion-rui",
+        document_name="Preguntas frecuentes registro único de intermediación - RUI",
+        document_version=None,
+        document_type="faq",
+        product="arl",
+        source_pdf_path=source_pdf_path,
+        source_pdf_relative_path=source_pdf_relative_path,
+        cleaned_markdown_output_path=Path(
+            "data/processed/arl__preguntas-frecuentes-registro-unico-de-intermediacion-rui.cleaned.md"
+        ),
+        cleaned_markdown_text=normalized,
+        chunk_size=1200,
+        chunk_overlap=200,
+    )
+
+    question_chunks = [
+        chunk
+        for chunk in chunk_records
+        if chunk.section and chunk.section[0].isdigit()
+    ]
+
+    assert question_chunks[0].section.startswith("1. ¿Cuál es la normatividad")
+    assert "## 2." not in question_chunks[0].text
+    assert question_chunks[1].section.startswith("2. Teniendo en cuenta la resolución 0136")
+    assert "## 1." not in question_chunks[1].text
+    assert [chunk.section for chunk in question_chunks[:2]] == [
+        (
+            "1. ¿Cuál es la normatividad que rige el registro único "
+            "de intermediarios?"
+        ),
+        "2. Teniendo en cuenta la resolución 0136 de 2024, ¿cómo sé mi vigencia?",
+    ]
+
+
+def test_build_chunk_records_preserves_clean_arl_commissions_procedure() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "instructivos consulta de comisiones arl sura v2.pdf",
+        cleaned_markdown_text=(
+            "## Consulta liquidación de comisiones para intermediarios de Riesgos Laborales\n\n"
+            "C a p a c i d a d :   A R L\n\n"
+            "sura\n\n"
+            "- Ingresar a www.arlsura.com.\n"
+            "- Selecciona iniciar sesión.\n"
+            "- Seleccionar el módulo Intermediarios.\n"
+        ),
+    )
+
+    chunk_records = build_chunk_records(
+        source_pdf_id="arl__instructivos-consulta-de-comisiones-arl-sura-v2",
+        document_name="Consulta liquidación de comisiones para intermediarios de Riesgos Laborales",
+        document_version=None,
+        document_type="guide",
+        product="arl",
+        source_pdf_path=Path("data/raw/ARL/instructivos consulta de comisiones arl sura v2.pdf"),
+        source_pdf_relative_path=Path("ARL/instructivos consulta de comisiones arl sura v2.pdf"),
+        cleaned_markdown_output_path=Path(
+            "data/processed/arl__instructivos-consulta-de-comisiones-arl-sura-v2.cleaned.md"
+        ),
+        cleaned_markdown_text=normalized,
+        chunk_size=1200,
+        chunk_overlap=200,
+    )
+
+    assert len(chunk_records) == 1
+    assert "C a p a c i d a d" not in chunk_records[0].text
+    assert "\nsura\n" not in chunk_records[0].text
+    assert "- Ingresar a www.arlsura.com." in chunk_records[0].text
+    assert "- Seleccionar el módulo Intermediarios." in chunk_records[0].text
+
+
+def test_build_chunk_records_deduplicates_leading_heading_scaffold() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="policy-a",
+        document_name="Policy Title",
+        document_version=None,
+        document_type="policy",
+        product="arl",
+        source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
+        cleaned_markdown_text=(
+            "# Policy Title\n\n"
+            "## Section A\n\n"
+            "## Section A\n\n"
+            "Body text.\n"
+        ),
+        chunk_size=1200,
+        chunk_overlap=200,
+    )
+
+    section_chunk = next(
+        chunk for chunk in chunk_records if chunk.section == "Section A"
+    )
+
+    assert section_chunk.text.count("## Section A") == 1
+    assert "Body text." in section_chunk.text
+
+
+def test_build_chunk_records_deduplicates_arl_remuneracion_heading_surface() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="arl__politica-de-remuneracion-canal-externo-v4",
+        document_name="Canal Externo ARL V1 Esquema remuneración y políticas que lo complementan",
+        document_version=None,
+        document_type="policy",
+        product="arl",
+        source_pdf_path=Path("data/raw/ARL/politica de remuneracion canal externo v4.pdf"),
+        source_pdf_relative_path=Path("ARL/politica de remuneracion canal externo v4.pdf"),
+        cleaned_markdown_output_path=Path(
+            "data/processed/arl__politica-de-remuneracion-canal-externo-v4.cleaned.md"
+        ),
+        cleaned_markdown_text=(
+            "## Canal Externo ARL V1 Esquema remuneración y políticas que lo complementan\n\n"
+            "## Canales para la afiliación a ARL SURA\n\n"
+            "## Canales para la afiliación a ARL SURA\n\n"
+            "En ARL SURA tenemos definidos diversos canales.\n"
+        ),
+        chunk_size=1200,
+        chunk_overlap=200,
+    )
+
+    section_chunk = next(
+        chunk
+        for chunk in chunk_records
+        if chunk.section == "Canales para la afiliación a ARL SURA"
+    )
+
+    assert section_chunk.text.count("## Canales para la afiliación a ARL SURA") == 1
+    assert "En ARL SURA tenemos definidos diversos canales." in section_chunk.text
+
+
+def test_build_chunk_records_drops_repeated_section_heading_inside_chunk() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="policy-a",
+        document_name="Policy Title",
+        document_version=None,
+        document_type="policy",
+        product="arl",
+        source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
+        cleaned_markdown_text=(
+            "# Policy Title\n\n"
+            "## Section A\n\n"
+            "## Parent Heading\n\n"
+            "## Section A\n\n"
+            "Body text.\n"
+        ),
+        chunk_size=1200,
+        chunk_overlap=200,
+    )
+
+    section_chunk = next(chunk for chunk in chunk_records if chunk.section == "Section A")
+
+    assert section_chunk.text.count("## Section A") == 1
+    assert "## Parent Heading" not in section_chunk.text
+    assert "Body text." in section_chunk.text
+
+
 def test_normalize_known_document_markdown_rewrites_suscripcion_pdfium_surface() -> None:
     normalized = normalize_known_document_markdown(
         source_pdf_path=Path(".") / "politicas de suscripcion de movilidad.pdf",
@@ -363,6 +641,41 @@ def test_build_chunk_records_deduplicates_leading_section_heading_from_chunk_bod
     assert len(chunk_records) == 1
     assert chunk_records[0].text.startswith("# Guide A\n\n## Before taking evidence\n\n")
     assert "## Before taking evidence\n\n## Before taking evidence" not in chunk_records[0].text
+
+
+def test_build_chunk_records_skips_heading_only_overlap_chunk() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="policy-a",
+        document_name="Policy Title",
+        document_version=None,
+        document_type="policy",
+        product="arl",
+        source_pdf_path=Path("data/raw/policy-a.pdf"),
+        source_pdf_relative_path=Path("policy-a.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/policy-a.cleaned.md"),
+        cleaned_markdown_text=(
+            "# Policy Title\n\n"
+            "## Section A\n\n"
+            + ("Body text for section A. " * 50)
+            + "\n\n"
+            "## Parent Heading\n\n"
+            "## Section A\n\n"
+            "## Section B\n\n"
+            "Body text for section B.\n"
+        ),
+        chunk_size=500,
+        chunk_overlap=120,
+    )
+
+    assert all(
+        any(
+            line.strip() and not line.strip().startswith("#")
+            for line in chunk.text.splitlines()
+        )
+        for chunk in chunk_records
+    )
+    assert any(chunk.section == "Section A" for chunk in chunk_records)
+    assert any(chunk.section == "Section B" for chunk in chunk_records)
 
 
 def test_build_chunk_records_keeps_clause_marker_with_following_text_when_it_fits() -> None:

@@ -80,11 +80,17 @@ QUERY_COVERAGE_INTENT_PHRASES = (
     "ampara",
     "amparo",
 )
+ARL_RUI_NORMATIVE_ANCHORS = (
+    "ley 1562",
+    "decreto 1117",
+    "resolucion 0136",
+)
 EXPLICIT_COVERAGE_SECTION_PATTERN = re.compile(
     r"^(?:\d+(?:\.\d+)*\.?\s*)?cobertura(?:\s+\S.*)?$",
     re.IGNORECASE,
 )
 LEADING_SECTION_NUMBER_PATTERN = re.compile(r"^(\d+(?:\.\d+)*)")
+ARL_RUI_FAQ_QUESTION_PATTERN = re.compile(r"^(?P<number>\d+)\.\s*(?P<question>.+)$")
 CHOQUE_SIMPLE_BOILERPLATE_PATTERNS = (
     "documentofirmadodigitalmenteporelministeriodetransporte",
     "www.mintransporte.gov.co",
@@ -1039,6 +1045,115 @@ def normalize_choque_simple_process_markdown(
     return f"{normalized_text}\n"
 
 
+def normalize_arl_rui_faq_markdown(cleaned_markdown_text: str) -> str:
+    """Rewrite the ARL/RUI FAQ into semantic question-led markdown."""
+
+    normalized_lines: list[str] = ["# Preguntas frecuentes registro único de intermediación - RUI"]
+    seen_first_question = False
+    skipping_portal_block = False
+
+    def append_line(line: str) -> None:
+        if not line:
+            if normalized_lines[-1] != "":
+                normalized_lines.append("")
+            return
+        normalized_lines.append(line)
+
+    for raw_line in cleaned_markdown_text.splitlines():
+        stripped_line = raw_line.strip()
+        normalized_line = normalize_equivalence_text(stripped_line.lstrip("#").strip())
+
+        if not stripped_line:
+            append_line("")
+            continue
+
+        question_match = ARL_RUI_FAQ_QUESTION_PATTERN.match(
+            stripped_line.lstrip("#").strip()
+        )
+        if question_match is not None and "?" in question_match.group("question"):
+            if normalized_lines[-1] != "":
+                normalized_lines.append("")
+            normalized_lines.append(
+                f"## {question_match.group('number')}. {question_match.group('question').strip()}"
+            )
+            seen_first_question = True
+            skipping_portal_block = False
+            continue
+
+        if normalized_line in {"preguntas", "preguntas:"}:
+            continue
+
+        portal_block_markers = {
+            "grabacion https player vimeo com video 943790015",
+            "iregistro unico de intermediarios consulte aqui el estado de su registro",
+            "ministeriodeltrabajo",
+            "ingresa al rui",
+            "descargue aqui el rul con corte a 14marzo de 2025",
+            "regresar",
+        }
+        if (
+            normalized_line in portal_block_markers
+            or normalized_line.startswith("link")
+        ):
+            skipping_portal_block = True
+            continue
+
+        if skipping_portal_block and (
+            stripped_line.startswith("|")
+            or MARKDOWN_TABLE_SEPARATOR_PATTERN.match(stripped_line) is not None
+        ):
+            continue
+
+        if skipping_portal_block:
+            continue
+
+        if not seen_first_question and stripped_line.startswith("#"):
+            continue
+
+        append_line(stripped_line)
+
+    normalized_text = "\n".join(normalized_lines).strip()
+    if not normalized_text:
+        return cleaned_markdown_text
+    return f"{normalized_text}\n"
+
+
+def compact_alphanumeric_text(value: str) -> str:
+    """Return one lowercased alphanumeric-only surface for noisy OCR matching."""
+
+    normalized_value = normalize_equivalence_text(value)
+    return "".join(character for character in normalized_value if character.isalnum())
+
+
+def normalize_arl_commissions_guide_markdown(cleaned_markdown_text: str) -> str:
+    """Remove narrow portal boilerplate from the ARL commissions guide."""
+
+    normalized_lines: list[str] = []
+    ignored_compact_surfaces = {
+        "capacidadarl",
+        "sura",
+        "surasura",
+    }
+
+    for raw_line in cleaned_markdown_text.splitlines():
+        stripped_line = raw_line.strip()
+        if not stripped_line:
+            if normalized_lines and normalized_lines[-1] != "":
+                normalized_lines.append("")
+            continue
+
+        compact_surface = compact_alphanumeric_text(stripped_line.strip("[]"))
+        if compact_surface in ignored_compact_surfaces:
+            continue
+
+        normalized_lines.append(stripped_line)
+
+    normalized_text = "\n".join(normalized_lines).strip()
+    if not normalized_text:
+        return cleaned_markdown_text
+    return f"{normalized_text}\n"
+
+
 def normalize_known_document_markdown(
     *,
     source_pdf_path: Path,
@@ -1047,6 +1162,10 @@ def normalize_known_document_markdown(
     """Apply narrow document-specific markdown normalization for known noisy guides."""
 
     normalized_stem = normalize_equivalence_text(source_pdf_path.stem)
+    if "preguntas frecuentes registro unico de intermediacion" in normalized_stem:
+        return normalize_arl_rui_faq_markdown(cleaned_markdown_text)
+    if "instructivos consulta de comisiones arl sura" in normalized_stem:
+        return normalize_arl_commissions_guide_markdown(cleaned_markdown_text)
     if "politicas de suscripcion de movilidad" in normalized_stem:
         return normalize_suscripcion_policy_markdown(cleaned_markdown_text)
     if "proceso atencion choque simple" in normalized_stem:
@@ -1217,6 +1336,8 @@ def build_candidate_pool_limit(
     """Return the Qdrant candidate-pool limit for one retrieval query."""
 
     if not matched_expansion_rules:
+        if query_has_arl_remuneration_policy_intent(query):
+            return min(max(top_k * 3, top_k + 6), 20)
         if query_has_movilidad_suscripcion_policy_intent(
             query
         ) or query_has_movilidad_suscripcion_collective_billing_intent(
@@ -1242,6 +1363,12 @@ def rerank_chunks_for_query_expansion_rules(
 
     if not matched_expansion_rules:
         ranked_chunks = list(chunks)
+        if query_has_arl_remuneration_policy_intent(query):
+            return prioritize_arl_remuneration_policy_evidence(
+                ranked_chunks,
+                query=query,
+                top_k=top_k,
+            )
         if query_has_movilidad_suscripcion_policy_intent(
             query
         ) or query_has_movilidad_suscripcion_collective_billing_intent(
@@ -1316,6 +1443,12 @@ def rerank_chunks_for_query_expansion_rules(
         return diversify_explicit_coverage_sections(ranked_chunks, top_k=top_k)
     if query_has_movilidad_pv_benefit_intent(query):
         return diversify_movilidad_pv_benefit_sections(ranked_chunks, top_k=top_k)
+    if query_has_arl_remuneration_policy_intent(query):
+        return prioritize_arl_remuneration_policy_evidence(
+            ranked_chunks,
+            query=query,
+            top_k=top_k,
+        )
     if query_has_movilidad_suscripcion_policy_intent(
         query
     ) or query_has_movilidad_suscripcion_collective_billing_intent(
@@ -2417,6 +2550,509 @@ def select_answer_evidence_chunks(
     return direct_financing_chunks
 
 
+ARL_REMUNERATION_POLICY_INTENT_PHRASES = (
+    "remuneracion",
+    "esquema de remuneracion",
+    "esquema remuneracion",
+    "comision",
+    "comisiones",
+    "pago de comisiones",
+    "pago de comision",
+)
+
+ARL_REMUNERATION_POLICY_SECTION_BONUSES: tuple[tuple[str, float], ...] = (
+    ("pago de comisiones por atraccion", 3.2),
+    ("clientes nuevos (venta) para el canal externo", 2.8),
+    ("clientes nuevos (venta) del canal externo", 2.8),
+    ("requisitos indispensables para el pago de comision", 2.2),
+    ("por cambio de intermediario", 1.9),
+    ("politica de designacion de intermediarios", 1.6),
+    ("apetito comercial por grupos clientes nuevos (venta) para el canal externo", 1.2),
+)
+
+ARL_REMUNERATION_POLICY_INTRO_SECTION_PENALTIES: tuple[tuple[str, float], ...] = (
+    ("canales para la afiliacion a arl sura", -2.4),
+    ("canal externo", -1.6),
+)
+
+ARL_REMUNERATION_POLICY_OVERVIEW_SECTION_ANCHORS = (
+    "clientes nuevos (venta) para el canal externo",
+    "clientes nuevos (venta) del canal externo",
+)
+
+ARL_REMUNERATION_POLICY_APPETITE_SECTION_ANCHORS = (
+    "apetito comercial por grupos clientes nuevos (venta) para el canal externo",
+)
+
+ARL_REMUNERATION_POLICY_TABLE_SECTION_ANCHORS = (
+    "pago de comisiones por atraccion",
+)
+
+
+def query_has_arl_remuneration_policy_intent(query: str) -> bool:
+    """Return whether one query broadly targets the ARL remuneration policy."""
+
+    normalized_query = normalize_equivalence_text(query)
+    if "arl" not in normalized_query:
+        return False
+    if not any(
+        phrase in normalized_query for phrase in ARL_REMUNERATION_POLICY_INTENT_PHRASES
+    ):
+        return False
+    return any(
+        anchor in normalized_query
+        for anchor in (
+            "canal externo",
+            "intermediario",
+            "intermediarios",
+            "atraccion",
+            "clientes nuevos",
+        )
+    ) or "esquema" in normalized_query
+
+
+def query_has_arl_remuneration_table_intent(query: str) -> bool:
+    """Return whether one ARL remuneration query explicitly asks for tables or percentages."""
+
+    if not query_has_arl_remuneration_policy_intent(query):
+        return False
+
+    normalized_query = normalize_equivalence_text(query)
+    return any(
+        phrase in normalized_query
+        for phrase in (
+            "porcentaje",
+            "porcentajes",
+            "%",  # kept for direct user input before normalization strips symbols
+            "sector economico",
+            "sectores",
+            "tabla",
+            "tablas",
+            "comision por sector",
+            "comisiones por sector",
+            "1a",
+            "1b",
+            "3a",
+            "3b",
+        )
+    )
+
+
+def query_has_arl_remuneration_overview_intent(query: str) -> bool:
+    """Return whether one ARL remuneration query is broad and overview-seeking."""
+
+    if not query_has_arl_remuneration_policy_intent(query):
+        return False
+    if query_has_arl_remuneration_table_intent(query):
+        return False
+
+    normalized_query = normalize_equivalence_text(query)
+    return any(
+        phrase in normalized_query
+        for phrase in (
+            "esquema",
+            "como funciona",
+            "como opera",
+            "como es",
+            "remuneracion",
+            "comisiones",
+            "explicame",
+            "explicacion",
+        )
+    )
+
+
+def is_arl_remuneration_policy_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to the ARL remuneration-policy family."""
+
+    if chunk.product != "arl" or chunk.document_type != "policy":
+        return False
+    normalized_document_name = normalize_equivalence_text(chunk.document_name)
+    normalized_source_id = normalize_equivalence_text(chunk.source_pdf_id)
+    return (
+        "esquema remuneracion" in normalized_document_name
+        or "politica-de-remuneracion-canal-externo" in normalized_source_id
+    )
+
+
+def score_arl_remuneration_policy_intent_alignment(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> float:
+    """Return a narrow preference score for broad ARL remuneration-policy prompts."""
+
+    if not query_has_arl_remuneration_policy_intent(query):
+        return 0.0
+    if not is_arl_remuneration_policy_chunk(chunk):
+        return 0.0
+
+    label_surface = "\n".join(
+        value
+        for value in (
+            chunk.document_name,
+            chunk.section,
+            *chunk.section_path,
+        )
+        if value
+    )
+    normalized_label_surface = normalize_equivalence_text(label_surface)
+
+    total_score = 0.0
+    for phrase, bonus in ARL_REMUNERATION_POLICY_SECTION_BONUSES:
+        if phrase in normalized_label_surface:
+            total_score += bonus
+    for phrase, penalty in ARL_REMUNERATION_POLICY_INTRO_SECTION_PENALTIES:
+        if phrase in normalized_label_surface:
+            total_score += penalty
+    if chunk.section and normalize_equivalence_text(chunk.section) == normalize_equivalence_text(
+        chunk.document_name
+    ):
+        total_score -= 2.0
+    return total_score
+
+
+def score_arl_remuneration_policy_evidence_richness(chunk: RetrievedChunk) -> float:
+    """Return a deterministic local preference for richer remuneration chunks."""
+
+    if not is_arl_remuneration_policy_chunk(chunk):
+        return 0.0
+
+    normalized_text = normalize_equivalence_text(chunk.text)
+    total_score = 0.0
+    if "% comision" in normalized_text:
+        total_score += 1.4
+    if "|" in chunk.text:
+        total_score += 1.0
+    if count_bullet_lines(chunk.text) >= 2:
+        total_score += 0.65
+    if "clientes nuevos" in normalized_text:
+        total_score += 0.45
+    if "cambio de intermediario" in normalized_text:
+        total_score += 0.40
+    if len(normalized_text) >= 260:
+        total_score += 0.25
+    return total_score
+
+
+def score_arl_remuneration_policy_overview_vs_table_priority(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> float:
+    """Return a narrow preference for overview-first or table-first ARL evidence."""
+
+    if not is_arl_remuneration_policy_chunk(chunk):
+        return 0.0
+
+    label_surface = "\n".join(
+        value
+        for value in (
+            chunk.document_name,
+            chunk.section,
+            *chunk.section_path,
+        )
+        if value
+    )
+    normalized_label_surface = normalize_equivalence_text(label_surface)
+
+    overview_chunk = any(
+        anchor in normalized_label_surface
+        for anchor in ARL_REMUNERATION_POLICY_OVERVIEW_SECTION_ANCHORS
+    )
+    table_chunk = any(
+        anchor in normalized_label_surface
+        for anchor in ARL_REMUNERATION_POLICY_TABLE_SECTION_ANCHORS
+    )
+
+    total_score = 0.0
+    if query_has_arl_remuneration_overview_intent(query):
+        if overview_chunk:
+            total_score += 3.6
+        if table_chunk:
+            total_score -= 2.1
+        if chunk.section and normalize_equivalence_text(chunk.section) in {
+            *ARL_REMUNERATION_POLICY_APPETITE_SECTION_ANCHORS,
+        }:
+            total_score -= 1.2
+        if "|" in chunk.text:
+            total_score -= 0.45
+    elif query_has_arl_remuneration_table_intent(query):
+        if table_chunk:
+            total_score += 2.6
+        if overview_chunk:
+            total_score -= 0.4
+        if "|" in chunk.text:
+            total_score += 0.75
+
+    return total_score
+
+
+def is_arl_remuneration_overview_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk is the explanatory ARL remuneration overview."""
+
+    if not is_arl_remuneration_policy_chunk(chunk):
+        return False
+    normalized_section = normalize_equivalence_text(chunk.section or "")
+    return normalized_section in ARL_REMUNERATION_POLICY_OVERVIEW_SECTION_ANCHORS
+
+
+def is_arl_remuneration_table_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to the remuneration table family."""
+
+    if not is_arl_remuneration_policy_chunk(chunk):
+        return False
+    normalized_label_surface = normalize_equivalence_text(
+        "\n".join(
+            value
+            for value in (
+                chunk.document_name,
+                chunk.section,
+                *chunk.section_path,
+            )
+            if value
+        )
+    )
+    return any(
+        anchor in normalized_label_surface
+        for anchor in ARL_REMUNERATION_POLICY_TABLE_SECTION_ANCHORS
+    )
+
+
+def build_arl_remuneration_policy_priority_key(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> tuple[float, float, float]:
+    """Return the deterministic ranking key for ARL remuneration-policy chunks."""
+
+    return (
+        score_arl_remuneration_policy_intent_alignment(chunk, query=query),
+        score_arl_remuneration_policy_overview_vs_table_priority(
+            chunk,
+            query=query,
+        ),
+        score_arl_remuneration_policy_evidence_richness(chunk),
+        chunk.score,
+    )
+
+
+def prioritize_arl_remuneration_policy_evidence(
+    ranked_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Prefer explicit ARL remuneration sections ahead of intro policy chunks."""
+
+    if top_k < 1:
+        return []
+
+    best_by_section: dict[tuple[str, ...], RetrievedChunk] = {}
+    section_order: list[tuple[str, ...]] = []
+    deferred_duplicate_chunks: list[RetrievedChunk] = []
+    remaining_chunks: list[RetrievedChunk] = []
+
+    for chunk in ranked_chunks:
+        if not is_arl_remuneration_policy_chunk(chunk):
+            remaining_chunks.append(chunk)
+            continue
+        section_id = coverage_section_identity(chunk)
+        existing_chunk = best_by_section.get(section_id)
+        if existing_chunk is None:
+            best_by_section[section_id] = chunk
+            section_order.append(section_id)
+            continue
+        candidate_key = build_arl_remuneration_policy_priority_key(chunk, query=query)
+        existing_key = build_arl_remuneration_policy_priority_key(existing_chunk, query=query)
+        if candidate_key > existing_key:
+            deferred_duplicate_chunks.append(existing_chunk)
+            best_by_section[section_id] = chunk
+            continue
+        deferred_duplicate_chunks.append(chunk)
+
+    prioritized_chunks = sorted(
+        (best_by_section[section_id] for section_id in section_order),
+        key=lambda chunk: build_arl_remuneration_policy_priority_key(chunk, query=query),
+        reverse=True,
+    )
+
+    forced_lead_chunks: list[RetrievedChunk] = []
+    if query_has_arl_remuneration_overview_intent(query):
+        overview_candidates = [
+            chunk for chunk in prioritized_chunks if is_arl_remuneration_overview_chunk(chunk)
+        ]
+        if overview_candidates:
+            forced_lead_chunks.append(
+                max(
+                    overview_candidates,
+                    key=lambda chunk: build_arl_remuneration_policy_priority_key(
+                        chunk,
+                        query=query,
+                    ),
+                )
+            )
+    elif query_has_arl_remuneration_table_intent(query):
+        table_candidates = [
+            chunk for chunk in prioritized_chunks if is_arl_remuneration_table_chunk(chunk)
+        ]
+        if table_candidates:
+            forced_lead_chunks.append(
+                max(
+                    table_candidates,
+                    key=lambda chunk: build_arl_remuneration_policy_priority_key(
+                        chunk,
+                        query=query,
+                    ),
+                )
+            )
+
+    final_chunks: list[RetrievedChunk] = []
+    seen_chunk_ids: set[str] = set()
+    for chunk in (
+        *forced_lead_chunks,
+        *prioritized_chunks,
+        *deferred_duplicate_chunks,
+        *remaining_chunks,
+    ):
+        if chunk.chunk_id in seen_chunk_ids:
+            continue
+        final_chunks.append(chunk)
+        seen_chunk_ids.add(chunk.chunk_id)
+        if len(final_chunks) >= top_k:
+            break
+    return final_chunks
+
+
+def query_has_arl_commissions_guide_intent(query: str) -> bool:
+    """Return whether one query explicitly targets the ARL commissions guide."""
+
+    normalized_query = normalize_equivalence_text(query)
+    return (
+        "arl" in normalized_query
+        and "comision" in normalized_query
+        and any(
+            phrase in normalized_query
+            for phrase in (
+                "consulto",
+                "consultar",
+                "consulta",
+                "liquidacion",
+                "liquidar",
+            )
+        )
+    )
+
+
+def is_arl_commissions_guide_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to the ARL commissions guide family."""
+
+    if chunk.product != "arl" or chunk.document_type != "guide":
+        return False
+    normalized_document_name = normalize_equivalence_text(chunk.document_name)
+    normalized_source_id = normalize_equivalence_text(chunk.source_pdf_id)
+    return (
+        "consulta liquidacion de comisiones" in normalized_document_name
+        or "instructivos-consulta-de-comisiones-arl-sura" in normalized_source_id
+    )
+
+
+def query_has_arl_account_update_guide_intent(query: str) -> bool:
+    """Return whether one query explicitly targets the ARL account-update guide."""
+
+    normalized_query = normalize_equivalence_text(query)
+    return (
+        "arl" in normalized_query
+        and "cuenta bancaria" in normalized_query
+        and any(
+            phrase in normalized_query
+            for phrase in (
+                "actualizo",
+                "actualizar",
+                "actualizacion",
+                "pago de comisiones",
+            )
+        )
+    )
+
+
+def is_arl_account_update_guide_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to the ARL account-update guide family."""
+
+    if chunk.product != "arl" or chunk.document_type != "guide":
+        return False
+    normalized_document_name = normalize_equivalence_text(chunk.document_name)
+    normalized_source_id = normalize_equivalence_text(chunk.source_pdf_id)
+    return (
+        "actualizacion de cuenta bancaria" in normalized_document_name
+        or "instructivos-actualizacion-cuenta-bancaria-v2" in normalized_source_id
+    )
+
+
+def query_has_arl_rui_normativity_intent(query: str) -> bool:
+    """Return whether one query explicitly asks for ARL/RUI normativity."""
+
+    normalized_query = normalize_equivalence_text(query)
+    return (
+        "normatividad" in normalized_query
+        and (
+            "rui" in normalized_query
+            or "registro unico" in normalized_query
+            or "intermediario" in normalized_query
+        )
+    )
+
+
+def is_arl_rui_normativity_support_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk directly supports ARL/RUI normativity answers."""
+
+    if chunk.product != "arl" or chunk.document_type != "faq":
+        return False
+    if "registro-unico-de-intermediacion-rui" not in chunk.source_pdf_id:
+        return False
+    normalized_section = normalize_equivalence_text(chunk.section or "")
+    if "cual es la normatividad que rige el registro unico de intermediarios" in (
+        normalized_section
+    ):
+        return True
+    normalized_text = normalize_equivalence_text(chunk.text)
+    matching_anchors = sum(
+        1 for anchor in ARL_RUI_NORMATIVE_ANCHORS if anchor in normalized_text
+    )
+    return matching_anchors >= 2
+
+
+def select_citation_evidence_chunks(
+    retrieved_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+) -> list[RetrievedChunk]:
+    """Return the narrower citation/doc-basis subset for one answer query."""
+
+    citation_chunks = list(retrieved_chunks)
+    if query_has_arl_account_update_guide_intent(query):
+        direct_account_update_chunks = [
+            chunk for chunk in citation_chunks if is_arl_account_update_guide_chunk(chunk)
+        ]
+        if direct_account_update_chunks:
+            return direct_account_update_chunks
+    if query_has_arl_commissions_guide_intent(query):
+        direct_commissions_chunks = [
+            chunk for chunk in citation_chunks if is_arl_commissions_guide_chunk(chunk)
+        ]
+        if direct_commissions_chunks:
+            return direct_commissions_chunks
+    if not query_has_arl_rui_normativity_intent(query):
+        return citation_chunks
+
+    direct_normativity_chunks = [
+        chunk for chunk in citation_chunks if is_arl_rui_normativity_support_chunk(chunk)
+    ]
+    if direct_normativity_chunks:
+        return direct_normativity_chunks
+    return citation_chunks
+
+
 def infer_canonical_document_type_from_relative_path(
     source_pdf_relative_path: str,
     *,
@@ -3251,6 +3887,14 @@ def can_merge_structural_pair(
     if combined_length > chunk_size:
         return False
     if current_block.kind == "heading":
+        if (
+            current_block.section_path != next_block.section_path
+            and (
+                is_arl_rui_question_section_path(current_block.section_path)
+                or is_arl_rui_question_section_path(next_block.section_path)
+            )
+        ):
+            return False
         return True
     if current_block.kind == "clause_marker":
         return True
@@ -3453,6 +4097,46 @@ def strip_duplicate_prefixed_headings(
     return remaining_text or chunk_text
 
 
+def strip_leading_heading_scaffold_covered_by_section_path(
+    *,
+    chunk_text: str,
+    section_path: Sequence[str],
+) -> str:
+    """Drop leading heading scaffolds already represented by section_path."""
+
+    section_headings = {
+        normalize_equivalence_text(heading.strip())
+        for heading in section_path
+        if heading.strip()
+    }
+    if not section_headings:
+        return chunk_text
+
+    lines = chunk_text.splitlines()
+    leading_heading_indexes: list[int] = []
+    matched_section_heading = False
+    index = 0
+
+    while index < len(lines):
+        stripped_line = lines[index].strip()
+        if not stripped_line:
+            index += 1
+            continue
+        if not stripped_line.startswith("#"):
+            break
+        normalized_heading = normalize_equivalence_text(stripped_line.lstrip("#").strip())
+        if normalized_heading in section_headings:
+            matched_section_heading = True
+        leading_heading_indexes.append(index)
+        index += 1
+
+    if not matched_section_heading or not leading_heading_indexes:
+        return chunk_text
+
+    remainder = "\n".join(lines[index:]).lstrip("\n")
+    return remainder or chunk_text
+
+
 def collapse_consecutive_duplicate_heading_lines(chunk_text: str) -> str:
     """Collapse repeated consecutive markdown headings conservatively."""
 
@@ -3478,6 +4162,53 @@ def collapse_consecutive_duplicate_heading_lines(chunk_text: str) -> str:
     return "\n".join(collapsed_lines)
 
 
+def drop_repeated_section_path_heading_lines(
+    *,
+    chunk_text: str,
+    section_path: Sequence[str],
+) -> str:
+    """Drop repeated heading lines that duplicate already-prefixed section headings."""
+
+    normalized_section_headings = {
+        normalize_equivalence_text(heading.strip())
+        for heading in section_path
+        if heading.strip()
+    }
+    if not normalized_section_headings:
+        return chunk_text
+
+    deduplicated_lines: list[str] = []
+    seen_section_headings: set[str] = set()
+
+    for raw_line in chunk_text.splitlines():
+        stripped_line = raw_line.strip()
+        if stripped_line.startswith("#"):
+            normalized_heading = normalize_equivalence_text(stripped_line.lstrip("#").strip())
+            if (
+                normalized_heading in normalized_section_headings
+                and normalized_heading in seen_section_headings
+            ):
+                continue
+            if normalized_heading in normalized_section_headings:
+                seen_section_headings.add(normalized_heading)
+        deduplicated_lines.append(raw_line)
+
+    return "\n".join(deduplicated_lines)
+
+
+def markdown_has_non_heading_content(chunk_text: str) -> bool:
+    """Return whether one chunk surface contains substantive non-heading text."""
+
+    for raw_line in chunk_text.splitlines():
+        stripped_line = raw_line.strip()
+        if not stripped_line:
+            continue
+        if stripped_line.startswith("#"):
+            continue
+        return True
+    return False
+
+
 def ensure_chunk_text_includes_section_context(
     *,
     chunk_text: str,
@@ -3493,13 +4224,25 @@ def ensure_chunk_text_includes_section_context(
         chunk_text=chunk_text,
         section_path=section_path,
     )
+    chunk_text = strip_leading_heading_scaffold_covered_by_section_path(
+        chunk_text=chunk_text,
+        section_path=section_path,
+    )
     chunk_text = collapse_consecutive_duplicate_heading_lines(chunk_text)
 
     normalized_chunk_text = normalize_equivalence_text(chunk_text)
     normalized_prefix = normalize_equivalence_text(heading_prefix)
     if normalized_prefix and normalized_prefix in normalized_chunk_text:
-        return chunk_text
-    return collapse_consecutive_duplicate_heading_lines(f"{heading_prefix}\n\n{chunk_text}")
+        return drop_repeated_section_path_heading_lines(
+            chunk_text=chunk_text,
+            section_path=section_path,
+        )
+    return drop_repeated_section_path_heading_lines(
+        chunk_text=collapse_consecutive_duplicate_heading_lines(
+            f"{heading_prefix}\n\n{chunk_text}"
+        ),
+        section_path=section_path,
+    )
 
 
 def is_pv_applicability_section_path(section_path: Sequence[str]) -> bool:
@@ -3512,12 +4255,27 @@ def is_pv_applicability_section_path(section_path: Sequence[str]) -> bool:
     )
 
 
+def is_arl_rui_question_section_path(section_path: Sequence[str]) -> bool:
+    """Return whether one section path points to an explicit ARL/RUI FAQ question."""
+
+    return (
+        len(section_path) >= 2
+        and normalize_equivalence_text(section_path[0])
+        == "preguntas frecuentes registro unico de intermediacion - rui"
+        and ARL_RUI_FAQ_QUESTION_PATTERN.match(section_path[-1]) is not None
+    )
+
+
 def should_disable_chunk_overlap_for_entries(entries: Sequence[MarkdownBlock]) -> bool:
     """Disable overlap for narrow applicability-heavy PV chunks."""
 
     if not entries:
         return False
-    return all(is_pv_applicability_section_path(entry.section_path) for entry in entries)
+    return all(
+        is_pv_applicability_section_path(entry.section_path)
+        or is_arl_rui_question_section_path(entry.section_path)
+        for entry in entries
+    )
 
 
 def is_standalone_pv_applicability_chunk(chunk_record: ChunkRecord) -> bool:
@@ -3628,25 +4386,29 @@ def build_chunk_records(
             chunk_text=chunk_text,
             section_path=chunk_section_path,
         )
-        chunk_records.append(
-            ChunkRecord(
-                chunk_id=f"{source_pdf_id}:{CHUNK_SCHEMA_VERSION}:{chunk_index:04d}",
-                source_pdf_id=source_pdf_id,
-                document_name=document_name,
-                document_version=document_version,
-                document_type=document_type,
-                product=product,
-                source_pdf_path=str(source_pdf_path),
-                source_pdf_relative_path=source_pdf_relative_path.as_posix(),
-                cleaned_markdown_output_path=str(cleaned_markdown_output_path),
-                text=chunk_text,
-                chunk_index=chunk_index,
-                chunk_schema_version=CHUNK_SCHEMA_VERSION,
-                section=chunk_section,
-                section_path=chunk_section_path,
+        if not markdown_has_non_heading_content(chunk_text):
+            if end_index >= len(blocks):
+                break
+        else:
+            chunk_records.append(
+                ChunkRecord(
+                    chunk_id=f"{source_pdf_id}:{CHUNK_SCHEMA_VERSION}:{chunk_index:04d}",
+                    source_pdf_id=source_pdf_id,
+                    document_name=document_name,
+                    document_version=document_version,
+                    document_type=document_type,
+                    product=product,
+                    source_pdf_path=str(source_pdf_path),
+                    source_pdf_relative_path=source_pdf_relative_path.as_posix(),
+                    cleaned_markdown_output_path=str(cleaned_markdown_output_path),
+                    text=chunk_text,
+                    chunk_index=chunk_index,
+                    chunk_schema_version=CHUNK_SCHEMA_VERSION,
+                    section=chunk_section,
+                    section_path=chunk_section_path,
+                )
             )
-        )
-        chunk_index += 1
+            chunk_index += 1
 
         if end_index >= len(blocks):
             break
@@ -4447,7 +5209,11 @@ def generate_grounded_answer(
             )
             return result
 
-        citations = build_citations_from_chunks(answer_evidence_chunks)
+        citation_evidence_chunks = select_citation_evidence_chunks(
+            answer_evidence_chunks,
+            query=retrieval_query.query,
+        )
+        citations = build_citations_from_chunks(citation_evidence_chunks)
         if not citations:
             log_event(
                 RAG_LOGGER,
@@ -4484,7 +5250,7 @@ def generate_grounded_answer(
             query=retrieval_query.query,
             response=AdvisorDraftResponse(
                 suggested_answer=suggested_answer,
-                documentary_basis=build_documentary_basis(answer_evidence_chunks),
+                documentary_basis=build_documentary_basis(citation_evidence_chunks),
                 citations=citations,
                 confidence=confidence,
                 limitations=limitations,
