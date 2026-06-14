@@ -16,3 +16,6 @@ data/markdown/**
 !data/markdown/.gitkeep
 data/processed/**
 !data/processed/.gitkeep
+
+# Local codebase graph analysis artifacts
+graphify-out/
