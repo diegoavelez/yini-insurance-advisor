@@ -16,7 +16,7 @@ BATCH_EMBEDDING_MANIFEST ?= $(BATCH_PROCESSED_DIR)/embedding-generation-manifest
 BATCH_INDEX_MANIFEST ?= $(BATCH_PROCESSED_DIR)/qdrant-indexing-manifest.jsonl
 BATCH_SAMPLE_PDF ?= $(BATCH_INPUT_DIR)/MOVILIDAD/AUTOS/ayudaventas asistencia pequeños eventos.pdf
 BATCH_PDF_BACKEND ?= docling
-BATCH_DOCLING_TIMEOUT ?= 600
+BATCH_DOCLING_TIMEOUT ?= 1800
 BATCH_OVERWRITE ?= false
 
 .PHONY: setup lint test app run batch-setup batch-warmup batch-ingest batch-embeddings batch-index

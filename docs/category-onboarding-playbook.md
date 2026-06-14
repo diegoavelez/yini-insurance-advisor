@@ -147,7 +147,7 @@ Example for `BICICLETAS Y PATINETAS`:
   --overwrite false \
   --fail-fast true \
   --pdf-conversion-backend docling \
-  --docling-startup-timeout-seconds 600
+  --docling-startup-timeout-seconds 1800
 ```
 
 If you want to rerun the full incremental raw tree instead of a single

@@ -41,6 +41,18 @@ def test_classify_query_scope_supports_soat_queries() -> None:
     assert decision.scope == "supported"
 
 
+def test_classify_query_scope_supports_muevete_libre_queries() -> None:
+    decision = classify_query_scope("¿Qué cubre Muévete Libre?")
+
+    assert decision.scope == "supported"
+
+
+def test_classify_query_scope_supports_choque_simple_queries() -> None:
+    decision = classify_query_scope("¿Qué debo hacer en un choque simple?")
+
+    assert decision.scope == "supported"
+
+
 def test_classify_query_scope_keeps_non_insurance_spanish_queries_unsupported() -> None:
     decision = classify_query_scope("¿Cómo está el clima en Bogotá hoy?")
 

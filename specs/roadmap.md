@@ -1251,6 +1251,13 @@ and cite as the real Spanish document set grows.
 - `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
 - `motos-corpus-baseline-ingestion-and-retrieval`
 - `motos-plan-comparison-retrieval-alignment`
+- `movilidad-choque-simple-evidence-structuring-remediation`
+- `movilidad-choque-simple-supported-scope-and-retrieval`
+- `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
+- `muevete-libre-corpus-baseline-ingestion-and-retrieval`
+- `muevete-libre-coverage-breadth-evidence-balancing`
+- `muevete-libre-intrasection-coverage-chunk-prioritization`
+- `muevete-libre-coverage-retrieval-alignment`
 - `soat-corpus-baseline-ingestion-and-retrieval`
 - `soat-coverage-document-type-alignment`
 - `soat-coverage-evidence-prioritization-alignment`
@@ -1279,6 +1286,8 @@ completed:
 - `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
 - `motos-corpus-baseline-ingestion-and-retrieval`
 - `motos-plan-comparison-retrieval-alignment`
+- `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
+- `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `soat-corpus-baseline-ingestion-and-retrieval`
 - `soat-coverage-document-type-alignment`
 - `soat-coverage-evidence-prioritization-alignment`
@@ -1312,6 +1321,29 @@ Implementation note:
 - When curated coverage terms exactly match a chunk `section` or one item in
   its `section_path`, deterministic reranking now gives that evidence a
   stronger boost than generic label/body matches.
+- `MUEVETE LIBRE` now shares the baseline onboarding seam used by the other
+  mobility products, including canonical product normalization,
+  overlay-backed persisted metadata, and supported-scope admission.
+- `MOVILIDAD/TRANSVERSALES` now uses the same overlay-backed baseline seam,
+  but persists under shared `product=movilidad` rather than creating a new
+  product taxonomy branch.
+- `choque simple` now has a narrow supported-scope and retrieval seam over the
+  shared mobility transversal corpus.
+- `choque simple` circular evidence can now suppress header/footer boilerplate
+  and expose stronger semantic section labels than the repeated
+  `CIRCULAR EXTERNA` heading.
+- `choque simple` retrieval now also enforces the normalized
+  `product=movilidad` + `document_type=guide` scope through hybrid local
+  lexical recall, preventing `auto`/`moto` policy chunks from leaking ahead of
+  the transversal circular in live queries.
+- `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
+  `Cobertura` sections instead of adjacent generic sections when operators ask
+  what the product covers.
+- Coverage-intent reranking can also prefer breadth across distinct explicit
+  coverage sections before repeating multiple chunks from the same section.
+- When multiple chunks represent the same explicit coverage section, retrieval
+  can now prefer the more descriptive chunk over reminder-style operational
+  follow-up text.
 - Broader taxonomy inference, automatic classification, and UI filter work
   remain intentionally out of scope.
 

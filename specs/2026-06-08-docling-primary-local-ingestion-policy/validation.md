@@ -30,7 +30,7 @@ This spec is ready when the repo provides a clear local ingestion policy with:
 
 - `./.venv/bin/python -m ruff check rag/ingestion.py tests/test_ingestion.py`
 - `./.venv/bin/python -m pytest tests/test_ingestion.py -q`
-- `./.venv/bin/python -m rag.ingestion warmup-docling-assets --sample-pdf "data/raw/clausulado poliza de complicaciones esteticas.pdf" --docling-startup-timeout-seconds 300`
+- `./.venv/bin/python -m rag.ingestion warmup-docling-assets --sample-pdf "data/raw/clausulado poliza de complicaciones esteticas.pdf" --docling-startup-timeout-seconds 1800`
 - `./.venv/bin/python -m rag.ingestion ingest-pdfs --input-dir /tmp/yini-docling-check/raw --markdown-dir /tmp/yini-docling-check/markdown --processed-dir /tmp/yini-docling-check/processed --manifest-path /tmp/yini-docling-check/processed/ingestion-manifest.jsonl --overwrite true --fail-fast true`
 
 ## Notes

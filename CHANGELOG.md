@@ -2,6 +2,9 @@
 
 ## 2026-06-13
 
+- Add the `MUEVETE LIBRE` and `MOVILIDAD/TRANSVERSALES` mobility slices by onboarding both corpora into the shared `movilidad` taxonomy, extending supported-scope and term-equivalence normalization for `choque simple`, and documenting the new roadmap/spec bundles.
+- Add the follow-on `choque simple` corrective retrieval and evidence-structuring slices by routing those queries toward transversal `guide` evidence, suppressing circular-specific boilerplate, promoting stronger semantic sections, and enforcing the normalized `movilidad + guide` scope through hybrid local lexical recall so live retrieval no longer leaks `auto`/`moto` policy chunks ahead of the transversal circular.
+- Add the follow-on `MUEVETE LIBRE` quality slices by biasing coverage-intent retrieval toward explicit policy coverage sections, balancing breadth across distinct coverage sections, and preferring richer intra-section evidence over reminder-style chunks.
 - Add the `MOVILIDAD/SOAT` baseline corpus slice by curating overlay metadata for `clausulado soat.pdf` and `tarifas soat 2026.pdf`, extending canonical `soat` query/filter normalization and supported-scope admission, and validating local ingestion plus real embeddings/Qdrant retrieval for the new category.
 - Add the first `SOAT` corrective retrieval slice by introducing narrow operator-curated intent-to-`document_type` alignment so coverage questions default toward `policy` evidence while tariff questions default toward `guide` evidence without overriding explicit caller filters.
 - Add the follow-on `SOAT` quality slice by strengthening deterministic reranking for the summary heading `SECCIÓN I ¿Qué cubre este seguro?`, so real coverage retrieval now prioritizes the clausulado summary block and grounded answers lead with the complete coverage list instead of lateral detail chunks.

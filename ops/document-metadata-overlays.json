@@ -64,6 +64,10 @@
       "document_type": "guide",
       "product": "moto"
     },
+    "movilidad__muevete-libre__clausulado-muevete-libre-v2": {
+      "document_type": "policy",
+      "product": "muevete libre"
+    },
     "movilidad__soat__clausulado-soat": {
       "document_type": "policy",
       "product": "soat"
@@ -71,6 +75,50 @@
     "movilidad__soat__tarifas-soat-2026": {
       "document_type": "guide",
       "product": "soat"
+    },
+    "movilidad__transversales__ayudaventas-utilitarios-y-pesados-v2": {
+      "document_type": "guide",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__circular-choque-simple": {
+      "document_type": "guide",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__clausulado-plan-utilitarios-y-pesados": {
+      "document_type": "policy",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__como-tomar-fotos-choque-simple-v2": {
+      "document_type": "guide",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__instructivo-financiacion-de-polizas-v1": {
+      "document_type": "guide",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__ley-2251-de-2022-choque-simple": {
+      "document_type": "guide",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__politicas-de-suscripcion-de-movilidad": {
+      "document_type": "policy",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__proceso-atencion-choque-simple-v2": {
+      "document_type": "guide",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__proceso-recobro-choque-simple-v2": {
+      "document_type": "guide",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__pv-planes-movilidad-v1": {
+      "document_type": "guide",
+      "product": "movilidad"
+    },
+    "movilidad__transversales__pv-portafolio-movilidad-v2": {
+      "document_type": "guide",
+      "product": "movilidad"
     }
   }
 }

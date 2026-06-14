@@ -139,6 +139,41 @@ def test_normalize_retrieval_query_applies_soat_coverage_document_type_rule() ->
     assert normalized_query.filters.document_type == "policy"
 
 
+def test_normalize_retrieval_query_applies_muevete_libre_coverage_document_type_rule() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(query="¿Qué cubre Muévete Libre?", filters={"product": "muevete libre"}),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["muevete libre"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    filters={"document_type": "policy"},
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "muevete libre"
+    assert normalized_query.filters.document_type == "policy"
+
+
+def test_normalize_retrieval_query_applies_choque_simple_defaults() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(query="¿Qué debo hacer en un choque simple?"),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["choque simple"],
+                    filters={"product": "movilidad", "document_type": "guide"},
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "guide"
+
+
 def test_normalize_retrieval_query_does_not_override_explicit_document_type_filter() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(
@@ -1233,6 +1268,413 @@ def test_retrieve_ranked_chunks_prioritizes_exact_soat_coverage_section_match(
     assert result.chunks[0].section == "SECCIÓN I ¿Qué cubre este seguro?"
 
 
+def test_retrieve_ranked_chunks_prioritizes_muevete_libre_coverage_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "muevete:v2:0163",
+                    "source_pdf_id": "muevete",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 163,
+                    "text": "SECCIÓN 6 Glosario. Asistencia y líneas de contacto.",
+                    "document_name": "PLAN MUÉVETE LIBRE",
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "muevete libre",
+                    "section": "SECCIÓN 6 Glosario",
+                    "section_path": ["PLAN MUÉVETE LIBRE", "SECCIÓN 6 Glosario"],
+                },
+                score=0.90,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["muevete libre"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    filters={"document_type": "policy"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["muevete libre"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    append_terms=[
+                        "sección 1 coberturas principales",
+                        "daños a terceros",
+                        "cobertura a la moto",
+                        "gastos médicos por accidentes",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="muevete:v2:0003",
+                source_pdf_id="muevete",
+                document_name="PLAN MUÉVETE LIBRE",
+                document_version=None,
+                document_type="policy",
+                product="muevete libre",
+                source_pdf_path="data/raw/MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf",
+                source_pdf_relative_path="MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf",
+                cleaned_markdown_output_path="data/processed/muevete.cleaned.md",
+                text=(
+                    "1.1. Cobertura. Si le haces daño a otro o a sus cosas durante tu "
+                    "desplazamiento, SURA pagará los perjuicios patrimoniales y extrapatrimoniales."
+                ),
+                chunk_index=3,
+                chunk_schema_version="v2",
+                section="1.1. Cobertura",
+                section_path=["PLAN MUÉVETE LIBRE", "1.1. Cobertura"],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué cubre Muévete Libre?",
+            filters={"product": "muevete libre"},
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].chunk_id == "muevete:v2:0003"
+    assert result.chunks[0].section == "1.1. Cobertura"
+
+
+def test_retrieve_ranked_chunks_balances_distinct_muevete_libre_coverage_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "muevete:v2:0025",
+                    "source_pdf_id": "muevete",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 25,
+                    "text": "4.1. Cobertura. Recordatorio operativo de gastos médicos.",
+                    "document_name": "PLAN MUÉVETE LIBRE",
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "muevete libre",
+                    "section": "4.1. Cobertura",
+                    "section_path": ["PLAN MUÉVETE LIBRE", "4.1. Cobertura"],
+                },
+                score=0.98,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "muevete:v2:0023",
+                    "source_pdf_id": "muevete",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 23,
+                    "text": "4.1. Cobertura. Gastos médicos por accidentes.",
+                    "document_name": "PLAN MUÉVETE LIBRE",
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "muevete libre",
+                    "section": "4.1. Cobertura",
+                    "section_path": ["PLAN MUÉVETE LIBRE", "4.1. Cobertura"],
+                },
+                score=0.97,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "muevete:v2:0009",
+                    "source_pdf_id": "muevete",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 9,
+                    "text": "2.1. Cobertura. Gastos de defensa judicial.",
+                    "document_name": "PLAN MUÉVETE LIBRE",
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "muevete libre",
+                    "section": "2.1. Cobertura",
+                    "section_path": ["PLAN MUÉVETE LIBRE", "2.1. Cobertura"],
+                },
+                score=0.92,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["muevete libre"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    filters={"document_type": "policy"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["muevete libre"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    append_terms=["4.1 cobertura", "2.1 cobertura"],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué cubre Muévete Libre?",
+            filters={"product": "muevete libre"},
+            top_k=3,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.section for chunk in result.chunks[:2]] == [
+        "2.1. Cobertura",
+        "4.1. Cobertura",
+    ]
+
+
+def test_retrieve_ranked_chunks_prefers_descriptive_chunk_within_same_coverage_section(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "muevete:v2:0025",
+                    "source_pdf_id": "muevete",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 25,
+                    "text": (
+                        "4.1. Cobertura. Recuerda que para activar las coberturas de "
+                        "este producto, deberás previamente comunicarte con nosotros."
+                    ),
+                    "document_name": "PLAN MUÉVETE LIBRE",
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "muevete libre",
+                    "section": "4.1. Cobertura",
+                    "section_path": ["PLAN MUÉVETE LIBRE", "4.1. Cobertura"],
+                },
+                score=0.99,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "muevete:v2:0023",
+                    "source_pdf_id": "muevete",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 23,
+                    "text": (
+                        "4.1. Cobertura. Si como consecuencia de un accidente, "
+                        "requieres alguno de los siguientes servicios médicos, "
+                        "SURA coordinará y pagará los gastos."
+                    ),
+                    "document_name": "PLAN MUÉVETE LIBRE",
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "muevete libre",
+                    "section": "4.1. Cobertura",
+                    "section_path": ["PLAN MUÉVETE LIBRE", "4.1. Cobertura"],
+                },
+                score=0.95,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["muevete libre"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    filters={"document_type": "policy"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["muevete libre"],
+                    any_of=["qué cubre", "cubre", "cobertura"],
+                    append_terms=["4.1 cobertura", "gastos médicos por accidentes"],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué cubre Muévete Libre?",
+            filters={"product": "muevete libre"},
+            top_k=1,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].chunk_id == "muevete:v2:0023"
+
+
+def test_retrieve_ranked_chunks_prioritizes_choque_simple_transversal_guidance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "auto:v2:0001",
+                    "source_pdf_id": "auto",
+                    "source_pdf_relative_path": "MOVILIDAD/AUTOS/faq.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 1,
+                    "text": "Asistencia para accidentes y acompañamiento general en movilidad.",
+                    "document_name": "Preguntas frecuentes autos",
+                    "document_version": None,
+                    "document_type": "faq",
+                    "product": "auto",
+                    "section": "Accidentes",
+                    "section_path": ["Preguntas frecuentes autos", "Accidentes"],
+                },
+                score=0.72,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "choque:v2:0009",
+                    "source_pdf_id": "choque",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/circular choque simple.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 9,
+                    "text": (
+                        "Los conductores deben retirar inmediatamente los vehículos "
+                        "colisionados y acudir a centros de conciliación."
+                    ),
+                    "document_name": "CIRCULAR EXTERNA",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "CIRCULAR EXTERNA",
+                    "section_path": ["CIRCULAR EXTERNA", "CIRCULAR EXTERNA"],
+                },
+                score=0.70,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["choque simple"],
+                    filters={"product": "movilidad", "document_type": "guide"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["choque simple"],
+                    append_terms=[
+                        "artículo 16 ley 2251 de 2022",
+                        "retirar inmediatamente los vehículos",
+                        "recaudar pruebas",
+                        "centros de conciliación",
+                        "informe policial de accidente de tránsito",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(query="¿Qué debo hacer en un choque simple?", top_k=2),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].chunk_id == "choque:v2:0009"
+    assert result.chunks[0].product == "movilidad"
+    assert result.chunks[0].document_type == "guide"
+
+
 def test_retrieve_ranked_chunks_adds_local_lexical_candidates_for_comparison_queries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1483,6 +1925,87 @@ def test_retrieve_ranked_chunks_applies_operator_term_equivalences_to_filters(
     assert len(query_filter.must) == 1
     assert query_filter.must[0].key == "product"
     assert query_filter.must[0].match.value == "auto"
+
+
+def test_retrieve_ranked_chunks_applies_normalized_filters_to_local_lexical_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["choque simple"],
+                    filters={"product": "movilidad", "document_type": "guide"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["choque simple"],
+                    append_terms=["retirar inmediatamente los vehículos"],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="auto:v2:0001",
+                source_pdf_id="auto",
+                document_name="SEGURO DE AUTOS",
+                document_version=None,
+                document_type="policy",
+                product="auto",
+                source_pdf_path="data/raw/MOVILIDAD/AUTOS/clausulado.pdf",
+                source_pdf_relative_path="MOVILIDAD/AUTOS/clausulado.pdf",
+                cleaned_markdown_output_path="data/processed/auto.cleaned.md",
+                text="En caso de choque simple debes tomar fotos.",
+                chunk_index=1,
+                chunk_schema_version="v2",
+                section="Obligaciones en caso de siniestro",
+                section_path=["SEGURO DE AUTOS", "Obligaciones en caso de siniestro"],
+            ),
+            ChunkRecord(
+                chunk_id="movilidad:v2:0009",
+                source_pdf_id="movilidad",
+                document_name="CIRCULAR EXTERNA",
+                document_version=None,
+                document_type="guide",
+                product="movilidad",
+                source_pdf_path="data/raw/MOVILIDAD/TRANSVERSALES/circular choque simple.pdf",
+                source_pdf_relative_path="MOVILIDAD/TRANSVERSALES/circular choque simple.pdf",
+                cleaned_markdown_output_path="data/processed/movilidad.cleaned.md",
+                text="Los conductores deben retirar inmediatamente los vehículos.",
+                chunk_index=9,
+                chunk_schema_version="v2",
+                section="INSTRUCCIONES OPERATIVAS CHOQUE SIMPLE",
+                section_path=[
+                    "CIRCULAR EXTERNA",
+                    "INSTRUCCIONES OPERATIVAS CHOQUE SIMPLE",
+                ],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(query="¿Qué debo hacer en un choque simple?", top_k=2),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.chunk_id for chunk in result.chunks] == ["movilidad:v2:0009"]
 
 
 def test_retrieve_cli_prints_typed_result(

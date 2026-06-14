@@ -27,7 +27,7 @@ artifacts.
 
 - `./.venv/bin/python -m ruff check contracts/ingestion.py contracts/documents.py rag/ingestion.py tests/test_ingestion.py tests/test_embedding_generation.py`
 - `./.venv/bin/python -m pytest tests/test_ingestion.py tests/test_embedding_generation.py -q`
-- `./.venv/bin/python -m rag.ingestion ingest-pdfs --input-dir data/raw --markdown-dir /tmp/yini-recursive-check-clean/markdown --processed-dir /tmp/yini-recursive-check-clean/processed --manifest-path /tmp/yini-recursive-check-clean/processed/ingestion-manifest.jsonl --overwrite true --fail-fast true --pdf-conversion-backend docling --docling-startup-timeout-seconds 300`
+- `./.venv/bin/python -m rag.ingestion ingest-pdfs --input-dir data/raw --markdown-dir /tmp/yini-recursive-check-clean/markdown --processed-dir /tmp/yini-recursive-check-clean/processed --manifest-path /tmp/yini-recursive-check-clean/processed/ingestion-manifest.jsonl --overwrite true --fail-fast true --pdf-conversion-backend docling --docling-startup-timeout-seconds 1800`
 
 ## Recorded Outcome
 

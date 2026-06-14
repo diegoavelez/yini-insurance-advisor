@@ -65,6 +65,43 @@ SEMANTIC_SECTION_LABELS = (
     "generalidades",
     "expedición requisitos",
     "deducible",
+    "asunto choque simple",
+    "artículo 16 — daños materiales",
+    "informe policial y recaudo probatorio",
+    "instrucciones operativas choque simple",
+)
+QUERY_COVERAGE_INTENT_PHRASES = (
+    "qué cubre",
+    "que cubre",
+    "cubre",
+    "cobertura",
+    "ampara",
+    "amparo",
+)
+EXPLICIT_COVERAGE_SECTION_PATTERN = re.compile(
+    r"^(?:\d+(?:\.\d+)*\.?\s*)?cobertura(?:\s+\S.*)?$",
+    re.IGNORECASE,
+)
+LEADING_SECTION_NUMBER_PATTERN = re.compile(r"^(\d+(?:\.\d+)*)")
+CHOQUE_SIMPLE_BOILERPLATE_PATTERNS = (
+    "documentofirmadodigitalmenteporelministeriodetransporte",
+    "www.mintransporte.gov.co",
+    "powered by tcpdf",
+)
+DESCRIPTIVE_COVERAGE_OPENERS = (
+    "si como consecuencia",
+    "si le haces daño",
+    "si contrataste la cobertura",
+    "sura te pagará",
+    "sura coordinará y pagará",
+)
+OPERATIONAL_COVERAGE_OPENERS = (
+    "recuerda que",
+    "en caso de no hacerlo",
+    "cuando elijas el valor asegurado",
+    "en caso de sufrir",
+    "solo podrás reclamar",
+    "debes realizar",
 )
 EMBEDDING_SCHEMA_VERSION = "v1"
 SUPPORTED_EMBEDDING_PROVIDER = "sentence-transformers"
@@ -74,7 +111,7 @@ DEFAULT_QDRANT_INDEXING_MANIFEST = "data/processed/qdrant-indexing-manifest.json
 DEFAULT_TERM_EQUIVALENCE_PATH = "ops/term-equivalences.json"
 DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
-DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 300.0
+DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 1800.0
 QDRANT_POINT_ID_NAMESPACE = uuid.UUID("8c39ce79-53d7-47e5-baad-95c5f1548599")
 QDRANT_FILTERABLE_PAYLOAD_FIELDS = ("document_type", "product")
 MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
@@ -727,6 +764,10 @@ def rerank_chunks_for_query_expansion_rules(
 
     reranked_candidates: list[tuple[float, int, RetrievedChunk]] = []
     deductible_intent = query_contains_equivalent_phrase(query, "deducible")
+    coverage_intent = any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in QUERY_COVERAGE_INTENT_PHRASES
+    )
     for index, chunk in enumerate(chunks):
         score_bonus = 0.0
         section_labels = [
@@ -763,6 +804,8 @@ def rerank_chunks_for_query_expansion_rules(
                     score_bonus += 0.04
         if deductible_intent and query_contains_equivalent_phrase(label_surface, "deducible"):
             score_bonus += 0.35
+        if coverage_intent and label_surface_has_explicit_coverage_section(label_surface):
+            score_bonus += 0.30
         reranked_candidates.append(
             (
                 chunk.score + score_bonus,
@@ -772,7 +815,10 @@ def rerank_chunks_for_query_expansion_rules(
         )
 
     reranked_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    return [candidate[2] for candidate in reranked_candidates[:top_k]]
+    ranked_chunks = [candidate[2] for candidate in reranked_candidates]
+    if coverage_intent:
+        return diversify_explicit_coverage_sections(ranked_chunks, top_k=top_k)
+    return ranked_chunks[:top_k]
 
 
 def tokenize_lexical_surface(value: str) -> set[str]:
@@ -889,10 +935,16 @@ def score_chunk_record_for_hybrid_recall(
     label_tokens = tokenize_lexical_surface(label_surface)
     body_tokens = tokenize_lexical_surface(body_surface)
     deductible_intent = query_contains_equivalent_phrase(query, "deducible")
+    coverage_intent = any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in QUERY_COVERAGE_INTENT_PHRASES
+    )
 
     total_score = 0.0
     if deductible_intent and query_contains_equivalent_phrase(label_surface, "deducible"):
         total_score += 2.0
+    if coverage_intent and label_surface_has_explicit_coverage_section(label_surface):
+        total_score += 1.75
     for term in lexical_terms:
         normalized_term = normalize_equivalence_text(term)
         if not normalized_term:
@@ -1056,6 +1108,126 @@ def infer_canonical_product_from_relative_path(
         if canonical_product == "auto" and "autos" in path_segments:
             return canonical_product
     return None
+
+
+def label_surface_has_explicit_coverage_section(label_surface: str) -> bool:
+    """Return whether one label surface contains an explicit coverage heading."""
+
+    for raw_line in label_surface.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        normalized_line = normalize_equivalence_text(line)
+        if normalized_line in {"coberturas principales", "coberturas opcionales"}:
+            return True
+        if EXPLICIT_COVERAGE_SECTION_PATTERN.match(line):
+            return True
+    return False
+
+
+def build_section_sort_key(section: str | None) -> tuple[int, ...]:
+    """Return a deterministic numeric-first ordering key for one section label."""
+
+    if not section:
+        return (9999,)
+    match = LEADING_SECTION_NUMBER_PATTERN.match(section.strip())
+    if match is None:
+        return (9999,)
+    return tuple(int(part) for part in match.group(1).split("."))
+
+
+def coverage_section_identity(chunk: RetrievedChunk) -> tuple[str, ...]:
+    """Return a stable identity for coverage-section diversification."""
+
+    if chunk.section_path:
+        return tuple(chunk.section_path)
+    if chunk.section:
+        return (chunk.section,)
+    return (chunk.chunk_id,)
+
+
+def score_explicit_coverage_chunk_descriptiveness(chunk: RetrievedChunk) -> float:
+    """Return a local preference score for descriptive coverage chunks."""
+
+    normalized_text = normalize_equivalence_text(chunk.text)
+    total_score = 0.0
+    for opener in DESCRIPTIVE_COVERAGE_OPENERS:
+        if opener in normalized_text:
+            total_score += 2.0
+    for opener in OPERATIONAL_COVERAGE_OPENERS:
+        if opener in normalized_text:
+            total_score -= 1.25
+    if "## " in chunk.text:
+        total_score += 0.25
+    return total_score
+
+
+def diversify_explicit_coverage_sections(
+    ranked_chunks: Sequence[RetrievedChunk],
+    *,
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Prefer breadth across explicit coverage sections before duplicates."""
+
+    if top_k < 1:
+        return []
+
+    best_by_section: dict[tuple[str, ...], RetrievedChunk] = {}
+    section_order: list[tuple[str, ...]] = []
+    remaining_chunks: list[RetrievedChunk] = []
+
+    for chunk in ranked_chunks:
+        label_surface = "\n".join(
+            value
+            for value in (
+                chunk.document_name,
+                chunk.section,
+                *chunk.section_path,
+            )
+            if value
+        )
+        if not label_surface_has_explicit_coverage_section(label_surface):
+            remaining_chunks.append(chunk)
+            continue
+        section_id = coverage_section_identity(chunk)
+        existing_chunk = best_by_section.get(section_id)
+        if existing_chunk is None:
+            best_by_section[section_id] = chunk
+            section_order.append(section_id)
+            continue
+        candidate_key = (
+            score_explicit_coverage_chunk_descriptiveness(chunk),
+            chunk.score,
+        )
+        existing_key = (
+            score_explicit_coverage_chunk_descriptiveness(existing_chunk),
+            existing_chunk.score,
+        )
+        if candidate_key > existing_key:
+            remaining_chunks.append(existing_chunk)
+            best_by_section[section_id] = chunk
+            continue
+        remaining_chunks.append(chunk)
+
+    prioritized_coverage_chunks = sorted(
+        (best_by_section[section_id] for section_id in section_order),
+        key=lambda chunk: (
+            build_section_sort_key(chunk.section),
+            -score_explicit_coverage_chunk_descriptiveness(chunk),
+            -chunk.score,
+        ),
+    )
+
+    final_chunks: list[RetrievedChunk] = []
+    seen_chunk_ids: set[str] = set()
+    for chunk in (*prioritized_coverage_chunks, *ranked_chunks, *remaining_chunks):
+        if chunk.chunk_id in seen_chunk_ids:
+            continue
+        final_chunks.append(chunk)
+        seen_chunk_ids.add(chunk.chunk_id)
+        if len(final_chunks) >= top_k:
+            break
+    return final_chunks
 
 
 def infer_canonical_document_type_from_relative_path(
@@ -1576,11 +1748,76 @@ def normalize_deductible_block(block_text: str) -> str:
     return "DEDUCIBLE\n" + "\n".join(statements)
 
 
+def normalize_choque_simple_circular_block(block_text: str) -> str:
+    """Rewrite choque-simple circular blocks into more semantic evidence sections."""
+
+    raw_lines = [line.strip() for line in block_text.splitlines() if line.strip()]
+    if not raw_lines:
+        return block_text
+
+    content_lines = [
+        line
+        for line in raw_lines
+        if not any(
+            pattern in normalize_equivalence_text(line)
+            for pattern in CHOQUE_SIMPLE_BOILERPLATE_PATTERNS
+        )
+        and normalize_equivalence_text(line)
+        not in {"circular externa", "bogota d.c.", "*20224000000057*"}
+        and not re.fullmatch(r"\d{2}-\d{2}-\d{4}", line)
+        and not re.fullmatch(r"\d{11,}", line)
+    ]
+    if not content_lines:
+        return ""
+
+    normalized_block = "\n".join(content_lines)
+    normalized_surface = normalize_equivalence_text(normalized_block)
+
+    if normalized_surface in {"para:", "de:"}:
+        return ""
+    if normalized_surface.startswith("gobernadores alcaldes organismos de transito"):
+        return ""
+    if (
+        "director de transporte y transito" in normalized_surface
+        and len(normalized_surface) < 120
+    ):
+        return ""
+    if normalized_surface == "asunto:":
+        return "ASUNTO CHOQUE SIMPLE"
+
+    if (
+        "articulo 16 de la ley 2251 de 2022" in normalized_surface
+        and (
+            "asunto:" in normalized_surface
+            or "instrucciones para el cumplimiento del articulo 16" in normalized_surface
+        )
+    ):
+        return "ASUNTO CHOQUE SIMPLE\n" + normalized_block
+    if (
+        "articulo 16." in normalized_surface
+        or "articulo 143. danos materiales" in normalized_surface
+    ):
+        return "ARTÍCULO 16 — DAÑOS MATERIALES\n" + normalized_block
+    if (
+        "no tendran que elaborar el informe policial" in normalized_surface
+        or "material probatorio recaudado" in normalized_surface
+    ):
+        return "INFORME POLICIAL Y RECAUDO PROBATORIO\n" + normalized_block
+    if (
+        "retirar inmediatamente los vehiculos" in normalized_surface
+        or "centros de conciliacion" in normalized_surface
+        or "1. en los accidentes de transito" in normalized_surface
+    ):
+        return "INSTRUCCIONES OPERATIVAS CHOQUE SIMPLE\n" + normalized_block
+    return normalized_block
+
+
 def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
     """Split cleaned markdown into deterministic text blocks with structural context."""
 
     heading_stack: list[str] = []
     blocks: list[MarkdownBlock] = []
+    replaceable_semantic_headings = {"circular externa", "bogota d.c."}
 
     for raw_block in cleaned_markdown_text.strip().split("\n\n"):
         block = raw_block.strip()
@@ -1594,6 +1831,12 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
                 while len(heading_stack) >= level:
                     heading_stack.pop()
                 heading_stack.append(heading_text)
+            if (
+                heading_text
+                and len(block.splitlines()) == 1
+                and normalize_equivalence_text(heading_text) in replaceable_semantic_headings
+            ):
+                continue
             if is_page_heading_text(heading_text):
                 continue
         else:
@@ -1601,11 +1844,21 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
             block = normalize_diagrammatic_coverage_block(block)
             block = normalize_expedition_requirements_block(block)
             block = normalize_deductible_block(block)
+            block = normalize_choque_simple_circular_block(block)
+            if not block:
+                continue
         semantic_section = find_semantic_section_label(block)
         if semantic_section and normalize_equivalence_text(block) == normalize_equivalence_text(
             semantic_section
         ):
-            if heading_stack and is_page_heading_text(heading_stack[-1]):
+            if (
+                heading_stack
+                and (
+                    is_page_heading_text(heading_stack[-1])
+                    or normalize_equivalence_text(heading_stack[-1])
+                    in replaceable_semantic_headings
+                )
+            ):
                 heading_stack[-1] = semantic_section
             elif not heading_stack or heading_stack[-1] != semantic_section:
                 heading_stack.append(semantic_section)
@@ -1616,7 +1869,11 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
         if (
             semantic_section
             and effective_section_path
-            and is_page_heading_text(effective_section_path[-1])
+            and (
+                is_page_heading_text(effective_section_path[-1])
+                or normalize_equivalence_text(effective_section_path[-1])
+                in replaceable_semantic_headings
+            )
         ):
             effective_section_path = (*effective_section_path[:-1], semantic_section)
         section = effective_section_path[-1] if effective_section_path else None
@@ -2317,7 +2574,7 @@ def retrieve_ranked_chunks(
         retrieved_chunks = merge_hybrid_retrieval_candidates(
             retrieved_chunks,
             retrieve_local_lexical_candidates(
-                retrieval_query,
+                normalized_retrieval_query,
                 term_equivalences=term_equivalences,
                 matched_expansion_rules=matched_expansion_rules,
                 candidate_limit=candidate_pool_limit,

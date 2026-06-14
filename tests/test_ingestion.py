@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 from pathlib import Path
 
@@ -56,7 +57,7 @@ def test_parser_builds_canonical_ingest_command() -> None:
     assert args.overwrite is True
     assert args.fail_fast is False
     assert args.pdf_conversion_backend == "docling"
-    assert args.docling_startup_timeout_seconds == 300.0
+    assert args.docling_startup_timeout_seconds == 1800.0
 
 
 @pytest.mark.parametrize(
@@ -142,7 +143,7 @@ def test_parser_builds_docling_warmup_command() -> None:
 
     assert args.command == "warmup-docling-assets"
     assert args.sample_pdf == "data/raw/sample.pdf"
-    assert args.docling_startup_timeout_seconds == 300.0
+    assert args.docling_startup_timeout_seconds == 1800.0
 
 
 def test_docling_smoke_check_reflects_importability() -> None:
@@ -514,6 +515,40 @@ def test_split_markdown_blocks_normalizes_deductible_linear_grid() -> None:
     )
 
 
+def test_split_markdown_blocks_normalizes_choque_simple_circular_sections() -> None:
+    blocks = split_markdown_blocks(
+        "# CIRCULAR EXTERNA\n\n"
+        "DocumentofirmadodigitalmenteporelMinisteriodeTransporte\n"
+        "www.mintransporte.gov.co\n\n"
+        "CIRCULAR EXTERNA\n"
+        "29-09-2022\n"
+        "ASUNTO:\n"
+        "Instrucciones para el cumplimiento del Artículo 16 de la Ley 2251 de 2022.\n\n"
+        "\" Artículo 16. El artículo 143 de la Ley 769 de 2002 quedará así:\n"
+        "'Artículo 143. Daños materiales.\n\n"
+        "Los conductores deben retirar inmediatamente los vehículos colisionados\n"
+        "y acudir a los centros de conciliación.\n\n"
+        "No tendrán que elaborar el informe policial de accidentes de tránsito.\n\n"
+        "1. En los accidentes de tránsito donde solo se causen daños materiales,\n"
+        "los conductores deben retirar inmediatamente los vehículos.\n"
+    )
+
+    sections = [block.section for block in blocks]
+
+    assert "CIRCULAR EXTERNA" not in sections
+    assert sections == [
+        "ASUNTO CHOQUE SIMPLE",
+        "ARTÍCULO 16 — DAÑOS MATERIALES",
+        "INSTRUCCIONES OPERATIVAS CHOQUE SIMPLE",
+        "INFORME POLICIAL Y RECAUDO PROBATORIO",
+        "INSTRUCCIONES OPERATIVAS CHOQUE SIMPLE",
+    ]
+    assert "Artículo 16 de la Ley 2251 de 2022" in blocks[0].text
+    assert "Artículo 143. Daños materiales." in blocks[1].text
+    assert "retirar inmediatamente los vehículos" in blocks[2].text
+    assert "informe policial de accidentes de tránsito" in blocks[3].text
+
+
 def test_cli_fails_when_input_directory_is_missing(tmp_path, capsys) -> None:
     exit_code = main(
         [
@@ -580,7 +615,7 @@ def test_convert_pdf_to_markdown_falls_back_to_pdfium_when_docling_times_out(
     rendered = convert_pdf_to_markdown_with_backend(
         Path("policy-a.pdf"),
         backend="auto",
-        docling_startup_timeout_seconds=300.0,
+        docling_startup_timeout_seconds=1800.0,
     )
 
     assert rendered == "# fallback markdown\n"
@@ -604,7 +639,7 @@ def test_convert_pdf_to_markdown_docling_backend_falls_back_to_pdfium_on_timeout
     rendered = convert_pdf_to_markdown_with_backend(
         Path("policy-a.pdf"),
         backend="docling",
-        docling_startup_timeout_seconds=300.0,
+        docling_startup_timeout_seconds=1800.0,
     )
 
     assert rendered == "# fallback markdown\n"
@@ -625,7 +660,7 @@ def test_convert_pdf_to_markdown_docling_backend_still_fails_for_non_timeout_doc
         convert_pdf_to_markdown_with_backend(
             Path("policy-a.pdf"),
             backend="docling",
-            docling_startup_timeout_seconds=300.0,
+            docling_startup_timeout_seconds=1800.0,
         )
 
 
@@ -1121,6 +1156,118 @@ def test_ingestion_infers_product_for_soat_source_path(
 
     assert exit_code == 0
     assert processed_document.product == "soat"
+    assert processed_document.document_type == "policy"
+
+
+def test_ingestion_infers_product_for_muevete_libre_source_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_pdf = input_dir / "MOVILIDAD" / "MUEVETE LIBRE" / "clausulado muevete libre v2.pdf"
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    processed_output = processed_dir / "movilidad__muevete-libre__clausulado-muevete-libre-v2.json"
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.product == "muevete libre"
+    assert processed_document.document_type == "policy"
+
+
+def test_repository_overlay_covers_movilidad_transversales_baseline_documents() -> None:
+    overlay_path = Path("ops/document-metadata-overlays.json")
+    overlay_payload = json.loads(overlay_path.read_text(encoding="utf-8"))
+    documents = overlay_payload["documents"]
+
+    expected_documents = {
+        "movilidad__transversales__ayudaventas-utilitarios-y-pesados-v2": "guide",
+        "movilidad__transversales__circular-choque-simple": "guide",
+        "movilidad__transversales__clausulado-plan-utilitarios-y-pesados": "policy",
+        "movilidad__transversales__como-tomar-fotos-choque-simple-v2": "guide",
+        "movilidad__transversales__instructivo-financiacion-de-polizas-v1": "guide",
+        "movilidad__transversales__ley-2251-de-2022-choque-simple": "guide",
+        "movilidad__transversales__politicas-de-suscripcion-de-movilidad": "policy",
+        "movilidad__transversales__proceso-atencion-choque-simple-v2": "guide",
+        "movilidad__transversales__proceso-recobro-choque-simple-v2": "guide",
+        "movilidad__transversales__pv-planes-movilidad-v1": "guide",
+        "movilidad__transversales__pv-portafolio-movilidad-v2": "guide",
+    }
+
+    for source_pdf_id, expected_document_type in expected_documents.items():
+        assert source_pdf_id in documents
+        assert documents[source_pdf_id]["product"] == "movilidad"
+        assert documents[source_pdf_id]["document_type"] == expected_document_type
+
+
+def test_ingestion_applies_movilidad_transversales_overlay_metadata(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    input_dir = tmp_path / "raw"
+    markdown_dir = tmp_path / "markdown"
+    processed_dir = tmp_path / "processed"
+    manifest_path = processed_dir / "ingestion-manifest.jsonl"
+    source_pdf = (
+        input_dir
+        / "MOVILIDAD"
+        / "TRANSVERSALES"
+        / "clausulado-plan utilitarios y pesados.pdf"
+    )
+    source_pdf.parent.mkdir(parents=True)
+    source_pdf.write_bytes(b"%PDF-1.4")
+
+    monkeypatch.setattr("rag.ingestion.docling_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.convert_pdf_to_markdown_with_backend",
+        lambda source_pdf_path, **_kwargs: f"# Converted {source_pdf_path.stem}",
+    )
+
+    exit_code = main(
+        [
+            "ingest-pdfs",
+            "--input-dir",
+            str(input_dir),
+            "--markdown-dir",
+            str(markdown_dir),
+            "--processed-dir",
+            str(processed_dir),
+            "--manifest-path",
+            str(manifest_path),
+            "--metadata-overlay-path",
+            "ops/document-metadata-overlays.json",
+        ]
+    )
+
+    processed_output = (
+        processed_dir / "movilidad__transversales__clausulado-plan-utilitarios-y-pesados.json"
+    )
+    processed_document = ProcessedDocument.model_validate_json(processed_output.read_text())
+
+    assert exit_code == 0
+    assert processed_document.product == "movilidad"
     assert processed_document.document_type == "policy"
 
 

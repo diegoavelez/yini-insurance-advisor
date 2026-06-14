@@ -14,6 +14,10 @@
       "motocicleta",
       "motocicletas"
     ],
+    "muevete libre": [
+      "muévete libre",
+      "muevete libre"
+    ],
     "soat": [
       "seguro obligatorio",
       "seguro obligatorio de accidentes de tránsito",
@@ -76,7 +80,9 @@
       "patineta electrica",
       "patineta eléctrica",
       "patinetas",
-      "micromovilidad"
+      "micromovilidad",
+      "choque simple",
+      "siniestro vial"
     ],
     "asistencia pequenos eventos": [
       "asistencia pequeños eventos",
@@ -152,6 +158,21 @@
     },
     {
       "all_of": [
+        "choque simple"
+      ],
+      "append_terms": [
+        "artículo 16 ley 2251 de 2022",
+        "retirar inmediatamente los vehículos",
+        "recaudar pruebas",
+        "centros de conciliación",
+        "informe policial de accidente de tránsito",
+        "tomar fotos",
+        "proceso atención choque simple",
+        "proceso recobro choque simple"
+      ]
+    },
+    {
+      "all_of": [
         "soat"
       ],
       "any_of": [
@@ -170,9 +191,46 @@
         "gastos de transporte",
         "clausulado"
       ]
+    },
+    {
+      "all_of": [
+        "muevete libre"
+      ],
+      "any_of": [
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "append_terms": [
+        "sección 1 coberturas principales",
+        "1.1 cobertura",
+        "1.2 cobertura a la moto",
+        "2.1 cobertura",
+        "3.1 cobertura",
+        "4.1 cobertura",
+        "5.1 cobertura",
+        "6.1 cobertura",
+        "7.1 cobertura",
+        "sección 2 coberturas opcionales",
+        "1.1 cobertura",
+        "a) gastos médicos por enfermedad en viajes",
+        "b) equipaje protegido"
+      ]
     }
   ],
   "query_filter_rules": [
+    {
+      "all_of": [
+        "choque simple"
+      ],
+      "filters": {
+        "product": "movilidad",
+        "document_type": "guide"
+      }
+    },
     {
       "all_of": [
         "soat"
@@ -201,6 +259,22 @@
       ],
       "filters": {
         "document_type": "guide"
+      }
+    },
+    {
+      "all_of": [
+        "muevete libre"
+      ],
+      "any_of": [
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "filters": {
+        "document_type": "policy"
       }
     }
   ],
@@ -256,6 +330,10 @@
         "motos",
         "motocicleta",
         "motocicletas"
+      ],
+      "muevete libre": [
+        "muévete libre",
+        "muevete libre"
       ],
       "soat": [
         "seguro obligatorio",
@@ -315,7 +393,9 @@
         "patineta electrica",
         "patineta eléctrica",
         "patinetas",
-        "micromovilidad"
+        "micromovilidad",
+        "choque simple",
+        "siniestro vial"
       ]
     }
   }
