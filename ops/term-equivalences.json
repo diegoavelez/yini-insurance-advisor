@@ -18,6 +18,10 @@
       "muévete libre",
       "muevete libre"
     ],
+    "utilitarios y pesados": [
+      "utilitario y pesados",
+      "seguro de autos utilitarios y pesados"
+    ],
     "soat": [
       "seguro obligatorio",
       "seguro obligatorio de accidentes de tránsito",
@@ -331,6 +335,7 @@
         "ventajas"
       ],
       "filters": {
+        "product": "utilitarios y pesados",
         "document_name": "Seguro de Autos Utilitarios y Pesados"
       }
     },
@@ -406,14 +411,18 @@
         "motocicleta",
         "motocicletas"
       ],
-      "muevete libre": [
-        "muévete libre",
-        "muevete libre"
-      ],
-      "soat": [
-        "seguro obligatorio",
-        "seguro obligatorio de accidentes de tránsito",
-        "seguro obligatorio de accidentes de transito"
+    "muevete libre": [
+      "muévete libre",
+      "muevete libre"
+    ],
+    "utilitarios y pesados": [
+      "utilitario y pesados",
+      "seguro de autos utilitarios y pesados"
+    ],
+    "soat": [
+      "seguro obligatorio",
+      "seguro obligatorio de accidentes de tránsito",
+      "seguro obligatorio de accidentes de transito"
       ],
       "pac": [
         "plan complementario",

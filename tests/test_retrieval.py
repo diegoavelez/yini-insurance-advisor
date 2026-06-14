@@ -1325,7 +1325,7 @@ def test_normalize_retrieval_query_applies_utilitarios_pesados_guide_document_fa
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(
             query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
-            filters={"product": "movilidad", "document_type": "guide"},
+            filters={"product": "utilitarios y pesados", "document_type": "guide"},
         ),
         term_equivalences=TermEquivalenceSet(
             query_filter_rules=[
@@ -1341,18 +1341,45 @@ def test_normalize_retrieval_query_applies_utilitarios_pesados_guide_document_fa
                         "diferenciales",
                         "ventajas",
                     ],
-                    filters={"document_name": "Seguro de Autos Utilitarios y Pesados"},
+                    filters={
+                        "product": "utilitarios y pesados",
+                        "document_name": "Seguro de Autos Utilitarios y Pesados",
+                    },
                 )
             ]
         ),
     )
 
-    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.product == "utilitarios y pesados"
     assert normalized_query.filters.document_type == "guide"
     assert (
         normalized_query.filters.document_name
         == "Seguro de Autos Utilitarios y Pesados"
     )
+
+
+def test_normalize_retrieval_query_infers_utilitarios_pesados_product_from_rule() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
+            filters={"document_type": "guide"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["utilitarios y pesados"],
+                    any_of=["beneficios", "asistencias"],
+                    filters={
+                        "product": "utilitarios y pesados",
+                        "document_name": "Seguro de Autos Utilitarios y Pesados",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "utilitarios y pesados"
+    assert normalized_query.filters.document_name == "Seguro de Autos Utilitarios y Pesados"
 
 
 def test_normalize_retrieval_query_applies_financing_guide_document_family_rule() -> None:
@@ -1418,7 +1445,7 @@ def test_normalize_retrieval_query_does_not_override_explicit_document_name_filt
         RetrievalQuery(
             query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
             filters={
-                "product": "movilidad",
+                "product": "utilitarios y pesados",
                 "document_type": "guide",
                 "document_name": "Documento Operador",
             },
@@ -1428,7 +1455,10 @@ def test_normalize_retrieval_query_does_not_override_explicit_document_name_filt
                 QueryFilterRule(
                     all_of=["utilitarios y pesados"],
                     any_of=["beneficios", "asistencias"],
-                    filters={"document_name": "Seguro de Autos Utilitarios y Pesados"},
+                    filters={
+                        "product": "utilitarios y pesados",
+                        "document_name": "Seguro de Autos Utilitarios y Pesados",
+                    },
                 )
             ]
         ),
@@ -2210,7 +2240,10 @@ def test_retrieve_ranked_chunks_applies_utilitarios_pesados_guide_document_famil
                         "diferenciales",
                         "ventajas",
                     ],
-                    filters={"document_name": "Seguro de Autos Utilitarios y Pesados"},
+                    filters={
+                        "product": "utilitarios y pesados",
+                        "document_name": "Seguro de Autos Utilitarios y Pesados",
+                    },
                 )
             ]
         ),
@@ -2223,7 +2256,7 @@ def test_retrieve_ranked_chunks_applies_utilitarios_pesados_guide_document_famil
     retrieve_ranked_chunks(
         RetrievalQuery(
             query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
-            filters={"product": "movilidad", "document_type": "guide"},
+            filters={"product": "utilitarios y pesados", "document_type": "guide"},
             top_k=5,
         ),
         settings=Settings(
@@ -2239,7 +2272,7 @@ def test_retrieve_ranked_chunks_applies_utilitarios_pesados_guide_document_famil
         (condition.key, condition.match.value) for condition in query_filter.must
     ] == [
         ("document_type", "guide"),
-        ("product", "movilidad"),
+        ("product", "utilitarios y pesados"),
         ("document_name", "Seguro de Autos Utilitarios y Pesados"),
     ]
 
@@ -2940,16 +2973,16 @@ def test_retrieve_ranked_chunks_excludes_non_pv_local_candidates_for_pv_benefit_
             ),
             ChunkRecord(
                 chunk_id="util:v2:0020",
-                source_pdf_id="movilidad__transversales__ayudaventas-utilitarios-y-pesados-v2",
+                source_pdf_id="movilidad__utilitario-y-pesados__ayudaventas-utilitarios-y-pesados-v2",
                 document_name="Seguro de Autos Utilitarios y Pesados",
                 document_version=None,
                 document_type="guide",
-                product="movilidad",
+                product="utilitarios y pesados",
                 source_pdf_path=(
-                    "data/raw/MOVILIDAD/TRANSVERSALES/ayudaventas utilitarios y pesados v2.pdf"
+                    "data/raw/MOVILIDAD/UTILITARIO Y PESADOS/ayudaventas utilitarios y pesados v2.pdf"
                 ),
                 source_pdf_relative_path=(
-                    "MOVILIDAD/TRANSVERSALES/ayudaventas utilitarios y pesados v2.pdf"
+                    "MOVILIDAD/UTILITARIO Y PESADOS/ayudaventas utilitarios y pesados v2.pdf"
                 ),
                 cleaned_markdown_output_path="data/processed/utilitarios.cleaned.md",
                 text="# Seguro de Autos Utilitarios y Pesados\n\n## Grúa de amplio alcance",
@@ -3006,7 +3039,10 @@ def test_retrieve_ranked_chunks_excludes_non_cohort_locals_for_utilitarios_guide
                         "diferenciales",
                         "ventajas",
                     ],
-                    filters={"document_name": "Seguro de Autos Utilitarios y Pesados"},
+                    filters={
+                        "product": "utilitarios y pesados",
+                        "document_name": "Seguro de Autos Utilitarios y Pesados",
+                    },
                 )
             ],
             query_expansion_rules=[
@@ -3027,16 +3063,16 @@ def test_retrieve_ranked_chunks_excludes_non_cohort_locals_for_utilitarios_guide
         lambda chunk_dir="data/processed/chunks": (
             ChunkRecord(
                 chunk_id="util:v2:0004",
-                source_pdf_id="movilidad__transversales__ayudaventas-utilitarios-y-pesados-v2",
+                source_pdf_id="movilidad__utilitario-y-pesados__ayudaventas-utilitarios-y-pesados-v2",
                 document_name="Seguro de Autos Utilitarios y Pesados",
                 document_version=None,
                 document_type="guide",
-                product="movilidad",
+                product="utilitarios y pesados",
                 source_pdf_path=(
-                    "data/raw/MOVILIDAD/TRANSVERSALES/ayudaventas utilitarios y pesados v2.pdf"
+                    "data/raw/MOVILIDAD/UTILITARIO Y PESADOS/ayudaventas utilitarios y pesados v2.pdf"
                 ),
                 source_pdf_relative_path=(
-                    "MOVILIDAD/TRANSVERSALES/ayudaventas utilitarios y pesados v2.pdf"
+                    "MOVILIDAD/UTILITARIO Y PESADOS/ayudaventas utilitarios y pesados v2.pdf"
                 ),
                 cleaned_markdown_output_path="data/processed/utilitarios.cleaned.md",
                 text="# Seguro de Autos Utilitarios y Pesados\n\n## Ahorrar dinero",
@@ -3067,7 +3103,7 @@ def test_retrieve_ranked_chunks_excludes_non_cohort_locals_for_utilitarios_guide
     result = retrieve_ranked_chunks(
         RetrievalQuery(
             query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
-            filters={"product": "movilidad", "document_type": "guide"},
+            filters={"product": "utilitarios y pesados", "document_type": "guide"},
             top_k=5,
         ),
         settings=Settings(

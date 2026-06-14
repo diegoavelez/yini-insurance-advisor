@@ -1105,7 +1105,8 @@ Operational category rollup:
 - MOTOS onboarding + comparison alignment: completed
 - `choque simple` transversal onboarding + retrieval hardening: completed
 - `movilidad-pv` onboarding + retrieval hardening: completed
-- `utilitarios y pesados` onboarding + guide-family alignment: completed
+- `UTILITARIO Y PESADOS` onboarding + guide-family alignment: completed
+  (dedicated category)
 - `movilidad-financiacion` onboarding + extraction/guide-family hardening:
   completed
 - `movilidad-transversales` baseline onboarding: completed
@@ -1180,7 +1181,8 @@ Operational category rollup:
 - MOTOS onboarding + comparison alignment: completed
 - `choque simple` transversal onboarding + retrieval hardening: completed
 - `movilidad-pv` onboarding + retrieval hardening: completed
-- `utilitarios y pesados` onboarding + guide-family alignment: completed
+- `UTILITARIO Y PESADOS` onboarding + guide-family alignment: completed
+  (dedicated category)
 - `movilidad-financiacion` onboarding + extraction/guide-family hardening:
   completed
 - `movilidad-transversales` baseline onboarding: completed
@@ -1313,6 +1315,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `movilidad-pv-benefit-breadth-and-duplicate-section-diversification`
 - `movilidad-utilitarios-pesados-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-utilitarios-pesados-guide-family-ranking-alignment`
+- `movilidad-utilitarios-pesados-category-reclassification-remediation`
 - `movilidad-financiacion-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-financiacion-extraction-readiness-remediation`
 - `movilidad-financiacion-guide-family-ranking-alignment`
@@ -1335,7 +1338,8 @@ Operational category rollup:
 - MOTOS onboarding + comparison alignment: completed
 - `choque simple` transversal onboarding + retrieval hardening: completed
 - `movilidad-pv` onboarding + retrieval hardening: completed
-- `utilitarios y pesados` onboarding + guide-family alignment: completed
+- `UTILITARIO Y PESADOS` onboarding + guide-family alignment: completed
+  (dedicated category)
 - `movilidad-financiacion` onboarding + extraction/guide-family hardening:
   completed
 - `movilidad-transversales` baseline onboarding: completed
@@ -1383,6 +1387,7 @@ Completed slice index:
 - `movilidad-pv-benefit-breadth-and-duplicate-section-diversification`
 - `movilidad-utilitarios-pesados-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-utilitarios-pesados-guide-family-ranking-alignment`
+- `movilidad-utilitarios-pesados-category-reclassification-remediation`
 - `movilidad-financiacion-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-financiacion-extraction-readiness-remediation`
 - `movilidad-financiacion-guide-family-ranking-alignment`
@@ -1433,9 +1438,10 @@ Implementation note:
 - `MUEVETE LIBRE` now shares the baseline onboarding seam used by the other
   mobility products, including canonical product normalization,
   overlay-backed persisted metadata, and supported-scope admission.
-- `MOVILIDAD/TRANSVERSALES` now uses the same overlay-backed baseline seam,
-  but persists under shared `product=movilidad` rather than creating a new
-  product taxonomy branch.
+- `MOVILIDAD/TRANSVERSALES` now uses the same overlay-backed baseline seam for
+  true shared mobility documents, while `UTILITARIO Y PESADOS` has been
+  reclassified into its own dedicated category/product instead of remaining in
+  the transversal branch.
 - `choque simple` now has a narrow supported-scope and retrieval seam over the
   shared mobility transversal corpus.
 - `choque simple` circular evidence can now suppress header/footer boilerplate
@@ -1494,21 +1500,17 @@ Implementation note:
   intra-family ranking: duplicate `Pérdidas totales` chunks should not consume
   multiple early slots, and broader benefit sections should outrank narrow
   service-detail sections such as isolated `Grúa de amplio alcance`.
-- The next operational transversal cohort after `choque simple` and `PV` is
-  now `utilitarios y pesados`, using the existing two-document guide+policy
-  pair before broadening into financing or subscription materials.
-- That baseline `utilitarios y pesados` cohort is now operationally onboarded
-  through ingestion, embeddings, Qdrant indexing, and first live retrieval
-  validation; the only observed follow-on gap is narrow guide-family leakage,
-  where explicit benefit/assistance queries still let
-  `PROPUESTA DE VALOR MOVILIDAD` crowd ahead of the cohort guide.
-- That guide-family leakage is now closed through the existing curated
+- `UTILITARIO Y PESADOS` was initially onboarded as part of
+  `MOVILIDAD/TRANSVERSALES`, but raw-path audit showed the corpus belongs to
+  its own category folder and now persists under the dedicated canonical
+  product `utilitarios y pesados`.
+- Its guide-family leakage is still closed through the existing curated
   `document_name` filter seam, so explicit `utilitarios y pesados`
   benefit/assistance queries stay within
   `Seguro de Autos Utilitarios y Pesados` while the policy path remains
   unchanged.
-- The next operational transversal cohort after `utilitarios y pesados` is now
-  `financiación`, starting with the single-document guide
+- The next operational movilidad cohort after the `UTILITARIO Y PESADOS`
+  reclassification is now `financiación`, starting with the single-document guide
   `instructivo financiacion de polizas v1.pdf` before broadening into
   `suscripción`.
 - That financing baseline cohort has now completed ingestion, embeddings, and

@@ -1,5 +1,10 @@
 # Validation
 
+> Superseded in canonical classification by
+> `specs/2026-06-14-movilidad-utilitarios-pesados-category-reclassification-remediation/validation.md`.
+> The guide-family rule remains valid, but live validation should use the
+> dedicated category/product contract.
+
 This slice is ready when explicit `utilitarios y pesados` guide-intent queries
 stay within the `Seguro de Autos Utilitarios y Pesados` document family by
 default, while policy retrieval remains unchanged.

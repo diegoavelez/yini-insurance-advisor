@@ -1,5 +1,10 @@
 # Plan
 
+> Superseded in canonical classification by
+> `specs/2026-06-14-movilidad-utilitarios-pesados-category-reclassification-remediation/plan.md`.
+> The guide-family rule remains valid, but the cohort no longer belongs to
+> `MOVILIDAD/TRANSVERSALES`.
+
 ## Objective
 
 Restrict explicit `utilitarios y pesados` guide-intent retrieval to the

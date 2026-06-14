@@ -1,5 +1,10 @@
 # Validation
 
+> Superseded by
+> `specs/2026-06-14-movilidad-utilitarios-pesados-category-reclassification-remediation/validation.md`.
+> The canonical operator commands now target `MOVILIDAD/UTILITARIO Y PESADOS/`
+> and `product='utilitarios y pesados'`.
+
 This slice is ready when the `utilitarios y pesados` cohort has completed the
 baseline ingestion → embeddings → indexing → first retrieval loop with
 cohort-local commands and documented evidence.

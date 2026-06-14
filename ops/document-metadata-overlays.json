@@ -76,16 +76,8 @@
       "document_type": "guide",
       "product": "soat"
     },
-    "movilidad__transversales__ayudaventas-utilitarios-y-pesados-v2": {
-      "document_type": "guide",
-      "product": "movilidad"
-    },
     "movilidad__transversales__circular-choque-simple": {
       "document_type": "guide",
-      "product": "movilidad"
-    },
-    "movilidad__transversales__clausulado-plan-utilitarios-y-pesados": {
-      "document_type": "policy",
       "product": "movilidad"
     },
     "movilidad__transversales__como-tomar-fotos-choque-simple-v2": {
@@ -119,6 +111,14 @@
     "movilidad__transversales__pv-portafolio-movilidad-v2": {
       "document_type": "guide",
       "product": "movilidad"
+    },
+    "movilidad__utilitario-y-pesados__ayudaventas-utilitarios-y-pesados-v2": {
+      "document_type": "guide",
+      "product": "utilitarios y pesados"
+    },
+    "movilidad__utilitario-y-pesados__clausulado-plan-utilitarios-y-pesados": {
+      "document_type": "policy",
+      "product": "utilitarios y pesados"
     }
   }
 }

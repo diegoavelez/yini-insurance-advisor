@@ -1,5 +1,10 @@
 # Plan
 
+> Superseded by
+> `specs/2026-06-14-movilidad-utilitarios-pesados-category-reclassification-remediation/plan.md`.
+> The cohort was later corrected from a transversal assumption to a dedicated
+> category under `MOVILIDAD/UTILITARIO Y PESADOS/`.
+
 ## Objective
 
 Onboard the `utilitarios y pesados` transversal cohort with the existing

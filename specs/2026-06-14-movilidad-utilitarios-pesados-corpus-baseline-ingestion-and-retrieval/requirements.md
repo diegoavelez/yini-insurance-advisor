@@ -1,5 +1,10 @@
 # Requirements
 
+> Superseded by
+> `specs/2026-06-14-movilidad-utilitarios-pesados-category-reclassification-remediation/requirements.md`.
+> The cohort was later corrected from a transversal assumption to a dedicated
+> category under `MOVILIDAD/UTILITARIO Y PESADOS/`.
+
 ## Title
 
 Baseline-ingest the `utilitarios y pesados` transversal mobility cohort and
