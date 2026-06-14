@@ -827,6 +827,414 @@ def test_retrieve_ranked_chunks_collective_billing_uses_local_lexical_candidate(
     ]
 
 
+def test_retrieve_ranked_chunks_prioritizes_suscripcion_billing_by_insured_conditions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "suscripcion:v2:0111",
+                    "source_pdf_id": "suscripcion",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 111,
+                    "text": (
+                        "# politicas de suscripcion de movilidad\n\n"
+                        "## 14. PÓLIZAS COLECTIVAS\n\n"
+                        "### 14.6. Modalidades de facturación – Autos Colectivos :\n\n"
+                        "#### 14.6.2. Facturación (cobro) agrupada con devolución por asegurado\n\n"
+                        "onciliación.\n"
+                        "➢ Las pólizas colectivas no permiten cambios de forma de pago"
+                        " o frecuencia de facturación."
+                    ),
+                    "document_name": "politicas de suscripcion de movilidad",
+                    "document_version": "6",
+                    "document_type": "policy",
+                    "product": "movilidad",
+                    "section": "14.6.2. Facturación (cobro) agrupada con devolución por asegurado",
+                    "section_path": [
+                        "politicas de suscripcion de movilidad",
+                        "14. PÓLIZAS COLECTIVAS",
+                        "14.6. Modalidades de facturación – Autos Colectivos :",
+                        "14.6.2. Facturación (cobro) agrupada con devolución por asegurado",
+                    ],
+                },
+                score=0.89,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "cross:v2:0001",
+                    "source_pdf_id": "cross",
+                    "source_pdf_relative_path": "MOVILIDAD/BICICLETAS Y PATINETAS/clausulado.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 22,
+                    "text": "# clausulado\n\n## 5. COMPENSACIÓN\n\nTexto lateral sin relación.",
+                    "document_name": "clausulado bicis y patinetas",
+                    "document_version": "1",
+                    "document_type": "policy",
+                    "product": "movilidad",
+                    "section": "5. COMPENSACIÓN",
+                    "section_path": ["clausulado bicis y patinetas", "5. COMPENSACIÓN"],
+                },
+                score=0.93,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.load_term_equivalences", lambda: TermEquivalenceSet())
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="suscripcion:v2:0109",
+                source_pdf_id="suscripcion",
+                document_name="politicas de suscripcion de movilidad",
+                document_version="6",
+                document_type="policy",
+                product="movilidad",
+                source_pdf_path=(
+                    "data/raw/MOVILIDAD/TRANSVERSALES/"
+                    "politicas de suscripcion de movilidad.pdf"
+                ),
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                ),
+                cleaned_markdown_output_path=(
+                    "data/processed/markdown/"
+                    "movilidad__transversales__politicas-de-suscripcion-de-movilidad.cleaned.md"
+                ),
+                text=(
+                    "# politicas de suscripcion de movilidad\n\n"
+                    "## 14. PÓLIZAS COLECTIVAS\n\n"
+                    "### 14.6. Modalidades de facturación – Autos Colectivos :\n\n"
+                    "#### 14.6.2. Facturación (cobro) agrupada con devolución por asegurado\n\n"
+                    "3. Facturación por asegurado\n"
+                    "Esta modalidad aplica únicamente para casos excepcionales y requiere"
+                    " autorización expresa del Director de Suscripción.\n"
+                    "Permite que cada asegurado cuente con su facturación de manera"
+                    " independiente dentro de una póliza colectiva.\n"
+                    "Condiciones aplicables:\n"
+                    "✓ La facturación por asegurado debe parametrizarse al momento de la"
+                    " suscripción de una póliza nueva.\n"
+                    "✓ No es posible cambiar la modalidad en la renovación.\n"
+                    "✓ Aplica exclusivamente para pólizas con forma de pago anual."
+                ),
+                chunk_index=109,
+                chunk_schema_version="v2",
+                section="14.6.2. Facturación (cobro) agrupada con devolución por asegurado",
+                section_path=[
+                    "politicas de suscripcion de movilidad",
+                    "14. PÓLIZAS COLECTIVAS",
+                    "14.6. Modalidades de facturación – Autos Colectivos :",
+                    "14.6.2. Facturación (cobro) agrupada con devolución por asegurado",
+                ],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué condiciones aplican a la facturación por asegurado en pólizas colectivas?",
+            filters={"product": "movilidad", "document_type": "policy"},
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.chunk_id for chunk in result.chunks] == [
+        "suscripcion:v2:0109",
+        "suscripcion:v2:0111",
+    ]
+
+
+def test_retrieve_ranked_chunks_prioritizes_collective_billing_renewal_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "suscripcion:v2:0094",
+                    "source_pdf_id": "suscripcion",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 94,
+                    "text": (
+                        "# politicas de suscripcion de movilidad\n\n"
+                        "## 13. PROCEDIMIENTOS\n\n"
+                        "### 13.10. . Cambio en forma de pago negocio individual "
+                        "(Producción = Cobro)\n\n"
+                        "Los cambios en forma de pago antes mencionados solo aplican para"
+                        " negocio individual."
+                    ),
+                    "document_name": "politicas de suscripcion de movilidad",
+                    "document_version": "6",
+                    "document_type": "policy",
+                    "product": "movilidad",
+                    "section": (
+                        "13.10. . Cambio en forma de pago negocio individual "
+                        "(Producción = Cobro)"
+                    ),
+                    "section_path": [
+                        "politicas de suscripcion de movilidad",
+                        "13. PROCEDIMIENTOS",
+                        "13.10. . Cambio en forma de pago negocio individual (Producción = Cobro)",
+                    ],
+                },
+                score=0.93,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "suscripcion:v2:0111",
+                    "source_pdf_id": "suscripcion",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 111,
+                    "text": (
+                        "# politicas de suscripcion de movilidad\n\n"
+                        "## 14. PÓLIZAS COLECTIVAS\n\n"
+                        "### 14.6. Modalidades de facturación – Autos Colectivos :\n\n"
+                        "#### 14.6.2. Facturación (cobro) agrupada con devolución por asegurado\n\n"
+                        "Las pólizas colectivas no permiten cambios de forma de pago;"
+                        " cualquier modificación exige cancelación y expedición de una"
+                        " nueva póliza."
+                    ),
+                    "document_name": "politicas de suscripcion de movilidad",
+                    "document_version": "6",
+                    "document_type": "policy",
+                    "product": "movilidad",
+                    "section": "14.6.2. Facturación (cobro) agrupada con devolución por asegurado",
+                    "section_path": [
+                        "politicas de suscripcion de movilidad",
+                        "14. PÓLIZAS COLECTIVAS",
+                        "14.6. Modalidades de facturación – Autos Colectivos :",
+                        "14.6.2. Facturación (cobro) agrupada con devolución por asegurado",
+                    ],
+                },
+                score=0.79,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "suscripcion:v2:0097",
+                    "source_pdf_id": "suscripcion",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 97,
+                    "text": (
+                        "# politicas de suscripcion de movilidad\n\n"
+                        "## 13. PROCEDIMIENTOS\n\n"
+                        "### 13.1. 2. Cambio de Plan de Pagos Anual Financiado\n\n"
+                        "Solo se podrán financiar pólizas individuales y el cambio aplica"
+                        " dentro de los primeros 30 días."
+                    ),
+                    "document_name": "politicas de suscripcion de movilidad",
+                    "document_version": "6",
+                    "document_type": "policy",
+                    "product": "movilidad",
+                    "section": "13.1. 2. Cambio de Plan de Pagos Anual Financiado",
+                    "section_path": [
+                        "politicas de suscripcion de movilidad",
+                        "13. PROCEDIMIENTOS",
+                        "13.1. 2. Cambio de Plan de Pagos Anual Financiado",
+                    ],
+                },
+                score=0.88,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.load_term_equivalences", lambda: TermEquivalenceSet())
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query=(
+                "¿Se puede cambiar la modalidad de facturación en la renovación "
+                "de una póliza colectiva?"
+            ),
+            filters={"product": "movilidad", "document_type": "policy"},
+            top_k=3,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.chunk_id for chunk in result.chunks] == [
+        "suscripcion:v2:0111",
+        "suscripcion:v2:0094",
+        "suscripcion:v2:0097",
+    ]
+
+
+def test_retrieve_ranked_chunks_recovers_suscripcion_individual_financing_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.load_term_equivalences", lambda: TermEquivalenceSet())
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="suscripcion:v2:0095",
+                source_pdf_id="suscripcion",
+                document_name="politicas de suscripcion de movilidad",
+                document_version="6",
+                document_type="policy",
+                product="movilidad",
+                source_pdf_path=(
+                    "data/raw/MOVILIDAD/TRANSVERSALES/"
+                    "politicas de suscripcion de movilidad.pdf"
+                ),
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                ),
+                cleaned_markdown_output_path=(
+                    "data/processed/markdown/"
+                    "movilidad__transversales__politicas-de-suscripcion-de-movilidad.cleaned.md"
+                ),
+                text=(
+                    "# politicas de suscripcion de movilidad\n\n"
+                    "## 13. PROCEDIMIENTOS\n\n"
+                    "### 13.11. Financiación de Pólizas Individuales\n\n"
+                    "Para que una póliza individual se pueda financiar debe cumplir"
+                    " vigencia anual, beneficiario oneroso y reglas de anual"
+                    " financiada."
+                ),
+                chunk_index=95,
+                chunk_schema_version="v2",
+                section="13.11. Financiación de Pólizas Individuales",
+                section_path=[
+                    "politicas de suscripcion de movilidad",
+                    "13. PROCEDIMIENTOS",
+                    "13.11. Financiación de Pólizas Individuales",
+                ],
+            ),
+            ChunkRecord(
+                chunk_id="suscripcion:v2:0096",
+                source_pdf_id="suscripcion",
+                document_name="politicas de suscripcion de movilidad",
+                document_version="6",
+                document_type="policy",
+                product="movilidad",
+                source_pdf_path=(
+                    "data/raw/MOVILIDAD/TRANSVERSALES/"
+                    "politicas de suscripcion de movilidad.pdf"
+                ),
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                ),
+                cleaned_markdown_output_path=(
+                    "data/processed/markdown/"
+                    "movilidad__transversales__politicas-de-suscripcion-de-movilidad.cleaned.md"
+                ),
+                text=(
+                    "# politicas de suscripcion de movilidad\n\n"
+                    "## 13. PROCEDIMIENTOS\n\n"
+                    "### 13.11. Financiación de Pólizas Individuales\n\n"
+                    "La intención del proceso es identificar si la póliza puede ser"
+                    " expedida con la forma de pago financiada."
+                ),
+                chunk_index=96,
+                chunk_schema_version="v2",
+                section="13.11. Financiación de Pólizas Individuales",
+                section_path=[
+                    "politicas de suscripcion de movilidad",
+                    "13. PROCEDIMIENTOS",
+                    "13.11. Financiación de Pólizas Individuales",
+                ],
+            ),
+            ChunkRecord(
+                chunk_id="suscripcion:v2:0102",
+                source_pdf_id="suscripcion",
+                document_name="politicas de suscripcion de movilidad",
+                document_version="6",
+                document_type="policy",
+                product="movilidad",
+                source_pdf_path=(
+                    "data/raw/MOVILIDAD/TRANSVERSALES/"
+                    "politicas de suscripcion de movilidad.pdf"
+                ),
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/politicas de suscripcion de movilidad.pdf"
+                ),
+                cleaned_markdown_output_path=(
+                    "data/processed/markdown/"
+                    "movilidad__transversales__politicas-de-suscripcion-de-movilidad.cleaned.md"
+                ),
+                text=(
+                    "# politicas de suscripcion de movilidad\n\n"
+                    "## 14. PÓLIZAS COLECTIVAS\n\n"
+                    "### 14.1. Cotización de Pólizas Colectivas\n\n"
+                    "Las cotizaciones de pólizas colectivas siguen otra ruta."
+                ),
+                chunk_index=102,
+                chunk_schema_version="v2",
+                section="14.1. Cotización de Pólizas Colectivas",
+                section_path=[
+                    "politicas de suscripcion de movilidad",
+                    "14. PÓLIZAS COLECTIVAS",
+                    "14.1. Cotización de Pólizas Colectivas",
+                ],
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Cómo funciona la financiación de pólizas individuales en movilidad?",
+            filters={"product": "movilidad", "document_type": "policy"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    chunk_ids = [chunk.chunk_id for chunk in result.chunks]
+    assert chunk_ids[0] == "suscripcion:v2:0095"
+    assert "suscripcion:v2:0096" in chunk_ids
+
+
 def test_retrieve_ranked_chunks_keeps_default_order_for_non_suscripcion_queries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -3739,6 +4147,30 @@ def test_retrieve_ranked_chunks_applies_operator_term_equivalences_to_filters(
     assert len(query_filter.must) == 1
     assert query_filter.must[0].key == "product"
     assert query_filter.must[0].match.value == "auto"
+
+
+def test_normalize_query_skips_document_name_for_individual_financing() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cómo funciona la financiación de pólizas individuales en movilidad?",
+            filters={"product": "movilidad", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["financiacion"],
+                    any_of=["como funciona", "procedimiento", "cotizacion"],
+                    filters={
+                        "document_name": "Manual Procedimiento Financiacion de polizas individuales"
+                    },
+                )
+            ],
+        ),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name is None
 
 
 def test_retrieve_ranked_chunks_applies_normalized_filters_to_local_lexical_candidates(

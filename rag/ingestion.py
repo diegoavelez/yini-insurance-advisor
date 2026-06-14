@@ -1154,7 +1154,13 @@ def build_candidate_pool_limit(
     if not matched_expansion_rules:
         if query_has_movilidad_suscripcion_policy_intent(
             query
-        ) or query_has_movilidad_suscripcion_collective_billing_intent(query):
+        ) or query_has_movilidad_suscripcion_collective_billing_intent(
+            query
+        ) or query_has_movilidad_suscripcion_billing_by_insured_intent(
+            query
+        ) or query_has_movilidad_suscripcion_collective_billing_renewal_intent(
+            query
+        ) or query_has_movilidad_suscripcion_individual_financing_intent(query):
             return min(max(top_k * 3, top_k + 6), 20)
         return top_k
     return min(max(top_k * 3, top_k + 4), 20)
@@ -1173,7 +1179,13 @@ def rerank_chunks_for_query_expansion_rules(
         ranked_chunks = list(chunks)
         if query_has_movilidad_suscripcion_policy_intent(
             query
-        ) or query_has_movilidad_suscripcion_collective_billing_intent(query):
+        ) or query_has_movilidad_suscripcion_collective_billing_intent(
+            query
+        ) or query_has_movilidad_suscripcion_billing_by_insured_intent(
+            query
+        ) or query_has_movilidad_suscripcion_collective_billing_renewal_intent(
+            query
+        ) or query_has_movilidad_suscripcion_individual_financing_intent(query):
             return prioritize_movilidad_suscripcion_policy_evidence(
                 ranked_chunks,
                 query=query,
@@ -1241,7 +1253,13 @@ def rerank_chunks_for_query_expansion_rules(
         return diversify_movilidad_pv_benefit_sections(ranked_chunks, top_k=top_k)
     if query_has_movilidad_suscripcion_policy_intent(
         query
-    ) or query_has_movilidad_suscripcion_collective_billing_intent(query):
+    ) or query_has_movilidad_suscripcion_collective_billing_intent(
+        query
+    ) or query_has_movilidad_suscripcion_billing_by_insured_intent(
+        query
+    ) or query_has_movilidad_suscripcion_collective_billing_renewal_intent(
+        query
+    ) or query_has_movilidad_suscripcion_individual_financing_intent(query):
         return prioritize_movilidad_suscripcion_policy_evidence(
             ranked_chunks,
             query=query,
@@ -1313,6 +1331,52 @@ def build_collective_billing_hybrid_recall_terms(query: str) -> list[str]:
         "modalidades de facturación",
         "facturación agrupada con devolución por asegurado",
         "devolución por asegurado",
+    ):
+        normalized_term = normalize_equivalence_text(term)
+        if not normalized_term or normalized_term in seen_terms:
+            continue
+        seen_terms.add(normalized_term)
+        ordered_terms.append(term)
+    return ordered_terms
+
+
+def build_billing_by_insured_hybrid_recall_terms(query: str) -> list[str]:
+    """Return narrow lexical recall terms for suscripción billing-by-insured queries."""
+
+    if not query_has_movilidad_suscripcion_billing_by_insured_intent(query):
+        return []
+
+    ordered_terms: list[str] = []
+    seen_terms: set[str] = set()
+    for term in (
+        query,
+        "pólizas colectivas",
+        "facturación por asegurado",
+        "cada asegurado",
+        "modalidad de facturación",
+    ):
+        normalized_term = normalize_equivalence_text(term)
+        if not normalized_term or normalized_term in seen_terms:
+            continue
+        seen_terms.add(normalized_term)
+        ordered_terms.append(term)
+    return ordered_terms
+
+
+def build_individual_financing_hybrid_recall_terms(query: str) -> list[str]:
+    """Return narrow lexical recall terms for suscripción individual financing queries."""
+
+    if not query_has_movilidad_suscripcion_individual_financing_intent(query):
+        return []
+
+    ordered_terms: list[str] = []
+    seen_terms: set[str] = set()
+    for term in (
+        query,
+        "pólizas individuales",
+        "financiación de pólizas individuales",
+        "anual financiada",
+        "beneficiario oneroso",
     ):
         normalized_term = normalize_equivalence_text(term)
         if not normalized_term or normalized_term in seen_terms:
@@ -1463,6 +1527,14 @@ def retrieve_local_lexical_candidates(
         retrieval_query.query,
         matched_expansion_rules=matched_expansion_rules,
     )
+    if not lexical_terms:
+        lexical_terms = build_individual_financing_hybrid_recall_terms(
+            retrieval_query.query
+        )
+    if not lexical_terms:
+        lexical_terms = build_billing_by_insured_hybrid_recall_terms(
+            retrieval_query.query
+        )
     if not lexical_terms:
         lexical_terms = build_collective_billing_hybrid_recall_terms(
             retrieval_query.query
@@ -1667,6 +1739,60 @@ def query_has_movilidad_suscripcion_collective_billing_intent(query: str) -> boo
     )
 
 
+def query_has_movilidad_suscripcion_billing_by_insured_intent(query: str) -> bool:
+    """Return whether one query explicitly asks about billing by insured in collective policies."""
+
+    if not any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("poliza colectiva", "polizas colectivas")
+    ):
+        return False
+    if not any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("facturacion", "cobro", "factura")
+    ):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("por asegurado", "asegurado", "asegurados")
+    )
+
+
+def query_has_movilidad_suscripcion_collective_billing_renewal_intent(query: str) -> bool:
+    """Return whether one query asks about renewal-time billing-mode changes."""
+
+    if not any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("poliza colectiva", "polizas colectivas")
+    ):
+        return False
+    if not any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("facturacion", "forma de pago", "modalidad de facturacion")
+    ):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("renovacion", "renovación")
+    )
+
+
+def query_has_movilidad_suscripcion_individual_financing_intent(query: str) -> bool:
+    """Return whether one query asks about suscripción financing for individual policies."""
+
+    if not query_contains_equivalent_phrase(query, "movilidad"):
+        return False
+    if not any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("poliza individual", "polizas individuales")
+    ):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("financiacion", "financiada", "financiado")
+    )
+
+
 def is_movilidad_suscripcion_document_family_chunk(chunk: RetrievedChunk) -> bool:
     """Return whether one retrieved chunk belongs to the suscripción policy family."""
 
@@ -1748,7 +1874,98 @@ def is_movilidad_suscripcion_individual_financing_chunk(chunk: RetrievedChunk) -
         for value in (chunk.section, *chunk.section_path)
         if value
     ]
-    return any("13 11 financiacion de polizas individuales" == label for label in normalized_labels)
+    return any(
+        (
+            label.startswith("13.11.")
+            or label.startswith("13 11 ")
+            or label == "13.11 financiacion de polizas individuales"
+        )
+        and "financiacion de polizas individuales" in label
+        for label in normalized_labels
+    )
+
+
+def is_movilidad_suscripcion_individual_payment_change_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to individual payment-change rules."""
+
+    normalized_labels = [
+        normalize_equivalence_text(value)
+        for value in (chunk.section, *chunk.section_path)
+        if value
+    ]
+    return any(
+        label in {
+            "13.10. cambio en forma de pago negocio individual (produccion = cobro)",
+            "13.1. 2. cambio de plan de pagos anual financiado",
+        }
+        for label in normalized_labels
+    )
+
+
+def is_movilidad_suscripcion_billing_by_insured_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk contains billing-by-insured evidence."""
+
+    label_surface = "\n".join(
+        value
+        for value in (
+            chunk.document_name,
+            chunk.section,
+            *chunk.section_path,
+            chunk.text,
+        )
+        if value
+    )
+    return query_contains_equivalent_phrase(label_surface, "facturacion por asegurado")
+
+
+def score_movilidad_suscripcion_billing_by_insured_intent_alignment(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> float:
+    """Return a narrow preference score for billing-by-insured prompts."""
+
+    if not query_has_movilidad_suscripcion_billing_by_insured_intent(query):
+        return 0.0
+    if is_movilidad_suscripcion_billing_by_insured_chunk(chunk):
+        return 3.0
+    if is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(chunk):
+        return 0.75
+    return 0.0
+
+
+def score_movilidad_suscripcion_collective_billing_renewal_intent_alignment(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> float:
+    """Return a narrow preference score for renewal-specific collective billing prompts."""
+
+    if not query_has_movilidad_suscripcion_collective_billing_renewal_intent(query):
+        return 0.0
+    if is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(chunk):
+        return 3.0
+    if is_movilidad_suscripcion_collective_billing_chunk(chunk):
+        return 1.0
+    if is_movilidad_suscripcion_individual_payment_change_chunk(chunk):
+        return -2.0
+    return 0.0
+
+
+def score_movilidad_suscripcion_individual_financing_intent_alignment(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> float:
+    """Return a narrow preference score for individual-financing suscripción prompts."""
+
+    if not query_has_movilidad_suscripcion_individual_financing_intent(query):
+        return 0.0
+    if is_movilidad_suscripcion_individual_financing_chunk(chunk):
+        return 3.0
+    if is_movilidad_suscripcion_collective_billing_chunk(chunk):
+        return -1.0
+    return 0.0
 
 
 def score_movilidad_suscripcion_collective_billing_intent_alignment(
@@ -1809,15 +2026,26 @@ def score_movilidad_suscripcion_collective_billing_lead_quality(
     return lead_score
 
 
-def build_movilidad_suscripcion_policy_priority_key(
+def build_movilidad_suscripcion_policy_section_priority_key(
     chunk: RetrievedChunk,
     *,
     query: str,
-) -> tuple[float, float, int, float, float]:
-    """Return the deterministic ranking key for suscripción policy prioritization."""
+) -> tuple[float, float, float, float, float, float, float]:
+    """Return the deterministic section-ordering key for suscripción policy prioritization."""
 
-    chunk_index = chunk.chunk_index if isinstance(chunk.chunk_index, int) else 10**9
     return (
+        score_movilidad_suscripcion_individual_financing_intent_alignment(
+            chunk,
+            query=query,
+        ),
+        score_movilidad_suscripcion_collective_billing_renewal_intent_alignment(
+            chunk,
+            query=query,
+        ),
+        score_movilidad_suscripcion_billing_by_insured_intent_alignment(
+            chunk,
+            query=query,
+        ),
         score_movilidad_suscripcion_collective_billing_intent_alignment(
             chunk,
             query=query,
@@ -1826,9 +2054,26 @@ def build_movilidad_suscripcion_policy_priority_key(
             chunk,
             query=query,
         ),
-        -chunk_index,
         score_movilidad_suscripcion_evidence_richness(chunk),
         chunk.score,
+    )
+
+
+def build_movilidad_suscripcion_policy_duplicate_resolution_key(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> tuple[float, float, float, float, float, int]:
+    """Return the deterministic duplicate-resolution key for suscripción chunks."""
+
+    chunk_index = chunk.chunk_index if isinstance(chunk.chunk_index, int) else 10**9
+    section_key = build_movilidad_suscripcion_policy_section_priority_key(
+        chunk,
+        query=query,
+    )
+    return (
+        *section_key,
+        -chunk_index,
     )
 
 
@@ -2036,11 +2281,11 @@ def prioritize_movilidad_suscripcion_policy_evidence(
             best_by_section[section_id] = chunk
             section_order.append(section_id)
             continue
-        candidate_key = build_movilidad_suscripcion_policy_priority_key(
+        candidate_key = build_movilidad_suscripcion_policy_duplicate_resolution_key(
             chunk,
             query=query,
         )
-        existing_key = build_movilidad_suscripcion_policy_priority_key(
+        existing_key = build_movilidad_suscripcion_policy_duplicate_resolution_key(
             existing_chunk,
             query=query,
         )
@@ -2052,7 +2297,7 @@ def prioritize_movilidad_suscripcion_policy_evidence(
 
     prioritized_suscripcion_chunks = sorted(
         (best_by_section[section_id] for section_id in section_order),
-        key=lambda chunk: build_movilidad_suscripcion_policy_priority_key(
+        key=lambda chunk: build_movilidad_suscripcion_policy_section_priority_key(
             chunk,
             query=query,
         ),
@@ -2155,6 +2400,11 @@ def normalize_retrieval_query_with_term_equivalences(
         "document_name": retrieval_query.filters.document_name,
         "version": retrieval_query.filters.version,
     }
+    skip_document_name_injection_for_individual_financing = (
+        query_has_movilidad_suscripcion_individual_financing_intent(
+            retrieval_query.query
+        )
+    )
     for query_filter_rule in term_equivalences.query_filter_rules:
         matches_all = all(
             query_contains_equivalent_phrase(retrieval_query.query, phrase)
@@ -2168,6 +2418,11 @@ def normalize_retrieval_query_with_term_equivalences(
             continue
         for field_name, field_value in query_filter_rule.filters.items():
             if field_name not in normalized_filters or normalized_filters[field_name] is not None:
+                continue
+            if (
+                skip_document_name_injection_for_individual_financing
+                and field_name == "document_name"
+            ):
                 continue
             if field_name in {"document_type", "product"}:
                 normalized_filters[field_name] = canonicalize_filter_value(

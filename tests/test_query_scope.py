@@ -53,6 +53,14 @@ def test_classify_query_scope_supports_choque_simple_queries() -> None:
     assert decision.scope == "supported"
 
 
+def test_classify_query_scope_supports_suscripcion_facturacion_por_asegurado_queries() -> None:
+    decision = classify_query_scope(
+        "¿Qué condiciones aplican a la facturación por asegurado en pólizas colectivas?"
+    )
+
+    assert decision.scope == "supported"
+
+
 def test_classify_query_scope_keeps_non_insurance_spanish_queries_unsupported() -> None:
     decision = classify_query_scope("¿Cómo está el clima en Bogotá hoy?")
 

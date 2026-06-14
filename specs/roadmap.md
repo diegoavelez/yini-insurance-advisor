@@ -1332,7 +1332,7 @@ completed:
 
 remaining in `Phase 18`:
 
-- none
+- `movilidad-suscripcion-financiacion-individual-retrieval-recovery`
 
 Implementation note:
 
@@ -1490,6 +1490,19 @@ Implementation note:
   billing retrieval can recover the exact `14.6.2` subsection from local
   lexical recall and prefer the cleaner billing lead ahead of later fragmentary
   continuations from the same subsection.
+- That suscripción `facturación por asegurado` slice is now closed: the
+  deterministic supported-scope seam admits that query pattern, live retrieval
+  now prioritizes the `14.6.2` chunk that contains the modality conditions,
+  and live grounded answers no longer refuse the request for unsupported scope.
+- That suscripción renewal billing-mode slice is now closed: renewal-specific
+  collective billing queries foreground `14.6.2` collective-policy evidence
+  ahead of individual payment-change rules, and live answers now lead with the
+  correct collective-policy documentary basis.
+- That suscripción `13.11` financing-individual slice is now closed: the
+  normalization path no longer hijacks supported suscripción financing queries
+  into the unrelated financing manual, live retrieval now restores direct
+  `13.11. Financiación de Pólizas Individuales` evidence, and grounded answers
+  lead with that subsection as their primary documentary basis.
 - `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
   `Cobertura` sections instead of adjacent generic sections when operators ask
   what the product covers.
