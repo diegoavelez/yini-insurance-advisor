@@ -1266,6 +1266,8 @@ and cite as the real Spanish document set grows.
 - `movilidad-pv-document-family-ranking-alignment`
 - `qdrant-document-name-filter-index-alignment`
 - `movilidad-pv-benefit-breadth-and-duplicate-section-diversification`
+- `movilidad-utilitarios-pesados-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-utilitarios-pesados-guide-family-ranking-alignment`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-coverage-breadth-evidence-balancing`
@@ -1314,6 +1316,8 @@ completed:
 - `movilidad-pv-document-family-ranking-alignment`
 - `qdrant-document-name-filter-index-alignment`
 - `movilidad-pv-benefit-breadth-and-duplicate-section-diversification`
+- `movilidad-utilitarios-pesados-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-utilitarios-pesados-guide-family-ranking-alignment`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `soat-corpus-baseline-ingestion-and-retrieval`
@@ -1322,7 +1326,7 @@ completed:
 
 remaining in `Phase 18`:
 
-- none
+- no remaining narrow slices currently tracked
 
 Implementation note:
 
@@ -1413,6 +1417,19 @@ Implementation note:
   intra-family ranking: duplicate `Pérdidas totales` chunks should not consume
   multiple early slots, and broader benefit sections should outrank narrow
   service-detail sections such as isolated `Grúa de amplio alcance`.
+- The next operational transversal cohort after `choque simple` and `PV` is
+  now `utilitarios y pesados`, using the existing two-document guide+policy
+  pair before broadening into financing or subscription materials.
+- That baseline `utilitarios y pesados` cohort is now operationally onboarded
+  through ingestion, embeddings, Qdrant indexing, and first live retrieval
+  validation; the only observed follow-on gap is narrow guide-family leakage,
+  where explicit benefit/assistance queries still let
+  `PROPUESTA DE VALOR MOVILIDAD` crowd ahead of the cohort guide.
+- That guide-family leakage is now closed through the existing curated
+  `document_name` filter seam, so explicit `utilitarios y pesados`
+  benefit/assistance queries stay within
+  `Seguro de Autos Utilitarios y Pesados` while the policy path remains
+  unchanged.
 - `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
   `Cobertura` sections instead of adjacent generic sections when operators ask
   what the product covers.

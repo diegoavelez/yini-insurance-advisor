@@ -203,6 +203,40 @@ def test_normalize_retrieval_query_applies_movilidad_pv_document_family_rule() -
     assert normalized_query.filters.document_name == "PROPUESTA DE VALOR MOVILIDAD"
 
 
+def test_normalize_retrieval_query_applies_utilitarios_pesados_guide_document_family_rule() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
+            filters={"product": "movilidad", "document_type": "guide"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["utilitarios y pesados"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "asistencias",
+                        "asistencia",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    filters={"document_name": "Seguro de Autos Utilitarios y Pesados"},
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "guide"
+    assert (
+        normalized_query.filters.document_name
+        == "Seguro de Autos Utilitarios y Pesados"
+    )
+
+
 def test_normalize_retrieval_query_does_not_override_explicit_document_type_filter() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(
@@ -221,6 +255,30 @@ def test_normalize_retrieval_query_does_not_override_explicit_document_type_filt
     )
 
     assert normalized_query.filters.document_type == "guide"
+
+
+def test_normalize_retrieval_query_does_not_override_explicit_document_name_filter() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
+            filters={
+                "product": "movilidad",
+                "document_type": "guide",
+                "document_name": "Documento Operador",
+            },
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["utilitarios y pesados"],
+                    any_of=["beneficios", "asistencias"],
+                    filters={"document_name": "Seguro de Autos Utilitarios y Pesados"},
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.document_name == "Documento Operador"
 
 
 def test_retrieve_ranked_chunks_maps_search_hits_in_ranked_order(
@@ -940,6 +998,67 @@ def test_retrieve_ranked_chunks_applies_movilidad_pv_document_family_filter(
     ]
 
 
+def test_retrieve_ranked_chunks_applies_utilitarios_pesados_guide_document_family_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["utilitarios y pesados"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "asistencias",
+                        "asistencia",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    filters={"document_name": "Seguro de Autos Utilitarios y Pesados"},
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
+            filters={"product": "movilidad", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    query_filter = client.last_query["query_filter"]
+    assert [
+        (condition.key, condition.match.value) for condition in query_filter.must
+    ] == [
+        ("document_type", "guide"),
+        ("product", "movilidad"),
+        ("document_name", "Seguro de Autos Utilitarios y Pesados"),
+    ]
+
+
 def test_retrieve_ranked_chunks_applies_deductible_query_expansion_rules(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1599,6 +1718,109 @@ def test_retrieve_ranked_chunks_excludes_non_pv_local_candidates_for_pv_benefit_
         "PROPUESTA DE VALOR MOVILIDAD"
     ]
     assert result.chunks[0].section == "Viajes"
+
+def test_retrieve_ranked_chunks_excludes_non_cohort_locals_for_utilitarios_guide(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["utilitarios y pesados"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "asistencias",
+                        "asistencia",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    filters={"document_name": "Seguro de Autos Utilitarios y Pesados"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["utilitarios y pesados"],
+                    any_of=["beneficios", "asistencias"],
+                    append_terms=[
+                        "seguro de autos utilitarios y pesados",
+                        "sentirte acompañado",
+                        "ahorrar dinero",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="util:v2:0004",
+                source_pdf_id="movilidad__transversales__ayudaventas-utilitarios-y-pesados-v2",
+                document_name="Seguro de Autos Utilitarios y Pesados",
+                document_version=None,
+                document_type="guide",
+                product="movilidad",
+                source_pdf_path=(
+                    "data/raw/MOVILIDAD/TRANSVERSALES/ayudaventas utilitarios y pesados v2.pdf"
+                ),
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/ayudaventas utilitarios y pesados v2.pdf"
+                ),
+                cleaned_markdown_output_path="data/processed/utilitarios.cleaned.md",
+                text="# Seguro de Autos Utilitarios y Pesados\n\n## Ahorrar dinero",
+                chunk_index=4,
+                chunk_schema_version="v2",
+                section="Ahorrar dinero",
+                section_path=("Seguro de Autos Utilitarios y Pesados", "Ahorrar dinero"),
+            ),
+            ChunkRecord(
+                chunk_id="pv:v2:0095",
+                source_pdf_id="movilidad__transversales__pv-planes-movilidad-v1",
+                document_name="PROPUESTA DE VALOR MOVILIDAD",
+                document_version=None,
+                document_type="guide",
+                product="movilidad",
+                source_pdf_path="data/raw/MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf",
+                source_pdf_relative_path="MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf",
+                cleaned_markdown_output_path="data/processed/pv-planes.cleaned.md",
+                text="# PROPUESTA DE VALOR MOVILIDAD\n\n## DESCUENTOS Y REPUESTOS CNS",
+                chunk_index=95,
+                chunk_schema_version="v2",
+                section="DESCUENTOS Y REPUESTOS CNS",
+                section_path=("PROPUESTA DE VALOR MOVILIDAD", "DESCUENTOS Y REPUESTOS CNS"),
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué beneficios o asistencias tienen los utilitarios y pesados?",
+            filters={"product": "movilidad", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.document_name for chunk in result.chunks] == [
+        "Seguro de Autos Utilitarios y Pesados"
+    ]
+    assert result.chunks[0].section == "Ahorrar dinero"
 
 
 def test_retrieve_ranked_chunks_diversifies_movilidad_pv_benefit_sections(

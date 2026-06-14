@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-06-14
+
+- Add the `utilitarios y pesados` mobility transversal onboarding slice by documenting the narrow two-document cohort, running ingestion/embeddings/Qdrant indexing for the guide+policy pair, and recording the resulting roadmap/spec traceability for the now-operational baseline corpus.
+- Add the follow-on `utilitarios y pesados` guide-family corrective slice by curating a `document_name` filter rule for explicit benefit/assistance queries, extending focused retrieval regression coverage for normalization/Qdrant/local-lexical paths, and validating live that guide retrieval now stays inside `Seguro de Autos Utilitarios y Pesados` while the policy path remains unchanged.
+
 ## 2026-06-13
 
 - Add the movilidad PV corrective retrieval sequence by auditing the `pv` cohort structure, remediating duplicated applicability blocks and inline commercial tails, validating retrieval readiness, and documenting the resulting spec/roadmap traceability for the indexed `PROPUESTA DE VALOR MOVILIDAD` family.

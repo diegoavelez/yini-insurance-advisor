@@ -315,6 +315,24 @@
       "filters": {
         "document_name": "PROPUESTA DE VALOR MOVILIDAD"
       }
+    },
+    {
+      "all_of": [
+        "utilitarios y pesados"
+      ],
+      "any_of": [
+        "beneficios",
+        "beneficio",
+        "asistencias",
+        "asistencia",
+        "incluye",
+        "incluyen",
+        "diferenciales",
+        "ventajas"
+      ],
+      "filters": {
+        "document_name": "Seguro de Autos Utilitarios y Pesados"
+      }
     }
   ],
   "filter_aliases": {
