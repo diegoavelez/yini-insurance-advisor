@@ -19,6 +19,7 @@ from rag.ingestion import (
     extract_document_metadata,
     main,
     normalize_known_document_markdown,
+    normalize_pv_commercial_block,
     parse_bool,
     split_markdown_blocks,
 )
@@ -607,6 +608,214 @@ def test_split_markdown_blocks_normalizes_choque_simple_circular_sections() -> N
     assert "Artículo 143. Daños materiales." in blocks[1].text
     assert "retirar inmediatamente los vehículos" in blocks[2].text
     assert "informe policial de accidentes de tránsito" in blocks[3].text
+
+
+def test_normalize_pv_commercial_block_removes_slogans_and_normalizes_applicability() -> None:
+    normalized = normalize_pv_commercial_block(
+        "PLANES QUE APLICAN\n"
+        "SENTIRTE ACOMPAÑADO / AHORRAR TIEMPO / AHORRAR DINERO\n"
+        "- o Plan Autos Global\n"
+        "- o Plan Motos\n"
+        "- o\n"
+    )
+
+    assert normalized == "PLANES QUE APLICA\n- Plan Autos Global\n- Plan Motos"
+
+
+def test_normalize_pv_commercial_block_strips_inline_slogan_suffixes() -> None:
+    normalized = normalize_pv_commercial_block(
+        "Si necesitas ir a algún lugar y no puedes manejar "
+        "SENTIRTE ACOMPAÑADO / AHORRAR TIEMPO / AHORRAR DINERO\n"
+        "o Plan Autos Global\n"
+    )
+
+    assert "SENTIRTE ACOMPAÑADO" not in normalized
+    assert normalized == "Si necesitas ir a algún lugar y no puedes manejar\n- Plan Autos Global"
+
+
+def test_split_markdown_blocks_merges_pv_benefit_with_following_applicability() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="pv-demo",
+        document_name="PROPUESTA DE VALOR MOVILIDAD",
+        document_version=None,
+        document_type="guide",
+        product="movilidad",
+        source_pdf_path=Path("data/raw/MOVILIDAD/TRANSVERSALES/pv-demo.pdf"),
+        source_pdf_relative_path=Path("MOVILIDAD/TRANSVERSALES/pv-demo.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/pv-demo.cleaned.md"),
+        cleaned_markdown_text=(
+            "# PROPUESTA DE VALOR MOVILIDAD\n\n"
+            "## APP\n\n"
+            "SENTIRTE ACOMPAÑADO / AHORRAR TIEMPO / AHORRAR DINERO\n"
+            "Puedes pedir grúa y conductor elegido desde la App.\n\n"
+            "## PLANES QUE APLICAN\n\n"
+            "- o Plan Autos Global\n"
+            "- o Plan Motos\n"
+        ),
+        chunk_size=500,
+        chunk_overlap=50,
+    )
+
+    matching_chunk = next(
+        chunk
+        for chunk in chunk_records
+        if chunk.section == "APP"
+        and "## PLANES QUE APLICA" in chunk.text
+        and "- Plan Autos Global" in chunk.text
+    )
+
+    assert matching_chunk.section_path == ["PROPUESTA DE VALOR MOVILIDAD", "APP"]
+    assert "SENTIRTE ACOMPAÑADO / AHORRAR TIEMPO / AHORRAR DINERO" not in matching_chunk.text
+
+
+def test_split_markdown_blocks_skips_pv_slogan_headings() -> None:
+    blocks = split_markdown_blocks(
+        "# PROPUESTA DE VALOR MOVILIDAD\n\n"
+        "## Taller móvil ilimitado\n\n"
+        "## SENTIRTE ACOMPAÑADO / AHORRAR TIEMPO / AHORRAR DINERO\n\n"
+        "Si te varas, SURA envía un taller móvil.\n"
+    )
+
+    sections = [block.section for block in blocks]
+
+    assert "SENTIRTE ACOMPAÑADO / AHORRAR TIEMPO / AHORRAR DINERO" not in sections
+    assert sections[0] == "PROPUESTA DE VALOR MOVILIDAD"
+    assert sections[1:] == ["Taller móvil ilimitado", "Taller móvil ilimitado"]
+
+
+def test_build_chunk_records_disables_overlap_for_pv_applicability_chunks() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="pv-applicability",
+        document_name="PROPUESTA DE VALOR MOVILIDAD",
+        document_version=None,
+        document_type="guide",
+        product="movilidad",
+        source_pdf_path=Path("data/raw/MOVILIDAD/TRANSVERSALES/pv.pdf"),
+        source_pdf_relative_path=Path("MOVILIDAD/TRANSVERSALES/pv.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/pv.cleaned.md"),
+        cleaned_markdown_text=(
+            "# PROPUESTA DE VALOR MOVILIDAD\n\n"
+            "## PLANES QUE APLICA\n\n"
+            "- Plan Autos Global: beneficio uno beneficio uno beneficio uno.\n\n"
+            "- Plan Autos Clásico: beneficio dos beneficio dos beneficio dos.\n\n"
+            "- Plan Motos: beneficio tres beneficio tres beneficio tres.\n"
+        ),
+        chunk_size=120,
+        chunk_overlap=80,
+    )
+
+    assert len(chunk_records) == 3
+    assert "beneficio uno" in chunk_records[0].text
+    assert "beneficio uno" not in chunk_records[1].text
+    assert "beneficio dos" in chunk_records[1].text
+    assert "beneficio dos" not in chunk_records[2].text
+    assert "beneficio tres" in chunk_records[2].text
+
+
+def test_build_chunk_records_collapse_equivalent_pv_applicability_headings() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="pv-heading-variants",
+        document_name="PROPUESTA DE VALOR MOVILIDAD",
+        document_version=None,
+        document_type="guide",
+        product="movilidad",
+        source_pdf_path=Path("data/raw/MOVILIDAD/TRANSVERSALES/pv.pdf"),
+        source_pdf_relative_path=Path("MOVILIDAD/TRANSVERSALES/pv.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/pv.cleaned.md"),
+        cleaned_markdown_text=(
+            "# PROPUESTA DE VALOR MOVILIDAD\n\n"
+            "## PLANES QUE APLICA\n\n"
+            "## Plan que aplica\n"
+            "- Plan Autos Global\n"
+        ),
+        chunk_size=300,
+        chunk_overlap=50,
+    )
+
+    assert "## Plan que aplica" not in chunk_records[0].text
+
+
+def test_build_chunk_records_deduplicate_exact_standalone_pv_applicability_chunks() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="pv-dedup",
+        document_name="PROPUESTA DE VALOR MOVILIDAD",
+        document_version=None,
+        document_type="guide",
+        product="movilidad",
+        source_pdf_path=Path("data/raw/MOVILIDAD/TRANSVERSALES/pv.pdf"),
+        source_pdf_relative_path=Path("MOVILIDAD/TRANSVERSALES/pv.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/pv.cleaned.md"),
+        cleaned_markdown_text=(
+            "# PROPUESTA DE VALOR MOVILIDAD\n\n"
+            "## PLANES QUE APLICA\n\n"
+            "- Plan Autos Global\n"
+            "- Plan Autos Clásico\n\n"
+            "## PLANES QUE APLICA\n\n"
+            "- Plan Autos Global\n"
+            "- Plan Autos Clásico\n\n"
+            "## Anticipo\n\n"
+            "Beneficio distinto.\n"
+        ),
+        chunk_size=300,
+        chunk_overlap=50,
+    )
+
+    applicability_chunks = [
+        chunk for chunk in chunk_records if chunk.section == "PLANES QUE APLICA"
+    ]
+
+    assert len(applicability_chunks) == 1
+    assert len(chunk_records) == 2
+    assert chunk_records[0].chunk_id == "pv-dedup:v2:0000"
+    assert chunk_records[1].chunk_id == "pv-dedup:v2:0001"
+
+
+def test_build_chunk_records_keep_distinct_standalone_pv_applicability_chunks() -> None:
+    chunk_records = build_chunk_records(
+        source_pdf_id="pv-dedup-distinct",
+        document_name="PROPUESTA DE VALOR MOVILIDAD",
+        document_version=None,
+        document_type="guide",
+        product="movilidad",
+        source_pdf_path=Path("data/raw/MOVILIDAD/TRANSVERSALES/pv.pdf"),
+        source_pdf_relative_path=Path("MOVILIDAD/TRANSVERSALES/pv.pdf"),
+        cleaned_markdown_output_path=Path("data/processed/pv.cleaned.md"),
+        cleaned_markdown_text=(
+            "# PROPUESTA DE VALOR MOVILIDAD\n\n"
+            "## PLANES QUE APLICA\n\n"
+            "- Plan Autos Global: aplica al beneficio A.\n\n"
+            "## PLANES QUE APLICA\n\n"
+            "- Plan Motos: aplica al beneficio B.\n"
+        ),
+        chunk_size=90,
+        chunk_overlap=50,
+    )
+
+    applicability_chunks = [
+        chunk for chunk in chunk_records if chunk.section == "PLANES QUE APLICA"
+    ]
+
+    assert any(
+        "Plan Autos Global: aplica al beneficio A." in chunk.text
+        for chunk in applicability_chunks
+    )
+    assert any(
+        "Plan Motos: aplica al beneficio B." in chunk.text
+        for chunk in applicability_chunks
+    )
+
+
+def test_split_markdown_blocks_normalize_heading_prefixed_pv_applicability_body() -> None:
+    blocks = split_markdown_blocks(
+        "# PROPUESTA DE VALOR MOVILIDAD\n\n"
+        "## PLANES QUE APLICA\n"
+        "Si necesitas ir a algún lugar y no puedes manejar "
+        "SENTIRTE ACOMPAÑADO / AHORRAR TIEMPO / AHORRAR DINERO\n"
+        "- Plan Autos Global\n"
+    )
+
+    assert "SENTIRTE ACOMPAÑADO" not in blocks[-1].text
+    assert "Si necesitas ir a algún lugar y no puedes manejar" in blocks[-1].text
 
 
 def test_cli_fails_when_input_directory_is_missing(tmp_path, capsys) -> None:

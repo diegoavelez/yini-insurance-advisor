@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib
 import importlib.util
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -88,6 +90,11 @@ CHOQUE_SIMPLE_BOILERPLATE_PATTERNS = (
     "www.mintransporte.gov.co",
     "powered by tcpdf",
 )
+PV_SLOGAN_NORMALIZED_LINES = {
+    "sentirte acompanado",
+    "ahorrar tiempo",
+    "ahorrar dinero",
+}
 DESCRIPTIVE_COVERAGE_OPENERS = (
     "si como consecuencia",
     "si le haces daño",
@@ -113,7 +120,7 @@ DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
 DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 1800.0
 QDRANT_POINT_ID_NAMESPACE = uuid.UUID("8c39ce79-53d7-47e5-baad-95c5f1548599")
-QDRANT_FILTERABLE_PAYLOAD_FIELDS = ("document_type", "product")
+QDRANT_FILTERABLE_PAYLOAD_FIELDS = ("document_type", "product", "document_name")
 MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
 RAG_LOGGER = logging.getLogger("yini.rag")
@@ -206,6 +213,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=parse_positive_float,
         default=DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS,
     )
+
+    subparsers.add_parser("warmup-embedding-assets")
 
     embedding_parser = subparsers.add_parser("generate-embeddings")
     embedding_parser.add_argument("--chunk-dir", required=True)
@@ -395,12 +404,63 @@ def create_qdrant_client(settings: Settings):
     )
 
 
-@lru_cache(maxsize=4)
-def load_sentence_transformer(model_name: str):
+@lru_cache(maxsize=8)
+def load_sentence_transformer(model_name: str, *, local_files_only: bool = True):
     """Return a cached SentenceTransformer instance for deterministic reuse."""
 
-    sentence_transformers = importlib.import_module("sentence_transformers")
-    return sentence_transformers.SentenceTransformer(model_name)
+    try:
+        with offline_huggingface_resolution(enabled=local_files_only):
+            sentence_transformers = importlib.import_module("sentence_transformers")
+            return sentence_transformers.SentenceTransformer(
+                model_name,
+                local_files_only=local_files_only,
+            )
+    except TypeError:
+        if local_files_only:
+            raise RuntimeError(
+                "Installed sentence-transformers version does not support offline "
+                "local_files_only loading."
+            ) from None
+        return sentence_transformers.SentenceTransformer(model_name)
+
+
+@contextlib.contextmanager
+def offline_huggingface_resolution(*, enabled: bool):
+    """Force offline Hugging Face resolution when loading cached local assets."""
+
+    if not enabled:
+        yield
+        return
+
+    override_values = {
+        "HF_HUB_OFFLINE": "1",
+        "TRANSFORMERS_OFFLINE": "1",
+    }
+    previous_values = {key: os.environ.get(key) for key in override_values}
+    try:
+        for key, value in override_values.items():
+            os.environ[key] = value
+        yield
+    finally:
+        for key, previous_value in previous_values.items():
+            if previous_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = previous_value
+
+
+def ensure_embedding_model_assets_available(settings: Settings) -> None:
+    """Fail loudly when embedding-model assets are not cached locally."""
+
+    try:
+        load_sentence_transformer(settings.embedding_model, local_files_only=True)
+    except Exception as exc:
+        raise RuntimeError(
+            "Embedding model assets are not cached locally for "
+            f"{settings.embedding_model}. Run `python -m rag.ingestion "
+            "warmup-embedding-assets` once with network access, or pre-populate "
+            "the Hugging Face cache before running offline embedding or retrieval commands."
+        ) from exc
 
 
 def generate_embedding_vector(text: str, settings: Settings) -> list[float]:
@@ -409,7 +469,8 @@ def generate_embedding_vector(text: str, settings: Settings) -> list[float]:
     if settings.embedding_provider != SUPPORTED_EMBEDDING_PROVIDER:
         raise RuntimeError("Unsupported embedding provider for local embedding generation.")
 
-    model = load_sentence_transformer(settings.embedding_model)
+    ensure_embedding_model_assets_available(settings)
+    model = load_sentence_transformer(settings.embedding_model, local_files_only=True)
     vector = model.encode([text], normalize_embeddings=True)[0]
     return [float(value) for value in vector]
 
@@ -898,6 +959,8 @@ def rerank_chunks_for_query_expansion_rules(
     ranked_chunks = [candidate[2] for candidate in reranked_candidates]
     if coverage_intent:
         return diversify_explicit_coverage_sections(ranked_chunks, top_k=top_k)
+    if query_has_movilidad_pv_benefit_intent(query):
+        return diversify_movilidad_pv_benefit_sections(ranked_chunks, top_k=top_k)
     return ranked_chunks[:top_k]
 
 
@@ -1226,6 +1289,61 @@ def coverage_section_identity(chunk: RetrievedChunk) -> tuple[str, ...]:
     return (chunk.chunk_id,)
 
 
+def query_has_movilidad_pv_benefit_intent(query: str) -> bool:
+    """Return whether one query explicitly asks for movilidad PV benefits."""
+
+    if not query_contains_equivalent_phrase(query, "propuesta de valor"):
+        return False
+    if not query_contains_equivalent_phrase(query, "movilidad"):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in (
+            "beneficios",
+            "beneficio",
+            "incluye",
+            "incluyen",
+            "diferenciales",
+            "ventajas",
+        )
+    )
+
+
+def is_movilidad_pv_document_family_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one retrieved chunk belongs to the movilidad PV family."""
+
+    return normalize_equivalence_text(chunk.document_name) == "propuesta de valor movilidad"
+
+
+def count_bullet_lines(text: str) -> int:
+    """Return the number of bullet-style lines in one chunk surface."""
+
+    return sum(1 for line in text.splitlines() if line.lstrip().startswith("- "))
+
+
+def score_movilidad_pv_benefit_breadth(chunk: RetrievedChunk) -> float:
+    """Return a deterministic breadth preference for PV benefit sections."""
+
+    total_score = 0.0
+    bullet_count = count_bullet_lines(chunk.text)
+    total_score += min(bullet_count * 0.45, 2.25)
+
+    normalized_text = normalize_equivalence_text(chunk.text)
+    if len(normalized_text) >= 180:
+        total_score += 0.40
+    if len(normalized_text) >= 320:
+        total_score += 0.35
+
+    repeated_section_heading_count = 0
+    if chunk.section:
+        normalized_section = normalize_equivalence_text(chunk.section)
+        repeated_section_heading_count = normalized_text.count(normalized_section)
+    if repeated_section_heading_count >= 2:
+        total_score -= 0.25
+
+    return total_score
+
+
 def score_explicit_coverage_chunk_descriptiveness(chunk: RetrievedChunk) -> float:
     """Return a local preference score for descriptive coverage chunks."""
 
@@ -1303,6 +1421,71 @@ def diversify_explicit_coverage_sections(
     for chunk in (*prioritized_coverage_chunks, *ranked_chunks, *remaining_chunks):
         if chunk.chunk_id in seen_chunk_ids:
             continue
+        final_chunks.append(chunk)
+        seen_chunk_ids.add(chunk.chunk_id)
+        if len(final_chunks) >= top_k:
+            break
+    return final_chunks
+
+
+def diversify_movilidad_pv_benefit_sections(
+    ranked_chunks: Sequence[RetrievedChunk],
+    *,
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Prefer broader distinct PV benefit sections before repeated sections."""
+
+    if top_k < 1:
+        return []
+
+    best_by_section: dict[tuple[str, ...], RetrievedChunk] = {}
+    section_order: list[tuple[str, ...]] = []
+    remaining_chunks: list[RetrievedChunk] = []
+
+    for chunk in ranked_chunks:
+        if not is_movilidad_pv_document_family_chunk(chunk):
+            remaining_chunks.append(chunk)
+            continue
+        section_id = coverage_section_identity(chunk)
+        existing_chunk = best_by_section.get(section_id)
+        if existing_chunk is None:
+            best_by_section[section_id] = chunk
+            section_order.append(section_id)
+            continue
+        candidate_key = (
+            score_movilidad_pv_benefit_breadth(chunk),
+            chunk.score,
+        )
+        existing_key = (
+            score_movilidad_pv_benefit_breadth(existing_chunk),
+            existing_chunk.score,
+        )
+        if candidate_key > existing_key:
+            remaining_chunks.append(existing_chunk)
+            best_by_section[section_id] = chunk
+            continue
+        remaining_chunks.append(chunk)
+
+    prioritized_pv_chunks = sorted(
+        (best_by_section[section_id] for section_id in section_order),
+        key=lambda chunk: (
+            score_movilidad_pv_benefit_breadth(chunk),
+            chunk.score,
+        ),
+        reverse=True,
+    )
+
+    final_chunks: list[RetrievedChunk] = []
+    seen_chunk_ids: set[str] = set()
+    seen_pv_section_ids: set[tuple[str, ...]] = set()
+    for chunk in (*prioritized_pv_chunks, *ranked_chunks, *remaining_chunks):
+        if chunk.chunk_id in seen_chunk_ids:
+            continue
+        if is_movilidad_pv_document_family_chunk(chunk):
+            section_id = coverage_section_identity(chunk)
+            if section_id in seen_pv_section_ids:
+                continue
+            seen_pv_section_ids.add(section_id)
         final_chunks.append(chunk)
         seen_chunk_ids.add(chunk.chunk_id)
         if len(final_chunks) >= top_k:
@@ -1892,6 +2075,127 @@ def normalize_choque_simple_circular_block(block_text: str) -> str:
     return normalized_block
 
 
+def normalize_pv_heading_text(value: str) -> str:
+    """Canonicalize common PV headings with unstable casing or number."""
+
+    normalized_value = normalize_equivalence_text(value)
+    if normalized_value in {"planes que aplica", "planes que aplican", "plan que aplica"}:
+        return "PLANES QUE APLICA"
+    return value.strip()
+
+
+def is_pv_slogan_line(value: str) -> bool:
+    """Return whether a line is a commercial PV slogan without retrieval value."""
+
+    normalized_value = normalize_equivalence_text(value.lstrip("#").strip())
+    if not normalized_value:
+        return False
+    parts = [part.strip() for part in normalized_value.split("/") if part.strip()]
+    if not parts:
+        return False
+    return all(part in PV_SLOGAN_NORMALIZED_LINES for part in parts)
+
+
+def strip_inline_pv_slogan_suffix(value: str) -> str:
+    """Remove trailing PV slogan fragments when appended to a meaningful line."""
+
+    stripped_value = value.strip()
+    patterns = (
+        r"\s+SENTIRTE\s+ACOMPAÑADO\s*/\s*AHORRAR\s+TIEMPO\s*/\s*AHORRAR\s+DINERO\s*$",
+        r"\s+SENTIRTE\s+ACOMPAÑADO\s*/\s*AHORRAR\s+TIEMPO\s*$",
+        r"\s+SENTIRTE\s+ACOMPAÑADO\s*/\s*AHORRAR\s+DINERO\s*$",
+        r"\s+AHORRAR\s+TIEMPO\s*/\s*AHORRAR\s+DINERO\s*$",
+        r"\s+SENTIRTE\s+ACOMPAÑADO\s*$",
+        r"\s+AHORRAR\s+TIEMPO\s*$",
+        r"\s+AHORRAR\s+DINERO\s*$",
+    )
+    for pattern in patterns:
+        substituted_value = re.sub(pattern, "", stripped_value, flags=re.IGNORECASE)
+        if substituted_value != stripped_value:
+            updated_value = substituted_value.strip(" -:/")
+            if updated_value:
+                return updated_value
+    return stripped_value
+
+
+def normalize_pv_commercial_block(block_text: str) -> str:
+    """Rewrite noisy PV slide blocks into compact retrieval-oriented text."""
+
+    raw_lines = [line.strip() for line in block_text.splitlines() if line.strip()]
+    if not raw_lines:
+        return block_text
+
+    normalized_lines: list[str] = []
+    bullet_lines: list[str] = []
+    removed_pv_noise = False
+    modified_pv_surface = False
+
+    for line in raw_lines:
+        original_line = line
+        line = strip_inline_pv_slogan_suffix(line)
+        if line != original_line:
+            modified_pv_surface = True
+        if is_pv_slogan_line(line):
+            removed_pv_noise = True
+            continue
+        canonical_heading = normalize_pv_heading_text(line)
+        if canonical_heading != line.strip():
+            modified_pv_surface = True
+            normalized_lines.append(canonical_heading)
+            continue
+
+        normalized_line = re.sub(r"^-\s*o\s*$", "", line, flags=re.IGNORECASE).strip()
+        normalized_line = re.sub(r"^-\s*o\s+", "- ", normalized_line, flags=re.IGNORECASE)
+        normalized_line = re.sub(r"^o\s+", "- ", normalized_line, flags=re.IGNORECASE)
+        normalized_line = re.sub(r"\s+", " ", normalized_line).strip()
+        if not normalized_line or normalized_line in {"-", "o"}:
+            removed_pv_noise = True
+            continue
+        if normalized_line in {".", "·", "•"}:
+            removed_pv_noise = True
+            continue
+        if normalized_line.startswith("- "):
+            if normalized_line not in bullet_lines:
+                bullet_lines.append(normalized_line)
+            continue
+        normalized_lines.append(normalized_line)
+
+    if bullet_lines:
+        normalized_lines.extend(bullet_lines)
+
+    if not normalized_lines:
+        return ""
+
+    if removed_pv_noise or modified_pv_surface:
+        return "\n".join(normalized_lines)
+
+    if not any(
+        normalize_equivalence_text(line) == "propuesta de valor movilidad"
+        or normalize_equivalence_text(normalize_pv_heading_text(line)) == "planes que aplica"
+        or line.startswith("- ")
+        for line in normalized_lines
+    ):
+        return block_text
+
+    return "\n".join(normalized_lines)
+
+
+def normalize_heading_prefixed_pv_block(block_text: str) -> str:
+    """Apply PV commercial cleanup to the body of heading-prefixed blocks."""
+
+    lines = block_text.splitlines()
+    if len(lines) <= 1:
+        return block_text
+    heading_line = lines[0].rstrip()
+    body = "\n".join(lines[1:]).strip()
+    if not body:
+        return heading_line
+    normalized_body = normalize_pv_commercial_block(body)
+    if not normalized_body:
+        return heading_line
+    return f"{heading_line}\n\n{normalized_body}"
+
+
 def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
     """Split cleaned markdown into deterministic text blocks with structural context."""
 
@@ -1906,7 +2210,9 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
         first_line = block.splitlines()[0].strip()
         if first_line.startswith("#"):
             level = len(first_line) - len(first_line.lstrip("#"))
-            heading_text = first_line.lstrip("#").strip()
+            heading_text = normalize_pv_heading_text(first_line.lstrip("#").strip())
+            if is_pv_slogan_line(heading_text):
+                continue
             if heading_text:
                 while len(heading_stack) >= level:
                     heading_stack.pop()
@@ -1919,12 +2225,15 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
                 continue
             if is_page_heading_text(heading_text):
                 continue
+            if len(block.splitlines()) > 1:
+                block = normalize_heading_prefixed_pv_block(block)
         else:
             block = normalize_comparison_table_block(block)
             block = normalize_diagrammatic_coverage_block(block)
             block = normalize_expedition_requirements_block(block)
             block = normalize_deductible_block(block)
             block = normalize_choque_simple_circular_block(block)
+            block = normalize_pv_commercial_block(block)
             if not block:
                 continue
         semantic_section = find_semantic_section_label(block)
@@ -2017,6 +2326,63 @@ def can_merge_structural_pair(
     )
 
 
+def is_root_pv_block(block: MarkdownBlock) -> bool:
+    """Return whether a block belongs to the PV movilidad corpus root."""
+
+    return bool(block.section_path) and normalize_equivalence_text(
+        block.section_path[0]
+    ) == "propuesta de valor movilidad"
+
+
+def is_pv_applicability_block(block: MarkdownBlock) -> bool:
+    """Return whether a block is the applicability list for one PV benefit."""
+
+    return normalize_equivalence_text(block.section or "") == "planes que aplica"
+
+
+def can_merge_pv_benefit_with_applicability(
+    current_block: MarkdownBlock,
+    next_block: MarkdownBlock,
+    chunk_size: int,
+) -> bool:
+    """Keep one PV benefit together with its immediately following applicability list."""
+
+    if current_block.kind == "heading" or next_block.kind == "heading":
+        return False
+    if not is_root_pv_block(current_block) or not is_root_pv_block(next_block):
+        return False
+    if is_pv_applicability_block(current_block) or not is_pv_applicability_block(next_block):
+        return False
+    if len(current_block.section_path) != 2 or len(next_block.section_path) != 2:
+        return False
+    combined_length = len(current_block.text) + 2 + len(next_block.text)
+    return combined_length <= chunk_size
+
+
+def can_merge_pv_benefit_with_applicability_heading_triplet(
+    current_block: MarkdownBlock,
+    next_heading_block: MarkdownBlock,
+    next_block: MarkdownBlock,
+    chunk_size: int,
+) -> bool:
+    """Keep one PV benefit with an immediately following applicability heading+list."""
+
+    if current_block.kind == "heading":
+        return False
+    if next_heading_block.kind != "heading":
+        return False
+    if not is_root_pv_block(current_block) or not is_root_pv_block(next_heading_block):
+        return False
+    if not is_root_pv_block(next_block) or not is_pv_applicability_block(next_block):
+        return False
+    if normalize_equivalence_text(next_heading_block.section or "") != "planes que aplica":
+        return False
+    combined_length = (
+        len(current_block.text) + 2 + len(next_heading_block.text) + 2 + len(next_block.text)
+    )
+    return combined_length <= chunk_size
+
+
 def group_semantic_blocks(blocks: list[MarkdownBlock], chunk_size: int) -> list[MarkdownBlock]:
     """Group related structural blocks before chunk assembly."""
 
@@ -2025,6 +2391,42 @@ def group_semantic_blocks(blocks: list[MarkdownBlock], chunk_size: int) -> list[
 
     while index < len(blocks):
         current_block = blocks[index]
+        if index + 2 < len(blocks):
+            next_heading_block = blocks[index + 1]
+            next_block = blocks[index + 2]
+            if can_merge_pv_benefit_with_applicability_heading_triplet(
+                current_block,
+                next_heading_block,
+                next_block,
+                chunk_size,
+            ):
+                grouped_blocks.append(
+                    MarkdownBlock(
+                        text=(
+                            f"{current_block.text}\n\n"
+                            f"{next_heading_block.text}\n\n"
+                            f"{next_block.text}"
+                        ),
+                        section=current_block.section,
+                        section_path=current_block.section_path,
+                        kind="grouped",
+                    )
+                )
+                index += 3
+                continue
+        if index + 1 < len(blocks):
+            next_block = blocks[index + 1]
+            if can_merge_pv_benefit_with_applicability(current_block, next_block, chunk_size):
+                grouped_blocks.append(
+                    MarkdownBlock(
+                        text=f"{current_block.text}\n\n{next_block.text}",
+                        section=current_block.section,
+                        section_path=current_block.section_path,
+                        kind="grouped",
+                    )
+                )
+                index += 2
+                continue
         if current_block.kind in {"heading", "clause_marker"} and index + 1 < len(blocks):
             next_block = blocks[index + 1]
             if can_merge_structural_pair(current_block, next_block, chunk_size):
@@ -2126,7 +2528,10 @@ def collapse_consecutive_duplicate_heading_lines(chunk_text: str) -> str:
     for raw_line in chunk_text.splitlines():
         stripped_line = raw_line.strip()
         if stripped_line.startswith("#"):
-            normalized_heading = normalize_equivalence_text(stripped_line)
+            heading_body = stripped_line.lstrip("#").strip()
+            normalized_heading = normalize_equivalence_text(
+                normalize_pv_heading_text(heading_body)
+            )
             if normalized_heading == previous_heading:
                 continue
             previous_heading = normalized_heading
@@ -2161,6 +2566,75 @@ def ensure_chunk_text_includes_section_context(
     if normalized_prefix and normalized_prefix in normalized_chunk_text:
         return chunk_text
     return collapse_consecutive_duplicate_heading_lines(f"{heading_prefix}\n\n{chunk_text}")
+
+
+def is_pv_applicability_section_path(section_path: Sequence[str]) -> bool:
+    """Return whether a section path points to the PV applicability lane."""
+
+    return (
+        len(section_path) >= 2
+        and normalize_equivalence_text(section_path[0]) == "propuesta de valor movilidad"
+        and normalize_equivalence_text(section_path[-1]) == "planes que aplica"
+    )
+
+
+def should_disable_chunk_overlap_for_entries(entries: Sequence[MarkdownBlock]) -> bool:
+    """Disable overlap for narrow applicability-heavy PV chunks."""
+
+    if not entries:
+        return False
+    return all(is_pv_applicability_section_path(entry.section_path) for entry in entries)
+
+
+def is_standalone_pv_applicability_chunk(chunk_record: ChunkRecord) -> bool:
+    """Return whether one chunk is a standalone PV applicability chunk."""
+
+    if not is_pv_applicability_section_path(chunk_record.section_path):
+        return False
+    return chunk_record.section == "PLANES QUE APLICA"
+
+
+def deduplicate_exact_pv_applicability_chunks(
+    chunk_records: Sequence[ChunkRecord],
+) -> list[ChunkRecord]:
+    """Drop exact duplicate standalone PV applicability chunks conservatively."""
+
+    deduplicated_records: list[ChunkRecord] = []
+    seen_surfaces: set[tuple[str, str]] = set()
+
+    for chunk_record in chunk_records:
+        if not is_standalone_pv_applicability_chunk(chunk_record):
+            deduplicated_records.append(chunk_record)
+            continue
+        normalized_text = normalize_equivalence_text(chunk_record.text)
+        dedup_key = (chunk_record.source_pdf_id, normalized_text)
+        if dedup_key in seen_surfaces:
+            continue
+        seen_surfaces.add(dedup_key)
+        deduplicated_records.append(chunk_record)
+
+    rebuilt_records: list[ChunkRecord] = []
+    for chunk_index, chunk_record in enumerate(deduplicated_records):
+        rebuilt_records.append(
+            ChunkRecord(
+                chunk_id=f"{chunk_record.source_pdf_id}:{CHUNK_SCHEMA_VERSION}:{chunk_index:04d}",
+                source_pdf_id=chunk_record.source_pdf_id,
+                document_name=chunk_record.document_name,
+                document_version=chunk_record.document_version,
+                document_type=chunk_record.document_type,
+                product=chunk_record.product,
+                source_pdf_path=chunk_record.source_pdf_path,
+                source_pdf_relative_path=chunk_record.source_pdf_relative_path,
+                cleaned_markdown_output_path=chunk_record.cleaned_markdown_output_path,
+                text=chunk_record.text,
+                chunk_index=chunk_index,
+                chunk_schema_version=chunk_record.chunk_schema_version,
+                section=chunk_record.section,
+                section_path=chunk_record.section_path,
+            )
+        )
+
+    return rebuilt_records
 
 
 def build_chunk_records(
@@ -2243,6 +2717,10 @@ def build_chunk_records(
         if end_index >= len(blocks):
             break
 
+        if should_disable_chunk_overlap_for_entries(current_entries):
+            start_index = end_index
+            continue
+
         overlap_block_count = 0
         overlap_length = 0
         cursor = len(current_entries) - 1
@@ -2254,7 +2732,7 @@ def build_chunk_records(
         next_start_index = end_index - overlap_block_count
         start_index = max(next_start_index, start_index + 1)
 
-    return chunk_records
+    return deduplicate_exact_pv_applicability_chunks(chunk_records)
 
 
 def build_chunk_bundle(
@@ -3518,6 +3996,19 @@ def run_docling_warmup(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_embedding_warmup() -> int:
+    """Warm up embedding-model assets locally by allowing one networked load."""
+
+    settings = validate_embedding_settings(get_settings())
+    ensure_embedding_backend_available(settings)
+    load_sentence_transformer(settings.embedding_model, local_files_only=False)
+    print(
+        f"Embedding warm-up succeeded for {settings.embedding_model}. "
+        "Required assets should now be cached locally."
+    )
+    return 0
+
+
 def run_embedding_generation(args: argparse.Namespace) -> int:
     """Execute the offline embedding generation flow."""
 
@@ -3720,6 +4211,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             exit_code = run_ingestion(args)
         elif args.command == "warmup-docling-assets":
             exit_code = run_docling_warmup(args)
+        elif args.command == "warmup-embedding-assets":
+            exit_code = run_embedding_warmup()
         elif args.command == "generate-embeddings":
             exit_code = run_embedding_generation(args)
         elif args.command == "index-embeddings":

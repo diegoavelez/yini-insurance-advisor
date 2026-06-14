@@ -1255,6 +1255,17 @@ and cite as the real Spanish document set grows.
 - `movilidad-choque-simple-evidence-structuring-remediation`
 - `movilidad-choque-simple-photo-guide-title-and-structure-remediation`
 - `movilidad-choque-simple-supported-scope-and-retrieval`
+- `movilidad-pv-portafolio-baseline-ingestion-and-extraction-audit`
+- `movilidad-pv-structure-and-chunk-dedup-remediation`
+- `movilidad-pv-applicability-collapse-and-inline-tail-remediation`
+- `movilidad-pv-retrieval-readiness-audit`
+- `movilidad-pv-duplicate-applicability-dedup-remediation`
+- `embedding-runtime-readiness-validation`
+- `movilidad-pv-embedding-and-indexing-execution`
+- `movilidad-pv-query-intent-and-ranking-alignment`
+- `movilidad-pv-document-family-ranking-alignment`
+- `qdrant-document-name-filter-index-alignment`
+- `movilidad-pv-benefit-breadth-and-duplicate-section-diversification`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-coverage-breadth-evidence-balancing`
@@ -1288,6 +1299,21 @@ completed:
 - `bicicletas-patinetas-corpus-baseline-ingestion-and-retrieval`
 - `motos-corpus-baseline-ingestion-and-retrieval`
 - `motos-plan-comparison-retrieval-alignment`
+- `movilidad-choque-simple-corpus-completion-baseline`
+- `movilidad-choque-simple-evidence-structuring-remediation`
+- `movilidad-choque-simple-photo-guide-title-and-structure-remediation`
+- `movilidad-choque-simple-supported-scope-and-retrieval`
+- `movilidad-pv-portafolio-baseline-ingestion-and-extraction-audit`
+- `movilidad-pv-structure-and-chunk-dedup-remediation`
+- `movilidad-pv-applicability-collapse-and-inline-tail-remediation`
+- `movilidad-pv-retrieval-readiness-audit`
+- `movilidad-pv-duplicate-applicability-dedup-remediation`
+- `embedding-runtime-readiness-validation`
+- `movilidad-pv-embedding-and-indexing-execution`
+- `movilidad-pv-query-intent-and-ranking-alignment`
+- `movilidad-pv-document-family-ranking-alignment`
+- `qdrant-document-name-filter-index-alignment`
+- `movilidad-pv-benefit-breadth-and-duplicate-section-diversification`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `soat-corpus-baseline-ingestion-and-retrieval`
@@ -1345,6 +1371,48 @@ Implementation note:
 - The `como tomar fotos choque simple` guide can now reject its noisy
   promotional heading as `document_name` and avoid duplicated leading section
   headings inside chunk text after section-path prefixing.
+- The `PV` pair (`pv portafolio movilidad v2` + `pv planes movilidad v1`) has
+  now completed baseline onboarding plus a first structure/dedup remediation:
+  obvious benefit + `PLANES QUE APLICA` pairs can now be merged, and most
+  standalone commercial slogan headings are suppressed before chunk
+  persistence.
+- The second `PV` remediation slice now also disables overlap rollover for pure
+  applicability chunks and removes residual inline commercial tails from
+  heading-prefixed applicability bodies.
+- The duplicate-applicability remediation now removes the remaining exact
+  standalone `PLANES QUE APLICA` duplicates from `pv portafolio movilidad v2`,
+  reducing the cohort to `78` chunks with `0` duplicate chunk-text groups.
+- The remaining blocker before `PV` indexing is runtime rather than corpus
+  structure: local embedding generation still depends on successful model
+  resolution/cache availability for
+  `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`.
+- The runtime-readiness slice now adds an explicit
+  `warmup-embedding-assets` command and makes embedding generation fail fast
+  with an actionable cache/warm-up message instead of spending time on vague
+  network resolution failures.
+- The next reasonable slice is therefore
+  `movilidad-pv-embedding-and-indexing-execution`.
+- The PV execution slice is now complete: the two
+  `movilidad__transversales__pv-*` bundles are generated, indexed into Qdrant,
+  and retrievable through the live CLI path.
+- The next narrow PV correction therefore shifts from runtime to ranking:
+  benefit-intent queries over `propuesta de valor movilidad` can now use a
+  curated expansion bundle to bias retrieval toward sections such as `Viajes`
+  and `Pérdidas totales` instead of weaker generic sections or adjacent
+  mobility guides.
+- The live validation of that ranking slice exposed one remaining scope gap:
+  shared mobility guides can still enter through overlapping anchors, so the
+  next correction constrains explicit PV benefit-intent queries to the
+  `PROPUESTA DE VALOR MOVILIDAD` document family through the existing curated
+  `document_name` filter seam.
+- Live validation of that document-family slice then exposed the final runtime
+  dependency: Qdrant collection bootstrap also needs to create a keyword
+  payload index for `document_name`, otherwise the live collection rejects the
+  new filter with `400 Bad Request`.
+- With that runtime blocker removed, the remaining PV quality gap is now purely
+  intra-family ranking: duplicate `Pérdidas totales` chunks should not consume
+  multiple early slots, and broader benefit sections should outrank narrow
+  service-detail sections such as isolated `Grúa de amplio alcance`.
 - `MUEVETE LIBRE` coverage-intent retrieval can now bias toward policy
   `Cobertura` sections instead of adjacent generic sections when operators ask
   what the product covers.

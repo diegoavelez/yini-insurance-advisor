@@ -174,6 +174,35 @@ def test_normalize_retrieval_query_applies_choque_simple_defaults() -> None:
     assert normalized_query.filters.document_type == "guide"
 
 
+def test_normalize_retrieval_query_applies_movilidad_pv_document_family_rule() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué beneficios incluye la propuesta de valor de movilidad?",
+            filters={"product": "movilidad", "document_type": "guide"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    filters={"document_name": "PROPUESTA DE VALOR MOVILIDAD"},
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name == "PROPUESTA DE VALOR MOVILIDAD"
+
+
 def test_normalize_retrieval_query_does_not_override_explicit_document_type_filter() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(
@@ -710,6 +739,63 @@ def test_retrieve_ranked_chunks_applies_motos_comparison_query_expansion_rules(
     assert "alto cilindraje" in captured_query["query"]
 
 
+def test_retrieve_ranked_chunks_applies_movilidad_pv_query_expansion_rules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    append_terms=[
+                        "viajes",
+                        "seguro de viajes",
+                        "pérdidas totales",
+                        "gastos de transporte",
+                        "renta diaria por hospitalización",
+                        "grúa de amplio alcance",
+                    ],
+                )
+            ]
+        ),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(query="¿Qué beneficios incluye la propuesta de valor de movilidad?"),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "viajes" in captured_query["query"]
+    assert "seguro de viajes" in captured_query["query"]
+    assert "pérdidas totales" in captured_query["query"]
+    assert "gastos de transporte" in captured_query["query"]
+    assert "renta diaria por hospitalización" in captured_query["query"]
+
+
 def test_build_hybrid_recall_terms_skips_anchor_restatement_append_terms() -> None:
     terms = build_hybrid_recall_terms(
         "¿Qué diferencias hay entre el plan básico y los otros planes de autos?",
@@ -775,6 +861,83 @@ def test_retrieve_ranked_chunks_does_not_apply_comparison_bundle_without_compari
 
     assert captured_query["query"] == "¿Qué cubre el plan básico de autos?"
     assert client.last_query["limit"] == 5
+
+
+def test_retrieve_ranked_chunks_applies_movilidad_pv_document_family_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    filters={"document_name": "PROPUESTA DE VALOR MOVILIDAD"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    append_terms=[
+                        "viajes",
+                        "seguro de viajes",
+                        "pérdidas totales",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué beneficios incluye la propuesta de valor de movilidad?",
+            filters={"product": "movilidad", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    query_filter = client.last_query["query_filter"]
+    assert [
+        (condition.key, condition.match.value) for condition in query_filter.must
+    ] == [
+        ("document_type", "guide"),
+        ("product", "movilidad"),
+        ("document_name", "PROPUESTA DE VALOR MOVILIDAD"),
+    ]
 
 
 def test_retrieve_ranked_chunks_applies_deductible_query_expansion_rules(
@@ -1164,6 +1327,496 @@ def test_retrieve_ranked_chunks_expands_candidate_pool_and_reranks_comparison_hi
     assert client.last_query["limit"] == 6
     assert result.chunks[0].document_name == "DIFERENCIALES SURA"
     assert result.chunks[0].score > result.chunks[1].score
+
+
+def test_retrieve_ranked_chunks_prioritizes_movilidad_pv_benefit_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0098",
+                    "source_pdf_id": "movilidad__transversales__pv-planes-movilidad-v1",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 98,
+                    "text": (
+                        "# PROPUESTA DE VALOR MOVILIDAD\n\n## Canales de atención\n\n"
+                        "Para realizar las consultas y solicitudes de tus seguros de movilidad"
+                    ),
+                    "document_name": "PROPUESTA DE VALOR MOVILIDAD",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Canales de atención",
+                    "section_path": [
+                        "PROPUESTA DE VALOR MOVILIDAD",
+                        "Canales de atención",
+                    ],
+                },
+                score=0.648,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0015",
+                    "source_pdf_id": "movilidad__transversales__pv-planes-movilidad-v1",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 15,
+                    "text": "# PROPUESTA DE VALOR MOVILIDAD\n\n## Viajes\n\n- Seguro de viajes",
+                    "document_name": "PROPUESTA DE VALOR MOVILIDAD",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Viajes",
+                    "section_path": ["PROPUESTA DE VALOR MOVILIDAD", "Viajes"],
+                },
+                score=0.639,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0048",
+                    "source_pdf_id": "movilidad__transversales__pv-planes-movilidad-v1",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 48,
+                    "text": (
+                        "# PROPUESTA DE VALOR MOVILIDAD\n\n## Pérdidas totales\n\n"
+                        "- Gastos de transporte.\n"
+                        "- Renta diaria por hospitalización (15.00 x día)."
+                    ),
+                    "document_name": "PROPUESTA DE VALOR MOVILIDAD",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Pérdidas totales",
+                    "section_path": [
+                        "PROPUESTA DE VALOR MOVILIDAD",
+                        "Pérdidas totales",
+                    ],
+                },
+                score=0.547,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "bike:v2:0000",
+                    "source_pdf_id": (
+                        "movilidad__bicicletas-y-patinetas__ayudaventas-bicis-y-patinetas-v2"
+                    ),
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/BICICLETAS Y PATINETAS/ayudaventas bicis y patinetas v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 0,
+                    "text": (
+                        "# Sentirte acompañado\n\n## Ahorrar dinero\n\n"
+                        "beneficios únicos relacionados con tu modo favorito de moverte"
+                    ),
+                    "document_name": "Sentirte acompañado",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Ahorrar dinero",
+                    "section_path": ["Sentirte acompañado", "Ahorrar dinero"],
+                },
+                score=0.544,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    append_terms=[
+                        "viajes",
+                        "seguro de viajes",
+                        "pérdidas totales",
+                        "gastos de transporte",
+                        "renta diaria por hospitalización",
+                        "grúa de amplio alcance",
+                    ],
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué beneficios incluye la propuesta de valor de movilidad?",
+            filters={"product": "movilidad", "document_type": "guide"},
+            top_k=3,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert client.last_query["limit"] == 9
+    assert {result.chunks[0].section, result.chunks[1].section} == {
+        "Viajes",
+        "Pérdidas totales",
+    }
+    assert result.chunks[2].section == "Canales de atención"
+
+
+def test_retrieve_ranked_chunks_excludes_non_pv_local_candidates_for_pv_benefit_intent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    filters={"document_name": "PROPUESTA DE VALOR MOVILIDAD"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    append_terms=[
+                        "viajes",
+                        "seguro de viajes",
+                        "pérdidas totales",
+                        "gastos de transporte",
+                        "renta diaria por hospitalización",
+                        "grúa de amplio alcance",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (
+            ChunkRecord(
+                chunk_id="pv:v2:0015",
+                source_pdf_id="movilidad__transversales__pv-planes-movilidad-v1",
+                document_name="PROPUESTA DE VALOR MOVILIDAD",
+                document_version=None,
+                document_type="guide",
+                product="movilidad",
+                source_pdf_path="data/raw/MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf",
+                source_pdf_relative_path="MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf",
+                cleaned_markdown_output_path="data/processed/pv-planes.cleaned.md",
+                text="# PROPUESTA DE VALOR MOVILIDAD\n\n## Viajes\n\n- Seguro de viajes",
+                chunk_index=15,
+                chunk_schema_version="v2",
+                section="Viajes",
+                section_path=("PROPUESTA DE VALOR MOVILIDAD", "Viajes"),
+            ),
+            ChunkRecord(
+                chunk_id="util:v2:0020",
+                source_pdf_id="movilidad__transversales__ayudaventas-utilitarios-y-pesados-v2",
+                document_name="Seguro de Autos Utilitarios y Pesados",
+                document_version=None,
+                document_type="guide",
+                product="movilidad",
+                source_pdf_path=(
+                    "data/raw/MOVILIDAD/TRANSVERSALES/ayudaventas utilitarios y pesados v2.pdf"
+                ),
+                source_pdf_relative_path=(
+                    "MOVILIDAD/TRANSVERSALES/ayudaventas utilitarios y pesados v2.pdf"
+                ),
+                cleaned_markdown_output_path="data/processed/utilitarios.cleaned.md",
+                text="# Seguro de Autos Utilitarios y Pesados\n\n## Grúa de amplio alcance",
+                chunk_index=20,
+                chunk_schema_version="v2",
+                section="Grúa de amplio alcance",
+                section_path=("Seguro de Autos Utilitarios y Pesados", "Grúa de amplio alcance"),
+            ),
+        ),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué beneficios incluye la propuesta de valor de movilidad?",
+            filters={"product": "movilidad", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.document_name for chunk in result.chunks] == [
+        "PROPUESTA DE VALOR MOVILIDAD"
+    ]
+    assert result.chunks[0].section == "Viajes"
+
+
+def test_retrieve_ranked_chunks_diversifies_movilidad_pv_benefit_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0022",
+                    "source_pdf_id": "movilidad__transversales__pv-planes-movilidad-v1",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 22,
+                    "text": (
+                        "# PROPUESTA DE VALOR MOVILIDAD\n\n"
+                        "## Plan Autos Básico Pérdidas Totales\n\n"
+                        "- Anticipo del 70%.\n"
+                        "- Gastos de parqueadero.\n"
+                        "- Participación en venta salvamento.\n"
+                        "- Gastos de transporte.\n- Gastos de tránsito.\n- RC Extensiva.\n"
+                        "- RC Acumulativa.\n- Amparo patrimonial."
+                    ),
+                    "document_name": "PROPUESTA DE VALOR MOVILIDAD",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Plan Autos Básico Pérdidas Totales",
+                    "section_path": [
+                        "PROPUESTA DE VALOR MOVILIDAD",
+                        "Plan Autos Básico Pérdidas Totales",
+                    ],
+                },
+                score=3.339,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0039",
+                    "source_pdf_id": "movilidad__transversales__pv-portafolio-movilidad-v2",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/pv portafolio movilidad v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 39,
+                    "text": (
+                        "# PROPUESTA DE VALOR MOVILIDAD\n\n## Grúa de amplio alcance\n\n"
+                        "Si te varas o tienes un accidente, SURA lleva tu vehículo en grúa."
+                    ),
+                    "document_name": "PROPUESTA DE VALOR MOVILIDAD",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Grúa de amplio alcance",
+                    "section_path": [
+                        "PROPUESTA DE VALOR MOVILIDAD",
+                        "Grúa de amplio alcance",
+                    ],
+                },
+                score=2.323,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0048",
+                    "source_pdf_id": "movilidad__transversales__pv-planes-movilidad-v1",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 48,
+                    "text": (
+                        "# PROPUESTA DE VALOR MOVILIDAD\n\n## Pérdidas totales\n\n"
+                        "- Gastos de transporte.\n"
+                        "- Renta diaria por hospitalización (15.00 x día).\n"
+                        "- Conciliación en sitio.\n- Grúa de amplio alcance.\n"
+                        "- Acompañamiento telefónico en sitio.\n- Gastos de desplazamiento."
+                    ),
+                    "document_name": "PROPUESTA DE VALOR MOVILIDAD",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Pérdidas totales",
+                    "section_path": [
+                        "PROPUESTA DE VALOR MOVILIDAD",
+                        "Pérdidas totales",
+                    ],
+                },
+                score=1.942,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0047",
+                    "source_pdf_id": "movilidad__transversales__pv-planes-movilidad-v1",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 47,
+                    "text": (
+                        "# PROPUESTA DE VALOR MOVILIDAD\n\n## Pérdidas totales\n\n"
+                        "## Motos bajo cilindraje\n\n## Pérdidas totales\n\n"
+                        "- Gastos de transporte.\n"
+                        "- Renta diaria por hospitalización (15.00 x día).\n"
+                        "- Conciliación en sitio.\n- Grúa de amplio alcance."
+                    ),
+                    "document_name": "PROPUESTA DE VALOR MOVILIDAD",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Pérdidas totales",
+                    "section_path": [
+                        "PROPUESTA DE VALOR MOVILIDAD",
+                        "Pérdidas totales",
+                    ],
+                },
+                score=1.879,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pv:v2:0045",
+                    "source_pdf_id": "movilidad__transversales__pv-planes-movilidad-v1",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/pv planes movilidad v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 45,
+                    "text": (
+                        "# PROPUESTA DE VALOR MOVILIDAD\n\n## Pérdidas totales y parciales\n\n"
+                        "- Gastos de transporte.\n"
+                        "- Renta diaria por hospitalización (40.00 x día) hasta 30 días."
+                    ),
+                    "document_name": "PROPUESTA DE VALOR MOVILIDAD",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Pérdidas totales y parciales",
+                    "section_path": [
+                        "PROPUESTA DE VALOR MOVILIDAD",
+                        "Pérdidas totales y parciales",
+                    ],
+                },
+                score=1.678,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    filters={"document_name": "PROPUESTA DE VALOR MOVILIDAD"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["propuesta de valor", "movilidad"],
+                    any_of=[
+                        "beneficios",
+                        "beneficio",
+                        "incluye",
+                        "incluyen",
+                        "diferenciales",
+                        "ventajas",
+                    ],
+                    append_terms=[
+                        "viajes",
+                        "seguro de viajes",
+                        "pérdidas totales",
+                        "gastos de transporte",
+                        "renta diaria por hospitalización",
+                        "grúa de amplio alcance",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué beneficios incluye la propuesta de valor de movilidad?",
+            filters={"product": "movilidad", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.section for chunk in result.chunks[:4]] == [
+        "Plan Autos Básico Pérdidas Totales",
+        "Pérdidas totales",
+        "Pérdidas totales y parciales",
+        "Grúa de amplio alcance",
+    ]
+    assert [chunk.section for chunk in result.chunks].count("Pérdidas totales") == 1
 
 
 def test_retrieve_ranked_chunks_prioritizes_exact_soat_coverage_section_match(

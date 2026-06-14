@@ -281,6 +281,7 @@ def test_qdrant_indexing_bootstraps_collection_and_indexes_points(
     assert fake_client.payload_indexes == [
         ("document_type", "keyword", True),
         ("product", "keyword", True),
+        ("document_name", "keyword", True),
     ]
     assert len(fake_client.points) == 2
     for point_id, point in fake_client.points.items():
@@ -395,8 +396,10 @@ def test_qdrant_indexing_is_idempotent_across_reruns(
     assert fake_client.payload_indexes == [
         ("document_type", "keyword", True),
         ("product", "keyword", True),
+        ("document_name", "keyword", True),
         ("document_type", "keyword", True),
         ("product", "keyword", True),
+        ("document_name", "keyword", True),
     ]
 
 

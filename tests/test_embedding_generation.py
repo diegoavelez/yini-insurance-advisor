@@ -6,7 +6,7 @@ import pytest
 
 from contracts import ChunkBundle, ChunkRecord, EmbeddingBundle, EmbeddingGenerationRecord
 from core.config import DEFAULT_EMBEDDING_MODEL, Settings, clear_settings_cache
-from rag.ingestion import build_parser, main
+from rag.ingestion import build_parser, load_sentence_transformer, main
 
 
 def build_chunk_bundle_artifact(chunk_artifact_path: Path) -> ChunkBundle:
@@ -78,6 +78,41 @@ def test_parser_builds_embedding_generation_command() -> None:
     assert args.fail_fast is False
 
 
+def test_parser_builds_embedding_warmup_command() -> None:
+    args = build_parser().parse_args(["warmup-embedding-assets"])
+
+    assert args.command == "warmup-embedding-assets"
+
+
+def test_load_sentence_transformer_forces_offline_resolution_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    load_sentence_transformer.cache_clear()
+
+    observed_env: list[tuple[str | None, str | None]] = []
+
+    class FakeSentenceTransformerModule:
+        class SentenceTransformer:
+            def __init__(self, model_name: str, *, local_files_only: bool = True):
+                observed_env.append(
+                    (
+                        __import__("os").environ.get("HF_HUB_OFFLINE"),
+                        __import__("os").environ.get("TRANSFORMERS_OFFLINE"),
+                    )
+                )
+
+    monkeypatch.setattr(
+        "rag.ingestion.importlib.import_module",
+        lambda name: FakeSentenceTransformerModule,
+    )
+
+    load_sentence_transformer("test-model", local_files_only=True)
+
+    assert observed_env == [("1", "1")]
+    assert __import__("os").environ.get("HF_HUB_OFFLINE") is None
+    assert __import__("os").environ.get("TRANSFORMERS_OFFLINE") is None
+
+
 def test_embedding_generation_fails_when_chunk_directory_is_missing(tmp_path, capsys) -> None:
     exit_code = main(
         [
@@ -130,6 +165,84 @@ def test_embedding_generation_fails_when_provider_is_unsupported(
 
     assert exit_code == 1
     assert "EMBEDDING_PROVIDER must be sentence-transformers" in captured.err
+
+
+def test_embedding_warmup_loads_configured_model(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    loaded_models: list[tuple[str, bool]] = []
+    monkeypatch.setattr(
+        "rag.ingestion.get_settings",
+        lambda: Settings(
+            _env_file=None,
+            embedding_provider="sentence-transformers",
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
+        ),
+    )
+    monkeypatch.setattr("rag.ingestion.embedding_backend_is_available", lambda settings: True)
+
+    def fake_load_sentence_transformer(model_name: str, *, local_files_only: bool = True):
+        loaded_models.append((model_name, local_files_only))
+        return object()
+
+    monkeypatch.setattr("rag.ingestion.load_sentence_transformer", fake_load_sentence_transformer)
+
+    exit_code = main(["warmup-embedding-assets"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert loaded_models == [(DEFAULT_EMBEDDING_MODEL, False)]
+    assert "Embedding warm-up succeeded" in captured.out
+
+
+def test_embedding_generation_fails_fast_when_model_assets_are_not_cached_locally(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, capsys
+) -> None:
+    chunk_dir = tmp_path / "chunks"
+    chunk_dir.mkdir()
+    chunk_artifact_path = chunk_dir / "policy-a.chunks.json"
+    chunk_artifact_path.write_text(
+        build_chunk_bundle_artifact(chunk_artifact_path).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.get_settings",
+        lambda: Settings(
+            _env_file=None,
+            embedding_provider="sentence-transformers",
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
+        ),
+    )
+    monkeypatch.setattr("rag.ingestion.embedding_backend_is_available", lambda settings: True)
+
+    def fail_load_sentence_transformer(model_name: str, *, local_files_only: bool = True):
+        raise OSError("model not cached")
+
+    monkeypatch.setattr(
+        "rag.ingestion.load_sentence_transformer",
+        fail_load_sentence_transformer,
+    )
+
+    exit_code = main(
+        [
+            "generate-embeddings",
+            "--chunk-dir",
+            str(chunk_dir),
+            "--embedding-dir",
+            str(tmp_path / "embeddings"),
+            "--manifest-path",
+            str(tmp_path / "embedding-manifest.jsonl"),
+        ]
+    )
+    captured = capsys.readouterr()
+    manifest_record = EmbeddingGenerationRecord.model_validate_json(
+        (tmp_path / "embedding-manifest.jsonl").read_text(encoding="utf-8").splitlines()[0]
+    )
+
+    assert exit_code == 0
+    assert manifest_record.generation_status == "failed"
+    assert "Embedding model assets are not cached locally" in manifest_record.error_message
+    assert "warmup-embedding-assets" in captured.err
 
 
 def test_successful_embedding_generation_writes_typed_artifacts(

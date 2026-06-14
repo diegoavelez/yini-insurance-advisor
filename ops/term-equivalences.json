@@ -219,6 +219,28 @@
         "a) gastos médicos por enfermedad en viajes",
         "b) equipaje protegido"
       ]
+    },
+    {
+      "all_of": [
+        "propuesta de valor",
+        "movilidad"
+      ],
+      "any_of": [
+        "beneficios",
+        "beneficio",
+        "incluye",
+        "incluyen",
+        "diferenciales",
+        "ventajas"
+      ],
+      "append_terms": [
+        "viajes",
+        "seguro de viajes",
+        "pérdidas totales",
+        "gastos de transporte",
+        "renta diaria por hospitalización",
+        "grúa de amplio alcance"
+      ]
     }
   ],
   "query_filter_rules": [
@@ -275,6 +297,23 @@
       ],
       "filters": {
         "document_type": "policy"
+      }
+    },
+    {
+      "all_of": [
+        "propuesta de valor",
+        "movilidad"
+      ],
+      "any_of": [
+        "beneficios",
+        "beneficio",
+        "incluye",
+        "incluyen",
+        "diferenciales",
+        "ventajas"
+      ],
+      "filters": {
+        "document_name": "PROPUESTA DE VALOR MOVILIDAD"
       }
     }
   ],
