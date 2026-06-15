@@ -1342,6 +1342,17 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-viajes-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-viajes-international-policy-disambiguation-alignment`
+- `movilidad-suscripcion-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-suscripcion-section-structure-remediation`
+- `movilidad-suscripcion-subsection-lineage-normalization`
+- `movilidad-suscripcion-breadth-diversification`
+- `movilidad-suscripcion-heading-stub-evidence-prioritization`
+- `movilidad-suscripcion-collective-billing-intent-alignment`
+- `movilidad-suscripcion-collective-billing-leading-chunk-prioritization`
+- `movilidad-suscripcion-facturacion-por-asegurado-scope-and-retrieval-alignment`
+- `movilidad-suscripcion-modalidad-de-facturacion-renovacion-intent-alignment`
+- `movilidad-suscripcion-financing-evidence-precision`
+- `movilidad-suscripcion-financiacion-individual-retrieval-recovery`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `muevete-libre-coverage-breadth-evidence-balancing`
 - `muevete-libre-intrasection-coverage-chunk-prioritization`
@@ -1365,9 +1376,10 @@ Operational category rollup:
 - `movilidad-financiacion` onboarding + extraction/guide-family hardening:
   completed
 - `movilidad-transversales` baseline onboarding: completed
+- `movilidad-viajes` onboarding + policy disambiguation alignment: completed
+- `movilidad-suscripcion` onboarding + retrieval hardening: completed
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
-- `movilidad-suscripcion` onboarding + retrieval hardening: active
 - `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
 
 Completed slice index:
@@ -1415,6 +1427,19 @@ Completed slice index:
 - `movilidad-financiacion-extraction-readiness-remediation`
 - `movilidad-financiacion-guide-family-ranking-alignment`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-viajes-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-viajes-international-policy-disambiguation-alignment`
+- `movilidad-suscripcion-corpus-baseline-ingestion-and-retrieval`
+- `movilidad-suscripcion-section-structure-remediation`
+- `movilidad-suscripcion-subsection-lineage-normalization`
+- `movilidad-suscripcion-breadth-diversification`
+- `movilidad-suscripcion-heading-stub-evidence-prioritization`
+- `movilidad-suscripcion-collective-billing-intent-alignment`
+- `movilidad-suscripcion-collective-billing-leading-chunk-prioritization`
+- `movilidad-suscripcion-facturacion-por-asegurado-scope-and-retrieval-alignment`
+- `movilidad-suscripcion-modalidad-de-facturacion-renovacion-intent-alignment`
+- `movilidad-suscripcion-financing-evidence-precision`
+- `movilidad-suscripcion-financiacion-individual-retrieval-recovery`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
 - `soat-corpus-baseline-ingestion-and-retrieval`
 - `soat-coverage-document-type-alignment`
@@ -1430,7 +1455,7 @@ Completed slice index:
 
 remaining in `Phase 18`:
 
-- `movilidad-suscripcion-financiacion-individual-retrieval-recovery`
+- none
 
 Implementation note:
 
