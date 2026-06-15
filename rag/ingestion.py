@@ -45,6 +45,7 @@ from rag import (
     local_hybrid_recall,
     pdf_conversion,
     qdrant_store,
+    runtime_providers,
 )
 from rag.document_canonicalization import (
     build_ingestion_artifact_paths,
@@ -407,53 +408,53 @@ def ensure_pdf_conversion_backend_available(
 def validate_embedding_settings(settings: Settings) -> Settings:
     """Validate embedding configuration for offline artifact generation."""
 
-    if settings.embedding_provider != SUPPORTED_EMBEDDING_PROVIDER:
-        raise RuntimeError(
-            "EMBEDDING_PROVIDER must be sentence-transformers for offline embedding generation."
-        )
-    if not settings.embedding_model.strip():
-        raise RuntimeError("EMBEDDING_MODEL must not be blank for embedding generation.")
-    return settings
+    return runtime_providers.validate_embedding_settings(
+        settings,
+        supported_embedding_provider=SUPPORTED_EMBEDDING_PROVIDER,
+    )
 
 
 def embedding_backend_is_available(settings: Settings) -> bool:
     """Return whether the configured embedding backend is importable."""
 
-    if settings.embedding_provider != SUPPORTED_EMBEDDING_PROVIDER:
-        return False
-    return importlib.util.find_spec("sentence_transformers") is not None
+    return runtime_providers.embedding_backend_is_available(
+        settings,
+        supported_embedding_provider=SUPPORTED_EMBEDDING_PROVIDER,
+        find_spec_fn=importlib.util.find_spec,
+    )
 
 
 def ensure_embedding_backend_available(settings: Settings) -> None:
     """Fail loudly when the configured embedding backend is unavailable."""
 
-    if not embedding_backend_is_available(settings):
-        raise RuntimeError(
-            "Sentence Transformers is not installed. Install project dependencies "
-            "before running embedding generation."
-        )
+    return runtime_providers.ensure_embedding_backend_available(
+        settings,
+        embedding_backend_is_available_fn=embedding_backend_is_available,
+    )
 
 
 def qdrant_backend_is_available() -> bool:
     """Return whether the Qdrant client is importable."""
 
-    return importlib.util.find_spec("qdrant_client") is not None
+    return runtime_providers.qdrant_backend_is_available(
+        find_spec_fn=importlib.util.find_spec,
+    )
 
 
 def ensure_qdrant_backend_available() -> None:
     """Fail loudly when the Qdrant client is unavailable."""
 
-    if not qdrant_backend_is_available():
-        raise RuntimeError(
-            "qdrant-client is not installed. Install project dependencies before "
-            "running Qdrant indexing."
-        )
+    return runtime_providers.ensure_qdrant_backend_available(
+        qdrant_backend_is_available_fn=qdrant_backend_is_available,
+    )
 
 
 def groq_backend_is_available() -> bool:
     """Return whether the Groq client is importable."""
 
-    return importlib.util.find_spec("groq") is not None
+    return runtime_providers.groq_backend_is_available(
+        find_spec_fn=importlib.util.find_spec,
+    )
 
 
 def call_with_optional_request_id(function, *args, request_id: str | None = None, **kwargs):
@@ -472,38 +473,30 @@ def call_with_optional_request_id(function, *args, request_id: str | None = None
 def ensure_groq_backend_available() -> None:
     """Fail loudly when the Groq client is unavailable."""
 
-    if not groq_backend_is_available():
-        raise RuntimeError(
-            "groq is not installed. Install project dependencies before running "
-            "grounded answer generation."
-        )
+    return runtime_providers.ensure_groq_backend_available(
+        groq_backend_is_available_fn=groq_backend_is_available,
+    )
 
 
 def create_groq_client(settings: Settings):
     """Create a configured Groq client from validated settings."""
 
-    groq_module = importlib.import_module("groq")
-    return groq_module.Groq(api_key=settings.groq_api_key.get_secret_value())
+    return runtime_providers.create_groq_client(
+        settings,
+        import_module_fn=importlib.import_module,
+    )
 
 
 @lru_cache(maxsize=8)
 def load_sentence_transformer(model_name: str, *, local_files_only: bool = True):
     """Return a cached SentenceTransformer instance for deterministic reuse."""
 
-    try:
-        with offline_huggingface_resolution(enabled=local_files_only):
-            sentence_transformers = importlib.import_module("sentence_transformers")
-            return sentence_transformers.SentenceTransformer(
-                model_name,
-                local_files_only=local_files_only,
-            )
-    except TypeError:
-        if local_files_only:
-            raise RuntimeError(
-                "Installed sentence-transformers version does not support offline "
-                "local_files_only loading."
-            ) from None
-        return sentence_transformers.SentenceTransformer(model_name)
+    return runtime_providers.load_sentence_transformer(
+        model_name,
+        local_files_only=local_files_only,
+        import_module_fn=importlib.import_module,
+        offline_huggingface_resolution_fn=offline_huggingface_resolution,
+    )
 
 
 offline_huggingface_resolution = pdf_conversion.offline_huggingface_resolution
@@ -512,52 +505,32 @@ offline_huggingface_resolution = pdf_conversion.offline_huggingface_resolution
 def ensure_embedding_model_assets_available(settings: Settings) -> None:
     """Fail loudly when embedding-model assets are not cached locally."""
 
-    try:
-        load_sentence_transformer(settings.embedding_model, local_files_only=True)
-    except Exception as exc:
-        raise RuntimeError(
-            "Embedding model assets are not cached locally for "
-            f"{settings.embedding_model}. Run `python -m rag.ingestion "
-            "warmup-embedding-assets` once with network access, or pre-populate "
-            "the Hugging Face cache before running offline embedding or retrieval commands."
-        ) from exc
+    return runtime_providers.ensure_embedding_model_assets_available(
+        settings,
+        load_sentence_transformer_fn=load_sentence_transformer,
+    )
 
 
 def generate_embedding_vector(text: str, settings: Settings) -> list[float]:
     """Generate one embedding vector for chunk text."""
 
-    if settings.embedding_provider != SUPPORTED_EMBEDDING_PROVIDER:
-        raise RuntimeError("Unsupported embedding provider for local embedding generation.")
-
-    ensure_embedding_model_assets_available(settings)
-    model = load_sentence_transformer(settings.embedding_model, local_files_only=True)
-    vector = model.encode([text], normalize_embeddings=True)[0]
-    return [float(value) for value in vector]
+    return runtime_providers.generate_embedding_vector(
+        text,
+        settings,
+        supported_embedding_provider=SUPPORTED_EMBEDDING_PROVIDER,
+        ensure_embedding_model_assets_available_fn=ensure_embedding_model_assets_available,
+        load_sentence_transformer_fn=load_sentence_transformer,
+    )
 
 
 def generate_grounded_completion(prompt: str, settings: Settings) -> str:
     """Generate grounded completion text through Groq."""
 
-    client = create_groq_client(settings)
-    response = client.chat.completions.create(
-        model=settings.groq_model,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are an internal insurance assistant. Answer only from the "
-                    "provided evidence. If evidence is insufficient, say so explicitly."
-                ),
-            },
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0,
+    return runtime_providers.generate_grounded_completion(
+        prompt,
+        settings,
+        create_groq_client_fn=create_groq_client,
     )
-    message = response.choices[0].message
-    content = getattr(message, "content", None)
-    if not isinstance(content, str) or not content.strip():
-        raise RuntimeError("Groq did not return grounded answer content.")
-    return content.strip()
 
 
 convert_pdf_to_markdown_with_docling = pdf_conversion.convert_pdf_to_markdown_with_docling

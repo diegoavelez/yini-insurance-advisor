@@ -1316,7 +1316,8 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `rag-ingestion-artifact-assembly-and-skip-policy-seam-extraction`
 - `rag-manifest-recording-and-artifact-iteration-seam-extraction`
 - `rag-batch-command-loop-and-failure-handling-seam-extraction`
-- `rag-runtime-backend-and-provider-bridge-seam-extraction`
+- `rag-runtime-provider-and-warmup-seam-extraction`
+- `rag-cli-command-adapter-and-request-lifecycle-seam-extraction`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
 - `autos-plan-comparison-retrieval-alignment`
@@ -1551,11 +1552,19 @@ Implementation note:
     branching, per-artifact exception recovery, and manifest-append
     orchestration behind a dedicated `rag` seam while keeping top-level CLI
     dispatch in `rag.ingestion.py`.
+  - `rag-runtime-provider-and-warmup-seam-extraction`, which moved runtime
+    backend availability checks, embedding/Qdrant/Groq provider bridges, Groq
+    client and SentenceTransformer loading, offline asset-warmup helpers,
+    embedding-vector and grounded-completion generation, and the closely
+    related warmup command support surfaces behind a dedicated `rag` seam
+    while keeping retrieval/answer orchestration and top-level CLI dispatch in
+    `rag.ingestion.py`.
   The next documented post-onboarding refactor candidate is
-  `rag-runtime-backend-and-provider-bridge-seam-extraction`, covering runtime
-  backend availability checks, embedding/Groq provider loading, asset-warmup
-  support helpers, and completion/vector generation bridges while keeping the
-  warmup and command orchestration surfaces in `rag.ingestion.py`.
+  `rag-cli-command-adapter-and-request-lifecycle-seam-extraction`, covering
+  request-id-aware seam invocation, simple warmup/retrieval/answer command
+  adapters, shared `RetrievalQuery` construction from CLI args, and top-level
+  CLI request lifecycle logging/dispatch while keeping parser definitions and
+  lower-level runtime/retrieval helpers in `rag.ingestion.py`.
 - When those comparison bundles match, retrieval can use a larger candidate
   pool plus deterministic lexical reranking before returning the final top-k.
 - Chunk text can now be prefixed with its governing `section_path` headings

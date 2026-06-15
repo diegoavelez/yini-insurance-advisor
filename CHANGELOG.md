@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-15
+
+- Extract the post-onboarding runtime seam by moving embedding/Qdrant/Groq backend availability checks, provider bridges, Groq client and SentenceTransformer loading, offline asset warmup helpers, and embedding/completion generation into `rag/runtime_providers.py`, while updating the roadmap to close that seam and document `rag-cli-command-adapter-and-request-lifecycle-seam-extraction` as the next narrow coupling gap.
+
 ## 2026-06-14
 
 - Extract the next post-onboarding batch-runtime seam by moving repeated ingestion/embedding/indexing batch loops, per-artifact exception recovery, manifest append orchestration, and `fail_fast` handling into `rag/ingestion_batch_runtime.py`, while updating the roadmap to mark that seam complete and document `rag-runtime-backend-and-provider-bridge-seam-extraction` as the next narrow coupling gap.
