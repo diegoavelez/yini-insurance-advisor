@@ -8,7 +8,6 @@ import importlib.util
 import logging
 import sys
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 
@@ -22,13 +21,11 @@ from contracts import (
     EmbeddingBundle,
     EmbeddingGenerationRecord,
     EmbeddingIndexingRecord,
-    EmbeddingRecord,
     GroundedAnswerResult,
     ProcessedDocument,
     RetrievalQuery,
     RetrievedChunk,
     TermEquivalenceSet,
-    VectorPayload,
 )
 from core.config import Settings, get_settings, validate_startup_settings
 from core.logging import configure_logging
@@ -40,7 +37,14 @@ from ops.observability import (
     log_startup_diagnostics,
     log_timed_event,
 )
-from rag import evidence_selection, local_hybrid_recall, pdf_conversion, qdrant_store
+from rag import (
+    evidence_selection,
+    ingestion_artifacts,
+    ingestion_batch,
+    local_hybrid_recall,
+    pdf_conversion,
+    qdrant_store,
+)
 from rag.document_canonicalization import (
     build_ingestion_artifact_paths,
     build_processed_document,
@@ -74,17 +78,13 @@ from rag.grounded_answers import (
     build_unsupported_query_response as _build_unsupported_query_response,
 )
 from rag.markdown_chunk_normalization import (
-    MarkdownBlock,
-    ensure_chunk_text_includes_section_context,
-    expand_large_blocks,
-    group_semantic_blocks,
-    markdown_has_non_heading_content,
     normalize_known_document_markdown,
-    should_disable_chunk_overlap_for_entries,
-    split_markdown_blocks,
 )
 from rag.markdown_chunk_normalization import (
     normalize_pv_commercial_block as _normalize_pv_commercial_block,
+)
+from rag.markdown_chunk_normalization import (
+    split_markdown_blocks as _split_markdown_blocks,
 )
 from rag.term_equivalences import (
     get_matching_query_expansion_rules,
@@ -107,6 +107,7 @@ MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
 RAG_LOGGER = logging.getLogger("yini.rag")
 normalize_pv_commercial_block = _normalize_pv_commercial_block
+split_markdown_blocks = _split_markdown_blocks
 build_qdrant_point_id = qdrant_store.build_qdrant_point_id
 build_qdrant_points = qdrant_store.build_qdrant_points
 build_qdrant_source_pdf_filter = qdrant_store.build_qdrant_source_pdf_filter
@@ -666,13 +667,7 @@ def deduplicate_exact_pv_applicability_chunks(
     )
 
 
-def append_manifest_record(manifest_path: Path, record: ProcessedDocument) -> None:
-    """Append one JSONL manifest record."""
-
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with manifest_path.open("a", encoding="utf-8") as manifest_file:
-        manifest_file.write(record.model_dump_json())
-        manifest_file.write("\n")
+append_manifest_record = ingestion_batch.append_manifest_record
 
 
 def write_processed_metadata(record: ProcessedDocument, processed_output_path: Path) -> None:
@@ -682,10 +677,7 @@ def write_processed_metadata(record: ProcessedDocument, processed_output_path: P
     processed_output_path.write_text(record.model_dump_json(indent=2), encoding="utf-8")
 
 
-def iter_source_pdfs(input_dir: Path, glob_pattern: str) -> list[Path]:
-    """Return sorted matching PDF files under the configured input directory."""
-
-    return sorted(path for path in input_dir.rglob(glob_pattern) if path.is_file())
+iter_source_pdfs = ingestion_batch.iter_source_pdfs
 
 
 def remove_artifact_if_exists(path: Path) -> None:
@@ -695,171 +687,13 @@ def remove_artifact_if_exists(path: Path) -> None:
         path.unlink()
 
 
-def build_chunk_records(
-    *,
-    source_pdf_id: str,
-    document_name: str,
-    document_version: str | None,
-    document_type: str | None = None,
-    product: str | None = None,
-    source_pdf_path: Path,
-    source_pdf_relative_path: Path,
-    cleaned_markdown_output_path: Path,
-    cleaned_markdown_text: str,
-    chunk_size: int,
-    chunk_overlap: int,
-) -> list[ChunkRecord]:
+def build_chunk_records(**kwargs) -> list[ChunkRecord]:
     """Build deterministic chunk records from cleaned markdown text."""
 
-    blocks = expand_large_blocks(
-        group_semantic_blocks(split_markdown_blocks(cleaned_markdown_text), chunk_size),
-        chunk_size,
+    kwargs.setdefault("chunk_schema_version", CHUNK_SCHEMA_VERSION)
+    return ingestion_artifacts.build_chunk_records(
+        **kwargs,
     )
-    if not blocks:
-        raise RuntimeError("No cleaned markdown blocks were available for chunk generation.")
-
-    chunk_records: list[ChunkRecord] = []
-    start_index = 0
-    chunk_index = 0
-
-    def render_effective_chunk_text(entries: Sequence[MarkdownBlock]) -> tuple[str, list[str], str | None]:
-        chunk_text = "\n\n".join(entry.text for entry in entries)
-        chunk_section = next(
-            (entry.section for entry in reversed(entries) if entry.section),
-            None,
-        )
-        chunk_section_path = next(
-            (list(entry.section_path) for entry in reversed(entries) if entry.section_path),
-            [],
-        )
-        return (
-            ensure_chunk_text_includes_section_context(
-                chunk_text=chunk_text,
-                section_path=chunk_section_path,
-            ),
-            chunk_section_path,
-            chunk_section,
-        )
-
-    normalized_blocks: list[MarkdownBlock] = []
-    for block in blocks:
-        effective_block_text, _effective_section_path, _effective_section = (
-            render_effective_chunk_text([block])
-        )
-        if len(effective_block_text) <= chunk_size or "\n\n" not in block.text:
-            normalized_blocks.append(block)
-            continue
-
-        paragraph_units = [unit.strip() for unit in block.text.split("\n\n") if unit.strip()]
-        if len(paragraph_units) <= 1:
-            normalized_blocks.append(block)
-            continue
-
-        current_units: list[str] = []
-        for unit in paragraph_units:
-            candidate_units = [*current_units, unit]
-            candidate_block = MarkdownBlock(
-                text="\n\n".join(candidate_units),
-                section=block.section,
-                section_path=block.section_path,
-                kind=block.kind,
-            )
-            candidate_text, _candidate_section_path, _candidate_section = (
-                render_effective_chunk_text([candidate_block])
-            )
-            if current_units and len(candidate_text) > chunk_size:
-                normalized_blocks.append(
-                    MarkdownBlock(
-                        text="\n\n".join(current_units),
-                        section=block.section,
-                        section_path=block.section_path,
-                        kind=block.kind,
-                    )
-                )
-                current_units = [unit]
-                continue
-            current_units = candidate_units
-
-        if current_units:
-            normalized_blocks.append(
-                MarkdownBlock(
-                    text="\n\n".join(current_units),
-                    section=block.section,
-                    section_path=block.section_path,
-                    kind=block.kind,
-                )
-            )
-
-    blocks = normalized_blocks
-
-    while start_index < len(blocks):
-        current_entries: list[MarkdownBlock] = []
-        end_index = start_index
-
-        while end_index < len(blocks):
-            block = blocks[end_index]
-            if current_entries and block.section_path != current_entries[-1].section_path:
-                break
-            candidate_entries = [*current_entries, block]
-            candidate_text, _candidate_section_path, _candidate_section = (
-                render_effective_chunk_text(candidate_entries)
-            )
-            if current_entries and len(candidate_text) > chunk_size:
-                break
-            current_entries = candidate_entries
-            end_index += 1
-
-        chunk_text, chunk_section_path, chunk_section = render_effective_chunk_text(current_entries)
-        chunk_has_non_heading_content = markdown_has_non_heading_content(chunk_text)
-        should_emit_heading_only_chunk = (
-            not chunk_has_non_heading_content
-            and bool(chunk_text.strip())
-            and len(current_entries) == 1
-            and current_entries[0].kind == "heading"
-        )
-        if not chunk_has_non_heading_content and not should_emit_heading_only_chunk:
-            if end_index >= len(blocks):
-                break
-        else:
-            chunk_records.append(
-                ChunkRecord(
-                    chunk_id=f"{source_pdf_id}:{CHUNK_SCHEMA_VERSION}:{chunk_index:04d}",
-                    source_pdf_id=source_pdf_id,
-                    document_name=document_name,
-                    document_version=document_version,
-                    document_type=document_type,
-                    product=product,
-                    source_pdf_path=str(source_pdf_path),
-                    source_pdf_relative_path=source_pdf_relative_path.as_posix(),
-                    cleaned_markdown_output_path=str(cleaned_markdown_output_path),
-                    text=chunk_text,
-                    chunk_index=chunk_index,
-                    chunk_schema_version=CHUNK_SCHEMA_VERSION,
-                    section=chunk_section,
-                    section_path=chunk_section_path,
-                )
-            )
-            chunk_index += 1
-
-        if end_index >= len(blocks):
-            break
-
-        if should_disable_chunk_overlap_for_entries(current_entries):
-            start_index = end_index
-            continue
-
-        overlap_block_count = 0
-        overlap_length = 0
-        cursor = len(current_entries) - 1
-        while cursor >= 0 and overlap_length < chunk_overlap:
-            overlap_length += len(current_entries[cursor].text)
-            overlap_block_count += 1
-            cursor -= 1
-
-        next_start_index = end_index - overlap_block_count
-        start_index = max(next_start_index, start_index + 1)
-
-    return deduplicate_exact_pv_applicability_chunks(chunk_records)
 
 
 def build_chunk_bundle(
@@ -872,60 +706,18 @@ def build_chunk_bundle(
 ) -> ChunkBundle:
     """Build a deterministic chunk bundle for one processed document."""
 
-    chunk_records = build_chunk_records(
-        source_pdf_id=processed_document.source_pdf_id,
-        document_name=processed_document.document_name,
-        document_version=processed_document.document_version,
-        document_type=processed_document.document_type,
-        product=processed_document.product,
-        source_pdf_path=Path(processed_document.source_pdf_path),
-        source_pdf_relative_path=Path(processed_document.source_pdf_relative_path),
-        cleaned_markdown_output_path=Path(processed_document.cleaned_markdown_output_path),
+    return ingestion_artifacts.build_chunk_bundle(
+        processed_document=processed_document,
+        chunk_artifact_path=chunk_artifact_path,
         cleaned_markdown_text=cleaned_markdown_text,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
-    )
-    return ChunkBundle(
-        source_pdf_id=processed_document.source_pdf_id,
-        document_name=processed_document.document_name,
-        document_version=processed_document.document_version,
-        document_type=processed_document.document_type,
-        product=processed_document.product,
-        source_pdf_path=processed_document.source_pdf_path,
-        source_pdf_relative_path=processed_document.source_pdf_relative_path,
-        cleaned_markdown_output_path=processed_document.cleaned_markdown_output_path,
-        chunk_artifact_path=str(chunk_artifact_path),
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
         chunk_schema_version=CHUNK_SCHEMA_VERSION,
-        chunks=chunk_records,
+        build_chunk_records_fn=build_chunk_records,
     )
 
 
-def write_chunk_bundle(chunk_bundle: ChunkBundle, chunk_artifact_path: Path) -> None:
-    """Persist a deterministic chunk bundle to JSON."""
-
-    chunk_artifact_path.parent.mkdir(parents=True, exist_ok=True)
-    chunk_artifact_path.write_text(chunk_bundle.model_dump_json(indent=2), encoding="utf-8")
-
-
-def build_embedding_payload(chunk_record: ChunkRecord) -> VectorPayload:
-    """Build the explicit later-indexing payload from one chunk record."""
-
-    return VectorPayload(
-        chunk_id=chunk_record.chunk_id,
-        source_pdf_id=chunk_record.source_pdf_id,
-        source_pdf_relative_path=chunk_record.source_pdf_relative_path,
-        chunk_schema_version=chunk_record.chunk_schema_version,
-        chunk_index=chunk_record.chunk_index,
-        document_name=chunk_record.document_name,
-        document_version=chunk_record.document_version,
-        document_type=chunk_record.document_type,
-        product=chunk_record.product,
-        section=chunk_record.section,
-        section_path=chunk_record.section_path,
-        text=chunk_record.text,
-    )
+write_chunk_bundle = ingestion_artifacts.write_chunk_bundle
 
 
 def build_embedding_bundle(
@@ -936,224 +728,33 @@ def build_embedding_bundle(
 ) -> EmbeddingBundle:
     """Build a deterministic embedding bundle from one chunk bundle."""
 
-    embedding_records: list[EmbeddingRecord] = []
-
-    for chunk_record in chunk_bundle.chunks:
-        vector = generate_embedding_vector(chunk_record.text, settings)
-        embedding_records.append(
-            EmbeddingRecord(
-                chunk_id=chunk_record.chunk_id,
-                source_pdf_id=chunk_record.source_pdf_id,
-                chunk_schema_version=chunk_record.chunk_schema_version,
-                embedding_provider=settings.embedding_provider,
-                embedding_model=settings.embedding_model,
-                vector_dimension=len(vector),
-                vector=vector,
-                payload=build_embedding_payload(chunk_record),
-            )
-        )
-
-    if not embedding_records:
-        raise RuntimeError("No chunk records were available for embedding generation.")
-
-    return EmbeddingBundle(
-        source_pdf_id=chunk_bundle.source_pdf_id,
-        document_name=chunk_bundle.document_name,
-        document_version=chunk_bundle.document_version,
-        document_type=chunk_bundle.document_type,
-        product=chunk_bundle.product,
-        source_chunk_artifact_path=chunk_bundle.chunk_artifact_path,
-        embedding_artifact_path=str(embedding_artifact_path),
+    return ingestion_artifacts.build_embedding_bundle(
+        chunk_bundle=chunk_bundle,
+        embedding_artifact_path=embedding_artifact_path,
         embedding_schema_version=EMBEDDING_SCHEMA_VERSION,
-        chunk_schema_version=chunk_bundle.chunk_schema_version,
         embedding_provider=settings.embedding_provider,
         embedding_model=settings.embedding_model,
-        vector_dimension=embedding_records[0].vector_dimension,
-        embeddings=embedding_records,
+        generate_embedding_vector_fn=lambda text: generate_embedding_vector(text, settings),
     )
 
 
-def write_embedding_bundle(
-    embedding_bundle: EmbeddingBundle,
-    embedding_artifact_path: Path,
-) -> None:
-    """Persist a deterministic embedding bundle to JSON."""
-
-    embedding_artifact_path.parent.mkdir(parents=True, exist_ok=True)
-    embedding_artifact_path.write_text(
-        embedding_bundle.model_dump_json(indent=2),
-        encoding="utf-8",
-    )
-
-
-def build_embedding_generation_record(
-    *,
-    chunk_bundle: ChunkBundle,
-    embedding_artifact_path: Path,
-    settings: Settings,
-    generation_status: str,
-    error_message: str | None = None,
-) -> EmbeddingGenerationRecord:
-    """Build one manifest record for embedding generation."""
-
-    return EmbeddingGenerationRecord(
-        source_pdf_id=chunk_bundle.source_pdf_id,
-        source_chunk_artifact_path=chunk_bundle.chunk_artifact_path,
-        embedding_artifact_path=str(embedding_artifact_path),
-        embedding_provider=settings.embedding_provider,
-        embedding_model=settings.embedding_model,
-        generation_status=generation_status,
-        error_message=error_message,
-        generated_at=datetime.now(UTC),
-    )
-
-
-def build_failed_embedding_record_from_artifact_path(
-    *,
-    chunk_artifact_path: Path,
-    embedding_artifact_path: Path,
-    settings: Settings,
-    error_message: str,
-) -> EmbeddingGenerationRecord:
-    """Build a failed embedding manifest record without a valid chunk bundle."""
-
-    source_pdf_id = chunk_artifact_path.name.removesuffix(".chunks.json")
-    return EmbeddingGenerationRecord(
-        source_pdf_id=source_pdf_id,
-        source_chunk_artifact_path=str(chunk_artifact_path),
-        embedding_artifact_path=str(embedding_artifact_path),
-        embedding_provider=settings.embedding_provider,
-        embedding_model=settings.embedding_model,
-        generation_status="failed",
-        error_message=error_message,
-        generated_at=datetime.now(UTC),
-    )
-
-
-def append_embedding_manifest_record(
-    manifest_path: Path,
-    record: EmbeddingGenerationRecord,
-) -> None:
-    """Append one JSONL embedding manifest record."""
-
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with manifest_path.open("a", encoding="utf-8") as manifest_file:
-        manifest_file.write(record.model_dump_json())
-        manifest_file.write("\n")
-
-
-def append_indexing_manifest_record(
-    manifest_path: Path,
-    record: EmbeddingIndexingRecord,
-) -> None:
-    """Append one JSONL indexing manifest record."""
-
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with manifest_path.open("a", encoding="utf-8") as manifest_file:
-        manifest_file.write(record.model_dump_json())
-        manifest_file.write("\n")
-
-
-def iter_chunk_artifacts(chunk_dir: Path, glob_pattern: str) -> list[Path]:
-    """Return sorted matching chunk artifacts under the configured directory."""
-
-    return sorted(path for path in chunk_dir.glob(glob_pattern) if path.is_file())
-
-
-def load_chunk_bundle(chunk_artifact_path: Path) -> ChunkBundle:
-    """Load one persisted chunk bundle."""
-
-    return ChunkBundle.model_validate_json(chunk_artifact_path.read_text(encoding="utf-8"))
-
-
-def load_embedding_bundle(embedding_artifact_path: Path) -> EmbeddingBundle:
-    """Load one persisted embedding bundle."""
-
-    return EmbeddingBundle.model_validate_json(embedding_artifact_path.read_text(encoding="utf-8"))
-
-
-def existing_ingestion_artifacts_match_resolved_metadata(
-    *,
-    processed_output_path: Path,
-    chunk_artifact_path: Path,
-    resolved_document_type: str | None,
-    resolved_product: str | None,
-    allow_legacy_missing_metadata: bool = False,
-) -> bool:
-    """Return whether persisted ingestion artifacts still match current metadata."""
-
-    try:
-        processed_document = ProcessedDocument.model_validate_json(
-            processed_output_path.read_text(encoding="utf-8")
-        )
-        chunk_bundle = load_chunk_bundle(chunk_artifact_path)
-    except Exception:
-        return False
-
-    def metadata_matches(existing_value: str | None, resolved_value: str | None) -> bool:
-        if existing_value == resolved_value:
-            return True
-        return allow_legacy_missing_metadata and existing_value is None
-
-    return (
-        metadata_matches(processed_document.document_type, resolved_document_type)
-        and metadata_matches(processed_document.product, resolved_product)
-        and metadata_matches(chunk_bundle.document_type, resolved_document_type)
-        and metadata_matches(chunk_bundle.product, resolved_product)
-    )
-
-
-def existing_embedding_artifact_matches_chunk_bundle(
-    *,
-    embedding_artifact_path: Path,
-    chunk_bundle: ChunkBundle,
-) -> bool:
-    """Return whether one persisted embedding artifact still matches its chunk bundle."""
-
-    try:
-        embedding_bundle = load_embedding_bundle(embedding_artifact_path)
-    except Exception:
-        return False
-
-    if (
-        embedding_bundle.document_name != chunk_bundle.document_name
-        or embedding_bundle.document_version != chunk_bundle.document_version
-        or embedding_bundle.document_type != chunk_bundle.document_type
-        or embedding_bundle.product != chunk_bundle.product
-        or embedding_bundle.chunk_schema_version != chunk_bundle.chunk_schema_version
-    ):
-        return False
-
-    expected_chunk_ids = [chunk.chunk_id for chunk in chunk_bundle.chunks]
-    actual_chunk_ids = [record.chunk_id for record in embedding_bundle.embeddings]
-    if actual_chunk_ids != expected_chunk_ids:
-        return False
-
-    actual_payload_metadata = [
-        (
-            record.payload.document_name,
-            record.payload.document_version,
-            record.payload.document_type,
-            record.payload.product,
-        )
-        for record in embedding_bundle.embeddings
-    ]
-    expected_payload_metadata = [
-        (
-            chunk.document_name,
-            chunk.document_version,
-            chunk.document_type,
-            chunk.product,
-        )
-        for chunk in chunk_bundle.chunks
-    ]
-    return actual_payload_metadata == expected_payload_metadata
-
-
-def iter_embedding_artifacts(embedding_dir: Path, glob_pattern: str) -> list[Path]:
-    """Return sorted matching embedding artifacts under the configured directory."""
-
-    return sorted(path for path in embedding_dir.glob(glob_pattern) if path.is_file())
+write_embedding_bundle = ingestion_artifacts.write_embedding_bundle
+build_embedding_generation_record = ingestion_batch.build_embedding_generation_record
+build_failed_embedding_record_from_artifact_path = (
+    ingestion_batch.build_failed_embedding_record_from_artifact_path
+)
+append_embedding_manifest_record = ingestion_batch.append_embedding_manifest_record
+append_indexing_manifest_record = ingestion_batch.append_indexing_manifest_record
+iter_chunk_artifacts = ingestion_batch.iter_chunk_artifacts
+load_chunk_bundle = ingestion_artifacts.load_chunk_bundle
+load_embedding_bundle = ingestion_artifacts.load_embedding_bundle
+existing_ingestion_artifacts_match_resolved_metadata = (
+    ingestion_artifacts.existing_ingestion_artifacts_match_resolved_metadata
+)
+existing_embedding_artifact_matches_chunk_bundle = (
+    ingestion_artifacts.existing_embedding_artifact_matches_chunk_bundle
+)
+iter_embedding_artifacts = ingestion_batch.iter_embedding_artifacts
 
 
 def retrieve_ranked_chunks(
@@ -1373,45 +974,10 @@ def generate_grounded_answer(
         return result
 
 
-def build_indexing_record(
-    *,
-    embedding_bundle: EmbeddingBundle,
-    settings: Settings,
-    indexing_status: str,
-    indexed_point_count: int,
-    error_message: str | None = None,
-) -> EmbeddingIndexingRecord:
-    """Build one indexing manifest record."""
-
-    return EmbeddingIndexingRecord(
-        source_pdf_id=embedding_bundle.source_pdf_id,
-        embedding_artifact_path=embedding_bundle.embedding_artifact_path,
-        qdrant_collection=settings.qdrant_collection,
-        indexed_point_count=indexed_point_count,
-        indexing_status=indexing_status,
-        error_message=error_message,
-        indexed_at=datetime.now(UTC),
-    )
-
-
-def build_failed_indexing_record_from_artifact_path(
-    *,
-    embedding_artifact_path: Path,
-    settings: Settings,
-    error_message: str,
-) -> EmbeddingIndexingRecord:
-    """Build a failed indexing record without a valid embedding bundle."""
-
-    source_pdf_id = embedding_artifact_path.name.removesuffix(".embeddings.json")
-    return EmbeddingIndexingRecord(
-        source_pdf_id=source_pdf_id,
-        embedding_artifact_path=str(embedding_artifact_path),
-        qdrant_collection=settings.qdrant_collection,
-        indexed_point_count=0,
-        indexing_status="failed",
-        error_message=error_message,
-        indexed_at=datetime.now(UTC),
-    )
+build_indexing_record = ingestion_batch.build_indexing_record
+build_failed_indexing_record_from_artifact_path = (
+    ingestion_batch.build_failed_indexing_record_from_artifact_path
+)
 
 
 def index_embedding_bundle(
@@ -1460,13 +1026,10 @@ def generate_embeddings_for_chunk_bundle(
     chunk_bundle = load_chunk_bundle(chunk_artifact_path)
     embedding_artifact_path = embedding_dir / f"{chunk_bundle.source_pdf_id}.embeddings.json"
 
-    if (
-        not overwrite
-        and embedding_artifact_path.exists()
-        and existing_embedding_artifact_matches_chunk_bundle(
-            embedding_artifact_path=embedding_artifact_path,
-            chunk_bundle=chunk_bundle,
-        )
+    if ingestion_artifacts.should_reuse_existing_embedding_artifact(
+        overwrite=overwrite,
+        embedding_artifact_path=embedding_artifact_path,
+        chunk_bundle=chunk_bundle,
     ):
         return build_embedding_generation_record(
             chunk_bundle=chunk_bundle,
@@ -1531,19 +1094,15 @@ def ingest_one_pdf(
         processed_dir=processed_dir,
     )
 
-    if (
-        not overwrite
-        and markdown_output_path.exists()
-        and cleaned_markdown_output_path.exists()
-        and processed_output_path.exists()
-        and chunk_artifact_path.exists()
-        and existing_ingestion_artifacts_match_resolved_metadata(
-            processed_output_path=processed_output_path,
-            chunk_artifact_path=chunk_artifact_path,
-            resolved_document_type=resolved_document_type,
-            resolved_product=resolved_product,
-            allow_legacy_missing_metadata=not metadata_refresh_requested,
-        )
+    if ingestion_artifacts.should_reuse_existing_ingestion_artifacts(
+        overwrite=overwrite,
+        markdown_output_path=markdown_output_path,
+        cleaned_markdown_output_path=cleaned_markdown_output_path,
+        processed_output_path=processed_output_path,
+        chunk_artifact_path=chunk_artifact_path,
+        resolved_document_type=resolved_document_type,
+        resolved_product=resolved_product,
+        metadata_refresh_requested=metadata_refresh_requested,
     ):
         return build_processed_document(
             source_pdf_id=source_pdf_id,

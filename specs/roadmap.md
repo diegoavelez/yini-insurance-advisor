@@ -1313,6 +1313,9 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `rag-local-hybrid-recall-and-query-normalization-seam-extraction`
 - `rag-pdf-conversion-and-markdown-cleaning-seam-extraction`
 - `ingestion-chunk-emission-and-artifact-skip-correctness-remediation`
+- `rag-ingestion-artifact-assembly-and-skip-policy-seam-extraction`
+- `rag-manifest-recording-and-artifact-iteration-seam-extraction`
+- `rag-batch-command-loop-and-failure-handling-seam-extraction`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
 - `autos-plan-comparison-retrieval-alignment`
@@ -1532,12 +1535,21 @@ Implementation note:
     Docling/PDFium conversion routing, markdown-usability checks, and
     conservative markdown cleanup behind a dedicated `rag` seam while keeping
     ingestion orchestration in `rag.ingestion.py`.
+  - `rag-ingestion-artifact-assembly-and-skip-policy-seam-extraction`, which
+    moved chunk-record assembly, chunk/embedding bundle construction,
+    persisted artifact-compatibility checks, and per-document artifact reuse
+    policy behind a dedicated `rag` seam while keeping top-level ingestion
+    and embedding command orchestration in `rag.ingestion.py`.
+  - `rag-manifest-recording-and-artifact-iteration-seam-extraction`, which
+    moved ingestion/embedding/indexing manifest-record builders, JSONL
+    appenders, and deterministic source/chunk/embedding artifact iteration
+    behind a dedicated `rag` seam while keeping batch command orchestration
+    in `rag.ingestion.py`.
   The next documented post-onboarding refactor candidate is
-  `rag-ingestion-artifact-assembly-and-skip-policy-seam-extraction`, covering
-  chunk-record assembly, chunk/embedding bundle construction, persisted
-  artifact-compatibility checks, and per-document artifact reuse policy while
-  keeping top-level ingestion and embedding command orchestration in
-  `rag.ingestion.py`.
+  `rag-batch-command-loop-and-failure-handling-seam-extraction`, covering the
+  repeated ingestion/embedding/indexing batch loops, fail-fast branching,
+  per-artifact exception recovery, and manifest-append orchestration while
+  keeping top-level CLI dispatch in `rag.ingestion.py`.
 - When those comparison bundles match, retrieval can use a larger candidate
   pool plus deterministic lexical reranking before returning the final top-k.
 - Chunk text can now be prefixed with its governing `section_path` headings
