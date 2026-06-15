@@ -722,37 +722,102 @@ def build_chunk_records(
     start_index = 0
     chunk_index = 0
 
+    def render_effective_chunk_text(entries: Sequence[MarkdownBlock]) -> tuple[str, list[str], str | None]:
+        chunk_text = "\n\n".join(entry.text for entry in entries)
+        chunk_section = next(
+            (entry.section for entry in reversed(entries) if entry.section),
+            None,
+        )
+        chunk_section_path = next(
+            (list(entry.section_path) for entry in reversed(entries) if entry.section_path),
+            [],
+        )
+        return (
+            ensure_chunk_text_includes_section_context(
+                chunk_text=chunk_text,
+                section_path=chunk_section_path,
+            ),
+            chunk_section_path,
+            chunk_section,
+        )
+
+    normalized_blocks: list[MarkdownBlock] = []
+    for block in blocks:
+        effective_block_text, _effective_section_path, _effective_section = (
+            render_effective_chunk_text([block])
+        )
+        if len(effective_block_text) <= chunk_size or "\n\n" not in block.text:
+            normalized_blocks.append(block)
+            continue
+
+        paragraph_units = [unit.strip() for unit in block.text.split("\n\n") if unit.strip()]
+        if len(paragraph_units) <= 1:
+            normalized_blocks.append(block)
+            continue
+
+        current_units: list[str] = []
+        for unit in paragraph_units:
+            candidate_units = [*current_units, unit]
+            candidate_block = MarkdownBlock(
+                text="\n\n".join(candidate_units),
+                section=block.section,
+                section_path=block.section_path,
+                kind=block.kind,
+            )
+            candidate_text, _candidate_section_path, _candidate_section = (
+                render_effective_chunk_text([candidate_block])
+            )
+            if current_units and len(candidate_text) > chunk_size:
+                normalized_blocks.append(
+                    MarkdownBlock(
+                        text="\n\n".join(current_units),
+                        section=block.section,
+                        section_path=block.section_path,
+                        kind=block.kind,
+                    )
+                )
+                current_units = [unit]
+                continue
+            current_units = candidate_units
+
+        if current_units:
+            normalized_blocks.append(
+                MarkdownBlock(
+                    text="\n\n".join(current_units),
+                    section=block.section,
+                    section_path=block.section_path,
+                    kind=block.kind,
+                )
+            )
+
+    blocks = normalized_blocks
+
     while start_index < len(blocks):
         current_entries: list[MarkdownBlock] = []
-        current_length = 0
         end_index = start_index
 
         while end_index < len(blocks):
             block = blocks[end_index]
             if current_entries and block.section_path != current_entries[-1].section_path:
                 break
-            separator_length = 2 if current_entries else 0
-            next_length = current_length + separator_length + len(block.text)
-            if current_entries and next_length > chunk_size:
+            candidate_entries = [*current_entries, block]
+            candidate_text, _candidate_section_path, _candidate_section = (
+                render_effective_chunk_text(candidate_entries)
+            )
+            if current_entries and len(candidate_text) > chunk_size:
                 break
-            current_entries.append(block)
-            current_length = next_length
+            current_entries = candidate_entries
             end_index += 1
 
-        chunk_text = "\n\n".join(entry.text for entry in current_entries)
-        chunk_section = next(
-            (entry.section for entry in reversed(current_entries) if entry.section),
-            None,
+        chunk_text, chunk_section_path, chunk_section = render_effective_chunk_text(current_entries)
+        chunk_has_non_heading_content = markdown_has_non_heading_content(chunk_text)
+        should_emit_heading_only_chunk = (
+            not chunk_has_non_heading_content
+            and bool(chunk_text.strip())
+            and len(current_entries) == 1
+            and current_entries[0].kind == "heading"
         )
-        chunk_section_path = next(
-            (list(entry.section_path) for entry in reversed(current_entries) if entry.section_path),
-            [],
-        )
-        chunk_text = ensure_chunk_text_includes_section_context(
-            chunk_text=chunk_text,
-            section_path=chunk_section_path,
-        )
-        if not markdown_has_non_heading_content(chunk_text):
+        if not chunk_has_non_heading_content and not should_emit_heading_only_chunk:
             if end_index >= len(blocks):
                 break
         else:
@@ -1013,6 +1078,7 @@ def existing_ingestion_artifacts_match_resolved_metadata(
     chunk_artifact_path: Path,
     resolved_document_type: str | None,
     resolved_product: str | None,
+    allow_legacy_missing_metadata: bool = False,
 ) -> bool:
     """Return whether persisted ingestion artifacts still match current metadata."""
 
@@ -1024,11 +1090,16 @@ def existing_ingestion_artifacts_match_resolved_metadata(
     except Exception:
         return False
 
+    def metadata_matches(existing_value: str | None, resolved_value: str | None) -> bool:
+        if existing_value == resolved_value:
+            return True
+        return allow_legacy_missing_metadata and existing_value is None
+
     return (
-        processed_document.document_type == resolved_document_type
-        and processed_document.product == resolved_product
-        and chunk_bundle.document_type == resolved_document_type
-        and chunk_bundle.product == resolved_product
+        metadata_matches(processed_document.document_type, resolved_document_type)
+        and metadata_matches(processed_document.product, resolved_product)
+        and metadata_matches(chunk_bundle.document_type, resolved_document_type)
+        and metadata_matches(chunk_bundle.product, resolved_product)
     )
 
 
@@ -1431,6 +1502,7 @@ def ingest_one_pdf(
     docling_startup_timeout_seconds: float,
     metadata_overlays: dict[str, DocumentMetadataOverlayEntry] | None = None,
     term_equivalences: TermEquivalenceSet | None = None,
+    metadata_refresh_requested: bool = False,
 ) -> ProcessedDocument:
     """Ingest one source PDF according to the deterministic storage rules."""
 
@@ -1470,6 +1542,7 @@ def ingest_one_pdf(
             chunk_artifact_path=chunk_artifact_path,
             resolved_document_type=resolved_document_type,
             resolved_product=resolved_product,
+            allow_legacy_missing_metadata=not metadata_refresh_requested,
         )
     ):
         return build_processed_document(
@@ -1570,6 +1643,7 @@ def run_ingestion(args: argparse.Namespace) -> int:
                 docling_startup_timeout_seconds=args.docling_startup_timeout_seconds,
                 metadata_overlays=metadata_overlays,
                 term_equivalences=term_equivalences,
+                metadata_refresh_requested=metadata_overlay_path is not None,
             )
         except Exception as exc:
             encountered_failures = True
