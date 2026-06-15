@@ -3,6 +3,8 @@
 ## 2026-06-15
 
 - Extract the post-onboarding runtime seam by moving embedding/Qdrant/Groq backend availability checks, provider bridges, Groq client and SentenceTransformer loading, offline asset warmup helpers, and embedding/completion generation into `rag/runtime_providers.py`, while updating the roadmap to close that seam and document `rag-cli-command-adapter-and-request-lifecycle-seam-extraction` as the next narrow coupling gap.
+- Close the current MVP category-acceptance pass by adding the `mvp-current-category-acceptance-matrix`, documenting and validating the `EPS/PAC` asegurabilidad recovery plus the `MOVILIDAD` retrieval corrections for `VIAJES`, `UTILITARIO Y PESADOS`, `TRANSVERSALES/choque simple`, `PV`, `FINANCIACION`, and `SUSCRIPCION`, and updating the roadmap so those families now trace as accepted with live retrieval and grounded-answer evidence.
+- Recover financing-guide evidence ordering by adding `movilidad-financiacion-heading-stub-priority-recovery`, extending deterministic reranking so `Paso a paso` outranks the `Procedimientos:` stub inside `instructivo financiacion de polizas v1.pdf`, and locking the behavior with focused retrieval regression coverage.
 
 ## 2026-06-14
 

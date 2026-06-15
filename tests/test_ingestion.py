@@ -1164,6 +1164,44 @@ def test_split_markdown_blocks_normalizes_deductible_linear_grid() -> None:
     )
 
 
+def test_split_markdown_blocks_normalizes_soat_tariff_table_rows() -> None:
+    blocks = split_markdown_blocks(
+        "# TARIFAS SOAT 2026 A partir del 1 de enero de 2026\n\n"
+        "| Motos | Motos | Motos | Motos | Motos | Motos |\n"
+        "|---|---|---|---|---|---|\n"
+        "| Código tarifa | Cilindraje (C.C.) | Prima | Valor contribución | Tasa RUNT | Prima + Cont. + Tasa RUNT |\n"
+        "| 10 | Ciclomotor | $ 80.100 | $ 41.600 | $ 2.400 | $ 124.100 |\n"
+        "| 11 | Menos de 100 c.c. | $ 167.000 | $ 86.800 | $ 2.400 | $ 256.200 |\n"
+    )
+
+    assert len(blocks) == 2
+    assert blocks[1].section == "TARIFAS SOAT 2026 A partir del 1 de enero de 2026"
+    assert blocks[1].section_path == ("TARIFAS SOAT 2026 A partir del 1 de enero de 2026",)
+    assert blocks[1].text.startswith("Motos\n- Motos / Código 10 / Ciclomotor:")
+    assert "Prima: $ 80.100" in blocks[1].text
+    assert "Prima + Cont. + Tasa RUNT: $ 124.100" in blocks[1].text
+    assert "| Código tarifa |" not in blocks[1].text
+
+
+def test_split_markdown_blocks_preserves_soat_tariff_category_with_model_subgroup() -> None:
+    blocks = split_markdown_blocks(
+        "# TARIFAS SOAT 2026 A partir del 1 de enero de 2026\n\n"
+        "| Autos familiares | Autos familiares | Autos familiares | Autos familiares | Autos familiares | Autos familiares |\n"
+        "|---|---|---|---|---|---|\n"
+        "| Código tarifa | Cilindraje (C.C.) | Prima | Valor contribución | Tasa RUNT | Prima + Cont. + Tasa RUNT |\n"
+        "| 51 | Menos de 1500 c.c. | $ 292.700 | $ 152.200 | $ 2.400 | $ 447.300 |\n"
+        "| | Modelos | en adelante 2016 o anteriores | Valor | Tasa | Prima + Cont. |\n"
+        "| 52 | Entre 1500 - 2500 c.c. | $ 444.100 | $ 230.900 | $ 2.400 | $ 677.400 |\n"
+    )
+
+    assert len(blocks) == 2
+    assert "Autos familiares / Código 51 / Menos de 1500 c.c." in blocks[1].text
+    assert (
+        "Autos familiares / Modelos / en adelante 2016 o anteriores / Valor / Tasa / Prima + Cont. / Código 52"
+        in blocks[1].text
+    )
+
+
 def test_split_markdown_blocks_normalizes_choque_simple_circular_sections() -> None:
     blocks = split_markdown_blocks(
         "# CIRCULAR EXTERNA\n\n"

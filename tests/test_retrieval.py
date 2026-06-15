@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -20,6 +21,7 @@ from rag.ingestion import (
     normalize_retrieval_query_with_term_equivalences,
     retrieve_ranked_chunks,
 )
+from rag.term_equivalences import load_term_equivalences
 
 
 class FakeQdrantRetrievalClient:
@@ -1426,6 +1428,37 @@ def test_normalize_retrieval_query_infers_utilitarios_pesados_product_from_rule(
     assert normalized_query.filters.document_name == "Seguro de Autos Utilitarios y Pesados"
 
 
+def test_repository_utilitarios_pesados_policy_query_normalizes_to_policy_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el plan de utilitarios y pesados?",
+            filters={"product": "movilidad", "document_type": "policy"},
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "policy"
+    assert (
+        normalized_query.filters.document_name
+        == "SEGURO DE AUTOS PLAN UTILITARIOS Y PESADOS"
+    )
+
+
+def test_repository_choque_simple_photo_query_normalizes_to_photo_guide_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cómo debo tomar fotos en un choque simple?",
+            filters={"product": "movilidad", "document_type": "guide"},
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name == "¿Cómo tomar fotos y videos?"
+
+
 def test_normalize_retrieval_query_applies_financing_guide_document_family_rule() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(
@@ -1788,6 +1821,215 @@ def test_normalize_retrieval_query_applies_general_pac_asegurabilidad_document_n
     assert normalized_query.filters.product == "pac"
     assert normalized_query.filters.document_type == "policy"
     assert normalized_query.filters.document_name == "Políticas Plan Complementario EPS SURA"
+
+
+def test_normalize_retrieval_query_applies_autos_basico_pt_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el plan autos básico PT?",
+            filters={"product": "auto", "document_type": "guide"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["autos"],
+                    any_of=[
+                        "básico pt",
+                        "basico pt",
+                        "plan autos básico pérdidas totales",
+                        "plan autos basico perdidas totales",
+                    ],
+                    filters={
+                        "product": "auto",
+                        "document_type": "guide",
+                        "document_name": "Plan Autos Básico Pérdidas Totales",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "auto"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name == "Plan Autos Básico Pérdidas Totales"
+
+
+def test_normalize_retrieval_query_applies_bicicletas_patinetas_coverage_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el seguro para bicicletas y patinetas?",
+            filters={"product": "movilidad", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["bicicletas", "patinetas"],
+                    any_of=["qué cubre", "cobertura", "seguro"],
+                    filters={
+                        "product": "movilidad",
+                        "document_type": "policy",
+                        "document_name": "SEGURO DE BICICLETA",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "SEGURO DE BICICLETA"
+
+
+def test_repository_pac_60_mas_asegurabilidad_query_normalizes_to_policy_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué condiciones de asegurabilidad tiene PAC 60 Más?",
+            filters={"product": "pac", "document_type": "policy"},
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "Plan Complementario 60 más"
+
+
+def test_repository_autos_basico_pt_query_normalizes_to_guide_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el plan autos básico PT?",
+            filters={"product": "auto", "document_type": "guide"},
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "auto"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name == "Plan Autos Básico Pérdidas Totales"
+
+
+def test_repository_bicicletas_patinetas_coverage_query_normalizes_to_policy_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el seguro para bicicletas y patinetas?",
+            filters={"product": "movilidad", "document_type": "policy"},
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "SEGURO DE BICICLETA"
+
+
+def test_repository_bicicletas_patinetas_deductible_query_does_not_inject_policy_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cuál es el deducible del seguro de bicicletas y patinetas?",
+            filters={"product": "movilidad", "document_type": "guide"},
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name is None
+
+
+def test_repository_autos_basico_pt_coverage_query_appends_recall_terms(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué cubre el plan autos básico PT?",
+            filters={"product": "auto", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "coberturas principales" in captured_query["query"]
+    assert "daños a terceros" in captured_query["query"]
+    assert "pérdida total daños" in captured_query["query"]
+    assert client.last_query["limit"] == 15
+
+
+def test_repository_pac_60_mas_asegurabilidad_query_appends_section_recall_terms(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué condiciones de asegurabilidad tiene PAC 60 Más?",
+            filters={"product": "pac", "document_type": "policy"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "grupos asegurables" in captured_query["query"]
+    assert "edad mínima de ingreso" in captured_query["query"]
+    assert "10 familias" in captured_query["query"]
+    assert client.last_query["limit"] == 15
+
+
+def test_repository_pac_60_mas_coverage_query_still_normalizes_to_clausulado_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el PAC 60 Más?",
+            filters={"product": "pac", "document_type": "policy"},
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "Es tiempo devIvIr mas historias."
+
+
+def test_repository_autos_comparison_query_does_not_inject_basico_pt_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué diferencia hay entre los planes de autos?",
+            filters={"product": "auto", "document_type": "guide"},
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "auto"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name is None
 
 
 def test_normalize_retrieval_query_applies_pac_afiliacion_form_document_name() -> None:
@@ -2452,6 +2694,45 @@ def test_retrieve_ranked_chunks_applies_operator_query_expansion_rules(
     assert "nuevo de nuevo" in captured_query["query"]
 
 
+def test_retrieve_ranked_chunks_applies_broad_autos_comparison_query_expansion_rules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué diferencia hay entre los planes de autos?",
+            filters={"product": "auto", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "diferenciales sura" in captured_query["query"]
+    assert "planes sura" in captured_query["query"]
+    assert "plan autos global" in captured_query["query"]
+    assert "plan autos clásico" in captured_query["query"]
+    assert client.last_query["limit"] == 15
+
+
 def test_retrieve_ranked_chunks_applies_motos_comparison_query_expansion_rules(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2566,6 +2847,41 @@ def test_retrieve_ranked_chunks_applies_movilidad_pv_query_expansion_rules(
     assert "pérdidas totales" in captured_query["query"]
     assert "gastos de transporte" in captured_query["query"]
     assert "renta diaria por hospitalización" in captured_query["query"]
+
+
+def test_repository_viajes_coverage_query_appends_section_recall_terms(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué cubre el seguro de viaje nacional?",
+            filters={"product": "viajes", "document_type": "policy"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "sección i qué cubre este seguro" in captured_query["query"].lower()
+    assert "hurto de documentos" in captured_query["query"].lower()
+    assert "equipaje protegido" in captured_query["query"].lower()
+    assert "cancelación e interrupción de viaje" in captured_query["query"].lower()
+    assert client.last_query["limit"] == 15
 
 
 def test_build_hybrid_recall_terms_skips_anchor_restatement_append_terms() -> None:
@@ -3853,6 +4169,174 @@ def test_retrieve_ranked_chunks_excludes_non_financing_guide_locals_for_financin
     assert result.chunks[0].section == "Paso a paso"
 
 
+def test_retrieve_ranked_chunks_prioritizes_contentful_financing_guide_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "fin:v2:0000",
+                    "source_pdf_id": (
+                        "movilidad__transversales__instructivo-financiacion-de-polizas-v1"
+                    ),
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/instructivo financiacion de polizas v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 0,
+                    "text": (
+                        "## Manual Procedimiento Financiacion de polizas individuales\n\n"
+                        "## Procedimientos:"
+                    ),
+                    "document_name": (
+                        "Manual Procedimiento Financiacion de polizas individuales"
+                    ),
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Procedimientos:",
+                    "section_path": [
+                        "Manual Procedimiento Financiacion de polizas individuales",
+                        "Procedimientos:",
+                    ],
+                },
+                score=0.95,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "fin:v2:0004",
+                    "source_pdf_id": (
+                        "movilidad__transversales__instructivo-financiacion-de-polizas-v1"
+                    ),
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/instructivo financiacion de polizas v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 4,
+                    "text": (
+                        "# Manual Procedimiento Financiacion de polizas individuales\n\n"
+                        "## Paso a paso\n\n"
+                        "1. Se ingresa por la solución de autos y se selecciona "
+                        "\"Anual Financiada\".\n"
+                        "2. El sistema valida requisitos y permite continuar con la cotización."
+                    ),
+                    "document_name": (
+                        "Manual Procedimiento Financiacion de polizas individuales"
+                    ),
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Paso a paso",
+                    "section_path": [
+                        "Manual Procedimiento Financiacion de polizas individuales",
+                        "Paso a paso",
+                    ],
+                },
+                score=0.70,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "fin:v2:0003",
+                    "source_pdf_id": (
+                        "movilidad__transversales__instructivo-financiacion-de-polizas-v1"
+                    ),
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/instructivo financiacion de polizas v1.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 3,
+                    "text": (
+                        "# Manual Procedimiento Financiacion de polizas individuales\n\n"
+                        "## Notas Importantes:\n\n"
+                        "- Todas las facturas se aplican a la financiación.\n"
+                        "- La información puede consultarse en el A.s.F."
+                    ),
+                    "document_name": (
+                        "Manual Procedimiento Financiacion de polizas individuales"
+                    ),
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Notas Importantes:",
+                    "section_path": [
+                        "Manual Procedimiento Financiacion de polizas individuales",
+                        "Notas Importantes:",
+                    ],
+                },
+                score=0.72,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["financiacion"],
+                    any_of=[
+                        "como funciona",
+                        "opciones",
+                        "cuotas",
+                        "paso a paso",
+                        "procedimiento",
+                        "expedicion",
+                        "cotizacion",
+                        "financiada",
+                    ],
+                    filters={
+                        "document_name": (
+                            "Manual Procedimiento Financiacion de polizas individuales"
+                        )
+                    },
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["financiacion"],
+                    any_of=["como funciona", "opciones", "procedimiento"],
+                    append_terms=[
+                        "manual procedimiento financiacion",
+                        "poliza nueva",
+                        "paso a paso",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Cómo funciona la financiación de pólizas individuales?",
+            filters={"product": "movilidad", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.chunk_id for chunk in result.chunks[:3]] == [
+        "fin:v2:0004",
+        "fin:v2:0003",
+        "fin:v2:0000",
+    ]
+
+
 def test_retrieve_ranked_chunks_diversifies_movilidad_pv_benefit_sections(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -4580,6 +5064,41 @@ def test_retrieve_ranked_chunks_prioritizes_choque_simple_transversal_guidance(
     assert result.chunks[0].document_type == "guide"
 
 
+def test_repository_choque_simple_procedure_query_appends_operational_recall_terms(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient([])
+    captured_query: dict[str, str] = {}
+
+    def capture_embedding_query(text: str, settings: Settings) -> list[float]:
+        captured_query["query"] = text
+        return [0.1, 0.2]
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.generate_embedding_vector", capture_embedding_query)
+
+    retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Cuál es el procedimiento de atención del choque simple?",
+            filters={"product": "movilidad", "document_type": "guide"},
+            top_k=5,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert "Términos equivalentes:" in captured_query["query"]
+    assert "en eventos de choques" in captured_query["query"].lower()
+    assert "para recordar" in captured_query["query"].lower()
+    assert "instrucciones operativas choque simple" in captured_query["query"].lower()
+    assert "canales de atención sura" in captured_query["query"].lower()
+    assert client.last_query["limit"] == 15
+
+
 def test_retrieve_ranked_chunks_adds_local_lexical_candidates_for_comparison_queries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -4672,6 +5191,179 @@ def test_retrieve_ranked_chunks_adds_local_lexical_candidates_for_comparison_que
 
     assert result.chunks[0].document_name == "DIFERENCIALES SURA"
     assert result.chunks[0].chunk_id == "diff:v2:0000"
+
+
+def test_retrieve_ranked_chunks_reranks_broad_autos_comparison_hits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "electric:v2:0016",
+                    "source_pdf_id": "electric",
+                    "source_pdf_relative_path": "MOVILIDAD/AUTOS/ayudaventas electricos.pdf",
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 16,
+                    "text": (
+                        "Cobertura al 100 % (franquicia). Plan Autos Global "
+                        "Eléctricos e Híbridos."
+                    ),
+                    "document_name": "Conéctate con el medio ambiente y con el futuro,",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "auto",
+                    "section": "Cobertura al 100 % (franquicia):",
+                    "section_path": [
+                        "Conéctate con el medio ambiente y con el futuro,",
+                        "Cobertura al 100 % (franquicia):",
+                    ],
+                },
+                score=0.92,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "diff:v2:0002",
+                    "source_pdf_id": "diff",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/AUTOS/diferenciales planes autos.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 2,
+                    "text": (
+                        "Planes SURA. Plan Autos Global. Plan Autos Clásico. "
+                        "Plan Autos Básico Pérdidas Totales. "
+                        "Tipo de cobertura. Franquicia. Nuevo de nuevo."
+                    ),
+                    "document_name": "DIFERENCIALES SURA",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "auto",
+                    "section": "Planes SURA",
+                    "section_path": ["DIFERENCIALES SURA", "Planes SURA"],
+                },
+                score=0.70,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué diferencia hay entre los planes de autos?",
+            filters={"product": "auto", "document_type": "guide"},
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].document_name == "DIFERENCIALES SURA"
+    assert result.chunks[0].chunk_id == "diff:v2:0002"
+
+
+def test_retrieve_ranked_chunks_reranks_pac_asegurabilidad_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pac:v2:0033",
+                    "source_pdf_id": "pac",
+                    "source_pdf_relative_path": (
+                        "EPS/PLAN COMPLEMENTARIO PAC/politicas asegurabilidad pac 60 mas.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 33,
+                    "text": "Congelaciones del contrato y causales operativas.",
+                    "document_name": "Plan Complementario 60 más",
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "pac",
+                    "section": "8. CONGELACIONES DE UN CONTRATO O DE UN ASEGURADO",
+                    "section_path": [
+                        "Plan Complementario 60 más",
+                        "8. CONGELACIONES DE UN CONTRATO O DE UN ASEGURADO",
+                    ],
+                },
+                score=0.92,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "pac:v2:0009",
+                    "source_pdf_id": "pac",
+                    "source_pdf_relative_path": (
+                        "EPS/PLAN COMPLEMENTARIO PAC/politicas asegurabilidad pac 60 mas.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 9,
+                    "text": (
+                        "Grupos asegurables. Contrato colectivo. 10 familias. "
+                        "Toda la familia del empleado debe estar en el mismo plan."
+                    ),
+                    "document_name": "Plan Complementario 60 más",
+                    "document_version": None,
+                    "document_type": "policy",
+                    "product": "pac",
+                    "section": "GRUPOS ASEGURABLES",
+                    "section_path": [
+                        "Plan Complementario 60 más",
+                        "GRUPOS ASEGURABLES",
+                    ],
+                },
+                score=0.70,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué condiciones de asegurabilidad tiene PAC 60 Más?",
+            filters={"product": "pac", "document_type": "policy"},
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert result.chunks[0].section == "GRUPOS ASEGURABLES"
+    assert result.chunks[0].chunk_id == "pac:v2:0009"
 
 
 def test_retrieve_ranked_chunks_skips_local_lexical_candidates_without_matching_filters(
@@ -4935,6 +5627,135 @@ def test_retrieve_ranked_chunks_applies_normalized_filters_to_local_lexical_cand
     )
 
     assert [chunk.chunk_id for chunk in result.chunks] == ["movilidad:v2:0009"]
+
+
+def test_retrieve_ranked_chunks_prioritizes_choque_simple_procedure_support_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = FakeQdrantRetrievalClient(
+        [
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "foto:v2:0007",
+                    "source_pdf_id": "movilidad__transversales__como-tomar-fotos-choque-simple-v2",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/como tomar fotos choque simple v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 7,
+                    "text": "Toma fotos y videos para ver los daños del accidente.",
+                    "document_name": "¿Cómo tomar fotos y videos?",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Acércate más para ver los detalles.",
+                    "section_path": [
+                        "¿Cómo tomar fotos y videos?",
+                        "Acércate más para ver los detalles.",
+                    ],
+                },
+                score=0.92,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "circular:v2:0006",
+                    "source_pdf_id": "movilidad__transversales__circular-choque-simple",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/circular choque simple.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 6,
+                    "text": "Los conductores deben retirar inmediatamente los vehículos y acudir a centros de conciliación.",
+                    "document_name": "CIRCULAR EXTERNA",
+                    "document_version": None,
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "INSTRUCCIONES OPERATIVAS CHOQUE SIMPLE",
+                    "section_path": [
+                        "CIRCULAR EXTERNA",
+                        "INSTRUCCIONES OPERATIVAS CHOQUE SIMPLE",
+                    ],
+                },
+                score=0.84,
+            ),
+            SimpleNamespace(
+                payload={
+                    "chunk_id": "proceso:v2:0002",
+                    "source_pdf_id": "movilidad__transversales__proceso-atencion-choque-simple-v2",
+                    "source_pdf_relative_path": (
+                        "MOVILIDAD/TRANSVERSALES/proceso atencion choque simple v2.pdf"
+                    ),
+                    "chunk_schema_version": "v2",
+                    "chunk_index": 2,
+                    "text": "Contáctanos y haz un registro de fotos y videos del evento.",
+                    "document_name": "EN EVENTOS DE CHOQUES",
+                    "document_version": "2",
+                    "document_type": "guide",
+                    "product": "movilidad",
+                    "section": "Para recordar",
+                    "section_path": [
+                        "EN EVENTOS DE CHOQUES",
+                        "Para recordar",
+                    ],
+                },
+                score=0.80,
+            ),
+        ]
+    )
+
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_term_equivalences",
+        lambda: TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["choque simple"],
+                    filters={"product": "movilidad", "document_type": "guide"},
+                )
+            ],
+            query_expansion_rules=[
+                QueryExpansionRule(
+                    all_of=["choque simple"],
+                    any_of=["procedimiento", "atención", "atencion"],
+                    append_terms=[
+                        "en eventos de choques",
+                        "para recordar",
+                        "instrucciones operativas choque simple",
+                        "retirar los vehículos",
+                        "centros de conciliación",
+                        "canales de atención sura",
+                    ],
+                )
+            ],
+        ),
+    )
+    monkeypatch.setattr(
+        "rag.ingestion.load_local_chunk_corpus",
+        lambda chunk_dir="data/processed/chunks": (),
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Cuál es el procedimiento de atención del choque simple?",
+            top_k=3,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert [chunk.chunk_id for chunk in result.chunks] == [
+        "proceso:v2:0002",
+        "circular:v2:0006",
+        "foto:v2:0007",
+    ]
 
 
 def test_retrieve_cli_prints_typed_result(

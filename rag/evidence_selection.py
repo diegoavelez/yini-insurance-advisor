@@ -24,6 +24,16 @@ QUERY_COVERAGE_INTENT_PHRASES = (
     "ampara",
     "amparo",
 )
+FINANCING_GUIDE_INTENT_PHRASES = (
+    "como funciona",
+    "opciones",
+    "cuotas",
+    "paso a paso",
+    "procedimiento",
+    "expedicion",
+    "cotizacion",
+    "financiada",
+)
 ARL_RUI_NORMATIVE_ANCHORS = (
     "ley 1562",
     "decreto 1117",
@@ -113,6 +123,33 @@ def is_movilidad_pv_document_family_chunk(chunk: RetrievedChunk) -> bool:
     return normalize_equivalence_text(chunk.document_name) == "propuesta de valor movilidad"
 
 
+def query_has_movilidad_financing_guide_intent(query: str) -> bool:
+    """Return whether one query explicitly targets the financing guide workflow."""
+
+    if query_has_movilidad_suscripcion_individual_financing_intent(query):
+        return False
+    if not query_contains_equivalent_phrase(query, "financiacion"):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in FINANCING_GUIDE_INTENT_PHRASES
+    )
+
+
+def is_movilidad_financing_guide_family_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to the financing guide family."""
+
+    if chunk.product != "movilidad" or chunk.document_type != "guide":
+        return False
+    normalized_document_name = normalize_equivalence_text(chunk.document_name)
+    normalized_source_id = normalize_equivalence_text(chunk.source_pdf_id)
+    return (
+        normalized_document_name
+        == "manual procedimiento financiacion de polizas individuales"
+        or "instructivo-financiacion-de-polizas-v1" in normalized_source_id
+    )
+
+
 def query_has_movilidad_suscripcion_policy_intent(query: str) -> bool:
     """Return whether one query broadly asks for movilidad suscripción policies."""
 
@@ -190,6 +227,40 @@ def query_has_movilidad_suscripcion_individual_financing_intent(query: str) -> b
     return any(
         query_contains_equivalent_phrase(query, phrase)
         for phrase in ("financiacion", "financiada", "financiado")
+    )
+
+
+def query_has_choque_simple_procedure_intent(query: str) -> bool:
+    """Return whether one query explicitly asks for choque simple handling steps."""
+
+    if not query_contains_equivalent_phrase(query, "choque simple"):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in (
+            "procedimiento",
+            "atencion",
+            "atención",
+            "qué debo hacer",
+            "que debo hacer",
+            "pasos",
+            "instrucciones",
+        )
+    )
+
+
+def is_choque_simple_procedure_support_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk directly supports choque simple procedure guidance."""
+
+    if chunk.product != "movilidad" or chunk.document_type != "guide":
+        return False
+    normalized_source_id = normalize_equivalence_text(chunk.source_pdf_id)
+    normalized_section = normalize_equivalence_text(chunk.section or "")
+    if "proceso-atencion-choque-simple" in normalized_source_id:
+        return True
+    return "circular-choque-simple" in normalized_source_id and (
+        "instrucciones operativas choque simple" in normalized_section
+        or "informe policial y recaudo probatorio" in normalized_section
     )
 
 
@@ -503,6 +574,70 @@ def score_movilidad_pv_benefit_breadth(chunk: RetrievedChunk) -> float:
     return total_score
 
 
+def score_movilidad_financing_guide_evidence_richness(chunk: RetrievedChunk) -> float:
+    """Return a deterministic preference score for richer financing-guide evidence."""
+
+    body_surface = build_chunk_body_without_markdown_headings(chunk.text)
+    normalized_body = normalize_equivalence_text(body_surface)
+    if not normalized_body:
+        return -3.0
+
+    total_score = 0.0
+    if len(normalized_body) >= 48:
+        total_score += 1.0
+    if len(normalized_body) >= 160:
+        total_score += 0.8
+    if len(normalized_body) >= 320:
+        total_score += 0.5
+    if count_bullet_lines(body_surface) > 0:
+        total_score += 0.35
+
+    lead_line = extract_chunk_body_lead_line(chunk.text)
+    if lead_line and lead_line[:1].isdigit():
+        total_score += 0.5
+    if len(lead_line) >= 48:
+        total_score += 0.25
+    return total_score
+
+
+def score_movilidad_financing_guide_section_intent_alignment(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> float:
+    """Return a narrow preference score for financing-guide procedural sections."""
+
+    if not query_has_movilidad_financing_guide_intent(query):
+        return 0.0
+
+    normalized_labels = [
+        normalize_equivalence_text(value)
+        for value in (chunk.section, *chunk.section_path)
+        if value
+    ]
+    if any("paso a paso" in label for label in normalized_labels):
+        return 2.0
+    if any("notas importantes" in label for label in normalized_labels):
+        return 1.0
+    if any("procedimientos" in label for label in normalized_labels):
+        return -1.0
+    return 0.0
+
+
+def build_movilidad_financing_guide_priority_key(
+    chunk: RetrievedChunk,
+    *,
+    query: str,
+) -> tuple[float, float, float]:
+    """Return the deterministic ordering key for financing-guide prioritization."""
+
+    return (
+        score_movilidad_financing_guide_section_intent_alignment(chunk, query=query),
+        score_movilidad_financing_guide_evidence_richness(chunk),
+        chunk.score,
+    )
+
+
 def score_explicit_coverage_chunk_descriptiveness(chunk: RetrievedChunk) -> float:
     """Return a local preference score for descriptive coverage chunks."""
 
@@ -642,6 +777,70 @@ def diversify_movilidad_pv_benefit_sections(
     return final_chunks
 
 
+def prioritize_movilidad_financing_guide_evidence(
+    ranked_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Prefer richer financing-guide chunks ahead of heading-only stubs."""
+
+    if top_k < 1:
+        return []
+    if not query_has_movilidad_financing_guide_intent(query):
+        return list(ranked_chunks)[:top_k]
+
+    best_by_section: dict[tuple[str, ...], RetrievedChunk] = {}
+    section_order: list[tuple[str, ...]] = []
+    deferred_duplicate_chunks: list[RetrievedChunk] = []
+    remaining_chunks: list[RetrievedChunk] = []
+
+    for chunk in ranked_chunks:
+        if not is_movilidad_financing_guide_family_chunk(chunk):
+            remaining_chunks.append(chunk)
+            continue
+        section_id = coverage_section_identity(chunk)
+        existing_chunk = best_by_section.get(section_id)
+        if existing_chunk is None:
+            best_by_section[section_id] = chunk
+            section_order.append(section_id)
+            continue
+        candidate_key = build_movilidad_financing_guide_priority_key(chunk, query=query)
+        existing_key = build_movilidad_financing_guide_priority_key(
+            existing_chunk,
+            query=query,
+        )
+        if candidate_key > existing_key:
+            deferred_duplicate_chunks.append(existing_chunk)
+            best_by_section[section_id] = chunk
+            continue
+        deferred_duplicate_chunks.append(chunk)
+
+    prioritized_financing_chunks = sorted(
+        (best_by_section[section_id] for section_id in section_order),
+        key=lambda chunk: build_movilidad_financing_guide_priority_key(
+            chunk,
+            query=query,
+        ),
+        reverse=True,
+    )
+
+    final_chunks: list[RetrievedChunk] = []
+    seen_chunk_ids: set[str] = set()
+    for chunk in (
+        *prioritized_financing_chunks,
+        *deferred_duplicate_chunks,
+        *remaining_chunks,
+    ):
+        if chunk.chunk_id in seen_chunk_ids:
+            continue
+        final_chunks.append(chunk)
+        seen_chunk_ids.add(chunk.chunk_id)
+        if len(final_chunks) >= top_k:
+            break
+    return final_chunks
+
+
 def prioritize_movilidad_suscripcion_policy_evidence(
     ranked_chunks: Sequence[RetrievedChunk],
     *,
@@ -707,6 +906,47 @@ def prioritize_movilidad_suscripcion_policy_evidence(
     return final_chunks
 
 
+def prioritize_choque_simple_procedure_evidence(
+    ranked_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Prioritize operational choque simple procedure evidence over photo guidance."""
+
+    if top_k < 1:
+        return []
+    if not query_has_choque_simple_procedure_intent(query):
+        return list(ranked_chunks)[:top_k]
+
+    direct_chunks: list[RetrievedChunk] = []
+    remaining_chunks: list[RetrievedChunk] = []
+    for chunk in ranked_chunks:
+        if is_choque_simple_procedure_support_chunk(chunk):
+            direct_chunks.append(chunk)
+        else:
+            remaining_chunks.append(chunk)
+
+    if not direct_chunks:
+        return list(ranked_chunks)[:top_k]
+
+    def support_priority(chunk: RetrievedChunk) -> tuple[int, float]:
+        normalized_source_id = normalize_equivalence_text(chunk.source_pdf_id)
+        normalized_section = normalize_equivalence_text(chunk.section or "")
+        if "proceso-atencion-choque-simple" in normalized_source_id:
+            if "para recordar" in normalized_section:
+                return (0, -chunk.score)
+            return (1, -chunk.score)
+        if "circular-choque-simple" in normalized_source_id:
+            if "instrucciones operativas choque simple" in normalized_section:
+                return (2, -chunk.score)
+            return (3, -chunk.score)
+        return (4, -chunk.score)
+
+    direct_chunks = sorted(direct_chunks, key=support_priority)
+    return (direct_chunks + remaining_chunks)[:top_k]
+
+
 def build_candidate_pool_limit(
     *,
     query: str,
@@ -747,6 +987,12 @@ def rerank_chunks_for_query_expansion_rules(
                 query=query,
                 top_k=top_k,
             )
+        if query_has_movilidad_financing_guide_intent(query):
+            return prioritize_movilidad_financing_guide_evidence(
+                ranked_chunks,
+                query=query,
+                top_k=top_k,
+            )
         if (
             query_has_movilidad_suscripcion_policy_intent(query)
             or query_has_movilidad_suscripcion_collective_billing_intent(query)
@@ -755,6 +1001,12 @@ def rerank_chunks_for_query_expansion_rules(
             or query_has_movilidad_suscripcion_individual_financing_intent(query)
         ):
             return prioritize_movilidad_suscripcion_policy_evidence(
+                ranked_chunks,
+                query=query,
+                top_k=top_k,
+            )
+        if query_has_choque_simple_procedure_intent(query):
+            return prioritize_choque_simple_procedure_evidence(
                 ranked_chunks,
                 query=query,
                 top_k=top_k,
@@ -821,6 +1073,12 @@ def rerank_chunks_for_query_expansion_rules(
             query=query,
             top_k=top_k,
         )
+    if query_has_movilidad_financing_guide_intent(query):
+        return prioritize_movilidad_financing_guide_evidence(
+            ranked_chunks,
+            query=query,
+            top_k=top_k,
+        )
     if (
         query_has_movilidad_suscripcion_policy_intent(query)
         or query_has_movilidad_suscripcion_collective_billing_intent(query)
@@ -829,6 +1087,12 @@ def rerank_chunks_for_query_expansion_rules(
         or query_has_movilidad_suscripcion_individual_financing_intent(query)
     ):
         return prioritize_movilidad_suscripcion_policy_evidence(
+            ranked_chunks,
+            query=query,
+            top_k=top_k,
+        )
+    if query_has_choque_simple_procedure_intent(query):
+        return prioritize_choque_simple_procedure_evidence(
             ranked_chunks,
             query=query,
             top_k=top_k,
@@ -974,6 +1238,18 @@ def select_citation_evidence_chunks(
         ]
         if direct_commissions_chunks:
             return direct_commissions_chunks
+    if query_has_choque_simple_procedure_intent(query):
+        direct_choque_simple_procedure_chunks = [
+            chunk
+            for chunk in citation_chunks
+            if is_choque_simple_procedure_support_chunk(chunk)
+        ]
+        if direct_choque_simple_procedure_chunks:
+            return prioritize_choque_simple_procedure_evidence(
+                direct_choque_simple_procedure_chunks,
+                query=query,
+                top_k=len(direct_choque_simple_procedure_chunks),
+            )
     if not query_has_arl_rui_normativity_intent(query):
         return citation_chunks
 

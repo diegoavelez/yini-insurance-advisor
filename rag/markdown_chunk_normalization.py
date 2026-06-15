@@ -631,6 +631,131 @@ def normalize_comparison_table_block(block_text: str) -> str:
     return "\n\n".join(normalized_sections)
 
 
+def _extract_repeated_table_label(cells: list[str]) -> str | None:
+    """Return one dominant repeated label from a markdown-table header row."""
+
+    normalized_cells = [normalize_table_cell_text(cell) for cell in cells if cell.strip()]
+    if not normalized_cells:
+        return None
+    unique_cells: list[str] = []
+    for cell in normalized_cells:
+        if cell not in unique_cells:
+            unique_cells.append(cell)
+    if len(unique_cells) != 1:
+        return None
+    label = unique_cells[0]
+    if label.casefold() in {"codigo tarifa", "prima", "valor contribucion", "tasa runt"}:
+        return None
+    return label
+
+
+def _looks_like_soat_tariff_column_header(cells: list[str]) -> bool:
+    """Return whether one row looks like a SOAT tariff column header."""
+
+    normalized_cells = [normalize_equivalence_text(cell) for cell in cells]
+    return "codigo tarifa" in normalized_cells and any(
+        value in normalized_cells
+        for value in (
+            "prima",
+            "valor contribucion",
+            "tasa runt",
+            "prima + cont. + tasa runt",
+            "prima + cont. + tasa runt",
+            "prima + cont + tasa runt",
+        )
+    )
+
+
+def _build_soat_subgroup_label(row_cells: list[str]) -> str | None:
+    """Return one subgroup label for ambiguous SOAT table rows when possible."""
+
+    normalized_cells = [normalize_table_cell_text(cell) for cell in row_cells if cell.strip()]
+    if not normalized_cells:
+        return None
+    if any("modelo" in normalize_equivalence_text(cell) for cell in normalized_cells):
+        unique_cells: list[str] = []
+        for cell in normalized_cells:
+            if cell not in unique_cells:
+                unique_cells.append(cell)
+        return " / ".join(unique_cells)
+    repeated_label = _extract_repeated_table_label(row_cells)
+    if repeated_label and "modelo" in normalize_equivalence_text(repeated_label):
+        return repeated_label
+    return None
+
+
+def normalize_soat_tariff_table_block(block_text: str) -> str:
+    """Rewrite SOAT tariff markdown tables into labeled tariff statements."""
+
+    lines = [line.strip() for line in block_text.splitlines() if line.strip()]
+    if len(lines) < 4:
+        return block_text
+    header_cells = parse_markdown_table_row(lines[0])
+    if header_cells is None or not is_markdown_table_separator(lines[1]):
+        return block_text
+
+    category_label = _extract_repeated_table_label(header_cells)
+    if not category_label:
+        return block_text
+
+    column_header_cells = parse_markdown_table_row(lines[2])
+    if column_header_cells is None or not _looks_like_soat_tariff_column_header(
+        column_header_cells
+    ):
+        return block_text
+
+    normalized_column_headers = [normalize_table_cell_text(cell) for cell in column_header_cells]
+    subgroup_label: str | None = None
+    statements: list[str] = []
+
+    for raw_row in lines[3:]:
+        row_cells = parse_markdown_table_row(raw_row)
+        if row_cells is None:
+            return block_text
+        if len(row_cells) < len(normalized_column_headers):
+            row_cells = [*row_cells, *([""] * (len(normalized_column_headers) - len(row_cells)))]
+
+        subgroup_candidate = _build_soat_subgroup_label(row_cells)
+        first_cell = normalize_table_cell_text(row_cells[0]) if row_cells else ""
+        has_numeric_code = bool(re.fullmatch(r"\d{2,3}", first_cell))
+
+        if subgroup_candidate and not has_numeric_code:
+            subgroup_label = subgroup_candidate
+            continue
+        if not has_numeric_code:
+            continue
+
+        row_descriptor = normalize_table_cell_text(row_cells[1]) if len(row_cells) > 1 else ""
+        label_parts = [f"Código {first_cell}"]
+        if row_descriptor:
+            label_parts.append(row_descriptor)
+
+        metric_parts: list[str] = []
+        for column_name, cell_value in zip(
+            normalized_column_headers[2:],
+            row_cells[2:],
+            strict=False,
+        ):
+            normalized_cell_value = normalize_table_cell_text(cell_value)
+            if not normalized_cell_value:
+                continue
+            metric_parts.append(f"{column_name}: {normalized_cell_value}")
+
+        if not metric_parts:
+            continue
+
+        row_prefix = category_label
+        if subgroup_label:
+            row_prefix = f"{row_prefix} / {subgroup_label}"
+        statements.append(
+            f"- {row_prefix} / {' / '.join(label_parts)}: {'; '.join(metric_parts)}"
+        )
+
+    if not statements:
+        return block_text
+    return f"{category_label}\n" + "\n".join(statements)
+
+
 def is_page_heading_text(value: str) -> bool:
     """Return whether one heading text is a plain page marker."""
 
@@ -1052,6 +1177,7 @@ def split_markdown_blocks(cleaned_markdown_text: str) -> list[MarkdownBlock]:
                 block = normalize_heading_prefixed_pv_block(block)
         else:
             block = normalize_comparison_table_block(block)
+            block = normalize_soat_tariff_table_block(block)
             block = normalize_diagrammatic_coverage_block(block)
             block = normalize_expedition_requirements_block(block)
             block = normalize_deductible_block(block)

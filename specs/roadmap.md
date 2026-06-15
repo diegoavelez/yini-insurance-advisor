@@ -1094,6 +1094,13 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `bicicletas-patinetas-pv-requirements-and-deductible-linear-normalization`
 - `bicicletas-patinetas-deductible-evidence-bias-remediation`
 - `bicicletas-patinetas-deductible-candidate-recall-remediation`
+- `bicicletas-patinetas-coverage-policy-family-recovery`
+- `viajes-coverage-section-priority-recovery`
+- `utilitarios-pesados-policy-family-recovery`
+- `choque-simple-intent-evidence-routing-recovery`
+- `mvp-current-category-acceptance-matrix`
+- `eps-pac-asegurabilidad-policy-family-recovery`
+- `soat-tariff-table-label-recovery`
 
 Current implementation status:
 
@@ -1326,6 +1333,8 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `autos-comparison-corpus-retrievability-remediation`
 - `autos-comparison-table-normalization-remediation`
 - `autos-comparison-hybrid-recall-remediation`
+- `autos-comparison-primary-guide-ranking-recovery`
+- `autos-basico-pt-evidence-family-alignment`
 - `source-path-product-filter-fallback-remediation`
 - `source-path-product-metadata-backfill`
 - `source-path-document-type-metadata-backfill`
@@ -1353,6 +1362,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `movilidad-financiacion-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-financiacion-extraction-readiness-remediation`
 - `movilidad-financiacion-guide-family-ranking-alignment`
+- `movilidad-financiacion-heading-stub-priority-recovery`
 - `movilidad-transversales-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-viajes-corpus-baseline-ingestion-and-retrieval`
 - `movilidad-viajes-international-policy-disambiguation-alignment`
@@ -1416,6 +1426,8 @@ Completed slice index:
 - `autos-comparison-corpus-retrievability-remediation`
 - `autos-comparison-table-normalization-remediation`
 - `autos-comparison-hybrid-recall-remediation`
+- `eps-pac-asegurabilidad-policy-family-recovery`
+- `eps-pac-asegurabilidad-section-priority-recovery`
 - `source-path-product-filter-fallback-remediation`
 - `source-path-product-metadata-backfill`
 - `source-path-document-type-metadata-backfill`
@@ -1565,6 +1577,131 @@ Implementation note:
   adapters, shared `RetrievalQuery` construction from CLI args, and top-level
   CLI request lifecycle logging/dispatch while keeping parser definitions and
   lower-level runtime/retrieval helpers in `rag.ingestion.py`.
+- Current execution focus is now `mvp-current-category-acceptance-matrix`:
+  prove the MVP against the categories already onboarded in the current corpus
+  before opening new category waves or continuing non-blocking coupling work.
+- The first live P1 snapshot on 2026-06-15 established:
+  - `ARL` = `pass`
+  - `MOVILIDAD/MUEVETE LIBRE` = `pass`
+  - `MOVILIDAD/SOAT` = `fragile-pass`
+  - `MOVILIDAD/AUTOS` = `fail`
+  - `EPS/PAC` = `fail`
+- The narrow blocker `eps-pac-asegurabilidad-policy-family-recovery` is now
+  closed at the document-family level:
+  - `¿Qué condiciones de asegurabilidad tiene PAC 60 Más?` no longer routes to
+    `clausulado pac 60 mas sura v1.pdf`;
+  - live retrieval and grounded answering now stay inside
+    `politicas asegurabilidad pac 60 mas.pdf`;
+  - the PAC row therefore moved from `fail` to `fragile-pass`.
+- The narrow blocker `eps-pac-asegurabilidad-section-priority-recovery` is now
+  closed:
+  - the explicit query `¿Qué condiciones de asegurabilidad tiene PAC 60 Más?`
+    now matches a committed PAC asegurabilidad expansion rule;
+  - live retrieval now ranks the direct `EDADES Y REQUISITOS...` and
+    `GRUPOS ASEGURABLES` sections ahead of operational sections such as
+    `CONGELACIONES` and `REACTIVACIÓN`;
+  - live grounded answering now cites the direct asegurabilidad sections
+    prominently, so the `EPS/PAC` P1 row can move from `fragile-pass` to
+    `pass`.
+- Live MVP acceptance checks now also confirm the current `MOVILIDAD/MOTOS`
+  row as `pass` without further corrective work:
+  - `¿Qué diferencia hay entre los planes de motos?` ranks
+    `comparativo motos.pdf` first;
+  - `¿Qué cubre el plan de motos?` stays inside
+    `clausulado-plan motos.pdf` with direct `PLAN MOTOS SURA` citations.
+- The narrow blocker `autos-comparison-primary-guide-ranking-recovery` is now
+  closed:
+  - the broad query `¿Qué diferencia hay entre los planes de autos?` now
+    matches a committed AUTOS comparison expansion rule;
+  - live retrieval now ranks `diferenciales planes autos.pdf` first instead of
+    electric/hybrid marketing evidence;
+  - with `autos-basico-pt-evidence-family-alignment` already closed, the
+    `MOVILIDAD/AUTOS` P1 row can move from `fail` to `pass`.
+- The narrow blocker `autos-basico-pt-evidence-family-alignment` is now
+  closed at the document-family level:
+  - `¿Qué cubre el plan autos básico PT?` now injects the canonical
+    `Plan Autos Básico Pérdidas Totales` guide-family filter;
+  - a narrow coverage-oriented expansion rule now pulls the
+    `Coberturas principales` table to the top of the candidate set;
+  - live retrieval and grounded answering now stay inside
+    `generalidades plan autos basico pt v2.pdf` while surfacing the explicit
+    `Daños a terceros`, `Pérdida total daños`, and `Pérdida total hurto`
+    coverage rows;
+  - the remaining AUTOS MVP gap is therefore the broad comparison-ranking
+    path, not the explicit `Básico PT` family routing path.
+- The narrow blocker `soat-tariff-table-label-recovery` is now closed:
+  - the SOAT tariff markdown is normalized into labeled tariff statements
+    before chunk generation;
+  - rebuilt SOAT tariff chunks now preserve vehicle-category labels such as
+    `Motos`, `Autos familiares`, and `Vehículos de carga o mixto`;
+  - live tariff retrieval and grounded answering now stay inside
+    `tarifas soat 2026.pdf` while surfacing labeled tariff evidence.
+- Remaining post-onboarding coupling slices are now intentionally deferred
+  until the MVP acceptance pass for the current category set is complete,
+  unless one of those slices becomes necessary to unblock a failing retrieval,
+  grounded-answer, or deployment acceptance scenario directly.
+- That MVP acceptance pass should cover the currently onboarded category set:
+  - `ARL`
+  - `MOVILIDAD/AUTOS`
+  - `MOVILIDAD/BICICLETAS Y PATINETAS`
+  - `MOVILIDAD/MOTOS`
+  - `MOVILIDAD/TRANSVERSALES` including `choque simple`
+  - `MOVILIDAD/PV`
+  - `MOVILIDAD/UTILITARIO Y PESADOS`
+  - `MOVILIDAD/FINANCIACION`
+  - `MOVILIDAD/VIAJES`
+  - `MOVILIDAD/SUSCRIPCION`
+  - `MOVILIDAD/MUEVETE LIBRE`
+  - `MOVILIDAD/SOAT`
+- 2026-06-15: `MOVILIDAD/BICICLETAS Y PATINETAS` now passes its acceptance row
+  after `bicicletas-patinetas-coverage-policy-family-recovery`; explicit
+  coverage queries now stay inside `clausulado-bicis y patinetas.pdf`, and the
+  deductible smoke query again ranks `pv bicis y patinetas v2.pdf` first after
+  removing the over-broad `seguro` trigger from the coverage-only routing rule.
+- 2026-06-15: `MOVILIDAD/VIAJES` now passes its acceptance row after
+  `viajes-coverage-section-priority-recovery`; national and international
+  coverage smokes stay inside their intended clausulado families and now
+  prioritize `SECCIÓN I QUÉ CUBRE ESTE SEGURO` evidence instead of exclusions
+  and operational sections.
+- 2026-06-15: `MOVILIDAD/UTILITARIO Y PESADOS` now passes its acceptance row
+  after `utilitarios-pesados-policy-family-recovery`; the guide smoke stays in
+  `ayudaventas utilitarios y pesados v2.pdf`, and the policy smoke now cites
+  `SEGURO DE AUTOS PLAN UTILITARIOS Y PESADOS` from
+  `clausulado-plan utilitarios y pesados.pdf` instead of the transversal
+  suscripción policy document.
+- 2026-06-15: `MOVILIDAD/TRANSVERSALES / choque simple` now passes its
+  acceptance row after `choque-simple-intent-evidence-routing-recovery`; photo
+  intent now ranks `como tomar fotos choque simple v2.pdf` first, while
+  procedure intent is anchored on `proceso atencion choque simple v2.pdf` with
+  `circular choque simple.pdf` support instead of over-prioritizing the photo
+  guide.
+- 2026-06-15: `MOVILIDAD/PV` now passes its acceptance row; live retrieval for
+  `¿Qué beneficios incluye la propuesta de valor de movilidad?` stayed fully
+  inside the `PROPUESTA DE VALOR MOVILIDAD` evidence family, and the grounded
+  answer cited both `pv planes movilidad v1.pdf` and
+  `pv portafolio movilidad v2.pdf` with diverse benefit sections instead of
+  repeated applicability-only chunks.
+- 2026-06-15: `MOVILIDAD/FINANCIACION` now reaches `fragile-pass`; live
+  retrieval and grounded answering stay inside
+  `instructivo financiacion de polizas v1.pdf`, but the top retrieval result is
+  still a heading-only chunk and some extracted text remains noisy enough to
+  justify a follow-up extraction-quality slice instead of a clean `pass`.
+- 2026-06-15: `MOVILIDAD/FINANCIACION` now passes its acceptance row after
+  `movilidad-financiacion-heading-stub-priority-recovery`; live retrieval for
+  `¿Cómo funciona la financiación de pólizas individuales?` now ranks the
+  contentful `Paso a paso` chunk above the `Procedimientos:` stub, and the
+  grounded answer stays inside `instructivo financiacion de polizas v1.pdf`
+  with `confidence=high`.
+- 2026-06-15: `MOVILIDAD/SUSCRIPCION` now passes its acceptance row; the
+  billing-by-insured retrieval smoke ranks section `14.6.2` first from
+  `politicas de suscripcion de movilidad.pdf`, and the broader suscripción
+  answer stays fully inside that policy family with `confidence=high`.
+- `EPS/PAC` PDF cohorts
+- A category should not be treated as MVP-ready merely because ingestion
+  completed; it should satisfy the operational acceptance gates already
+  documented in `docs/category-onboarding-playbook.md`, including embeddings,
+  Qdrant indexing, at least one real retrieval query, and at least one real
+  grounded-answer query with intended evidence.
 - When those comparison bundles match, retrieval can use a larger candidate
   pool plus deterministic lexical reranking before returning the final top-k.
 - Chunk text can now be prefixed with its governing `section_path` headings
@@ -1671,6 +1808,14 @@ Implementation note:
   financing-guide queries are constrained to
   `Manual Procedimiento Financiacion de polizas individuales`, and live
   top-k retrieval no longer leaks `PV` financing mentions ahead of the guide.
+- The remaining financing quality gap then narrowed to intra-family evidence
+  ordering: the financing guide family was correct, but the heading-only
+  `Procedimientos:` stub could still outrank richer procedural chunks such as
+  `Paso a paso`.
+- That financing heading-stub priority slice is now closed: explicit financing
+  guide prompts now prefer contentful procedural chunks from
+  `Manual Procedimiento Financiacion de polizas individuales`, so live top-k no
+  longer starts with the heading-only stub.
 - The next operational transversal cohort after financing remains
   `suscripción`, using `politicas de suscripcion de movilidad.pdf` before
   broadening into other shared mobility process materials.

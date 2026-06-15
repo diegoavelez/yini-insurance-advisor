@@ -130,6 +130,71 @@
     },
     {
       "all_of": [
+        "autos"
+      ],
+      "any_of": [
+        "diferencia",
+        "diferencias",
+        "comparar",
+        "comparación",
+        "comparacion",
+        "comparativo",
+        "planes de autos"
+      ],
+      "append_terms": [
+        "diferenciales sura",
+        "planes sura",
+        "plan autos global",
+        "plan autos clásico",
+        "plan autos básico pérdidas totales",
+        "franquicia",
+        "nuevo de nuevo",
+        "pequeños eventos",
+        "tipo de cobertura"
+      ]
+    },
+    {
+      "all_of": [
+        "asegurabilidad",
+        "60 mas"
+      ],
+      "any_of": [
+        "pac",
+        "plan complementario"
+      ],
+      "append_terms": [
+        "grupos asegurables",
+        "edades y requisitos minimos de afiliacion",
+        "edad mínima de ingreso",
+        "edad límite de ingreso",
+        "contrato colectivo",
+        "10 familias",
+        "requisitos minimos de afiliacion"
+      ]
+    },
+    {
+      "all_of": [
+        "autos",
+        "basico pt"
+      ],
+      "any_of": [
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "append_terms": [
+        "coberturas principales",
+        "daños a terceros",
+        "pérdida total daños",
+        "pérdida total hurto",
+        "deducibles"
+      ]
+    },
+    {
+      "all_of": [
         "motos"
       ],
       "any_of": [
@@ -168,6 +233,28 @@
         "hurto",
         "renta diaria por hospitalización",
         "expedición requisitos"
+      ]
+    },
+    {
+      "all_of": [
+        "choque simple"
+      ],
+      "any_of": [
+        "procedimiento",
+        "atención",
+        "atencion",
+        "qué debo hacer",
+        "que debo hacer",
+        "pasos",
+        "instrucciones"
+      ],
+      "append_terms": [
+        "en eventos de choques",
+        "para recordar",
+        "instrucciones operativas choque simple",
+        "retirar los vehículos",
+        "centros de conciliación",
+        "canales de atención sura"
       ]
     },
     {
@@ -236,6 +323,25 @@
     },
     {
       "all_of": [
+        "viaje"
+      ],
+      "any_of": [
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "append_terms": [
+        "sección i qué cubre este seguro",
+        "hurto de documentos",
+        "equipaje protegido",
+        "cancelación e interrupción de viaje"
+      ]
+    },
+    {
+      "all_of": [
         "propuesta de valor",
         "movilidad"
       ],
@@ -258,6 +364,23 @@
     }
   ],
   "query_filter_rules": [
+    {
+      "all_of": [
+        "choque simple"
+      ],
+      "any_of": [
+        "tomar fotos",
+        "fotos",
+        "videos",
+        "video",
+        "evidencias"
+      ],
+      "filters": {
+        "product": "movilidad",
+        "document_type": "guide",
+        "document_name": "¿Cómo tomar fotos y videos?"
+      }
+    },
     {
       "all_of": [
         "choque simple"
@@ -315,6 +438,41 @@
     },
     {
       "all_of": [
+        "bicicletas",
+        "patinetas"
+      ],
+      "any_of": [
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "filters": {
+        "product": "movilidad",
+        "document_type": "policy",
+        "document_name": "SEGURO DE BICICLETA"
+      }
+    },
+    {
+      "all_of": [
+        "autos"
+      ],
+      "any_of": [
+        "básico pt",
+        "basico pt",
+        "plan autos básico pérdidas totales",
+        "plan autos basico perdidas totales"
+      ],
+      "filters": {
+        "product": "auto",
+        "document_type": "guide",
+        "document_name": "Plan Autos Básico Pérdidas Totales"
+      }
+    },
+    {
+      "all_of": [
         "propuesta de valor",
         "movilidad"
       ],
@@ -351,6 +509,25 @@
     },
     {
       "all_of": [
+        "utilitarios y pesados"
+      ],
+      "any_of": [
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo",
+        "plan"
+      ],
+      "filters": {
+        "product": "utilitarios y pesados",
+        "document_type": "policy",
+        "document_name": "SEGURO DE AUTOS PLAN UTILITARIOS Y PESADOS"
+      }
+    },
+    {
+      "all_of": [
         "financiacion"
       ],
       "any_of": [
@@ -372,8 +549,6 @@
         "60 mas"
       ],
       "any_of": [
-        "pac",
-        "plan complementario",
         "clausulado",
         "qué cubre",
         "que cubre",
@@ -681,24 +856,24 @@
         "motocicleta",
         "motocicletas"
       ],
-    "muevete libre": [
-      "muévete libre",
-      "muevete libre"
-    ],
-    "viajes": [
-      "viaje",
-      "seguro de viaje",
-      "seguro de viajes",
-      "travel insurance"
-    ],
-    "utilitarios y pesados": [
-      "utilitario y pesados",
-      "seguro de autos utilitarios y pesados"
-    ],
-    "soat": [
-      "seguro obligatorio",
-      "seguro obligatorio de accidentes de tránsito",
-      "seguro obligatorio de accidentes de transito"
+      "muevete libre": [
+        "muévete libre",
+        "muevete libre"
+      ],
+      "viajes": [
+        "viaje",
+        "seguro de viaje",
+        "seguro de viajes",
+        "travel insurance"
+      ],
+      "utilitarios y pesados": [
+        "utilitario y pesados",
+        "seguro de autos utilitarios y pesados"
+      ],
+      "soat": [
+        "seguro obligatorio",
+        "seguro obligatorio de accidentes de tránsito",
+        "seguro obligatorio de accidentes de transito"
       ],
       "pac": [
         "plan complementario",
