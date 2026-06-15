@@ -117,6 +117,7 @@ class FakeQdrantClient:
         self.collection_size: int | None = None
         self.points: dict[str, object] = {}
         self.upsert_calls = 0
+        self.delete_calls = 0
         self.payload_indexes: list[tuple[str, object, bool]] = []
 
     def get_collection(self, collection_name: str):
@@ -142,6 +143,24 @@ class FakeQdrantClient:
         for point in points:
             self.points[point.id] = point
 
+    def delete(self, collection_name: str, points_selector: object, wait: bool) -> None:
+        self.delete_calls += 1
+        must_conditions = getattr(points_selector, "must", [])
+        source_pdf_id = None
+        for condition in must_conditions:
+            if getattr(condition, "key", None) != "source_pdf_id":
+                continue
+            match = getattr(condition, "match", None)
+            source_pdf_id = getattr(match, "value", None)
+            break
+        if source_pdf_id is None:
+            return
+        self.points = {
+            point_id: point
+            for point_id, point in self.points.items()
+            if point.payload.get("source_pdf_id") != source_pdf_id
+        }
+
     def count(self, collection_name: str, exact: bool):
         return SimpleNamespace(count=len(self.points))
 
@@ -155,6 +174,19 @@ class FakeTransientError(RuntimeError):
 
 
 def fake_qdrant_models():
+    class MatchValue:
+        def __init__(self, value: object) -> None:
+            self.value = value
+
+    class FieldCondition:
+        def __init__(self, key: str, match: MatchValue) -> None:
+            self.key = key
+            self.match = match
+
+    class Filter:
+        def __init__(self, must: list[FieldCondition]) -> None:
+            self.must = must
+
     class PayloadSchemaType:
         KEYWORD = "keyword"
 
@@ -174,6 +206,9 @@ def fake_qdrant_models():
 
     return SimpleNamespace(
         Distance=Distance,
+        FieldCondition=FieldCondition,
+        Filter=Filter,
+        MatchValue=MatchValue,
         PayloadSchemaType=PayloadSchemaType,
         PointStruct=PointStruct,
         VectorParams=VectorParams,
@@ -282,6 +317,7 @@ def test_qdrant_indexing_bootstraps_collection_and_indexes_points(
         ("document_type", "keyword", True),
         ("product", "keyword", True),
         ("document_name", "keyword", True),
+        ("source_pdf_id", "keyword", True),
     ]
     assert len(fake_client.points) == 2
     for point_id, point in fake_client.points.items():
@@ -393,13 +429,16 @@ def test_qdrant_indexing_is_idempotent_across_reruns(
     assert second_exit_code == 0
     assert len(fake_client.points) == 2
     assert fake_client.upsert_calls == 2
+    assert fake_client.delete_calls == 2
     assert fake_client.payload_indexes == [
         ("document_type", "keyword", True),
         ("product", "keyword", True),
         ("document_name", "keyword", True),
+        ("source_pdf_id", "keyword", True),
         ("document_type", "keyword", True),
         ("product", "keyword", True),
         ("document_name", "keyword", True),
+        ("source_pdf_id", "keyword", True),
     ]
 
 
@@ -440,6 +479,68 @@ def test_qdrant_indexing_skips_payload_index_creation_when_client_lacks_support(
 
     assert exit_code == 0
     assert len(fake_client.points) == 2
+
+
+def test_qdrant_indexing_prunes_legacy_points_for_same_source_pdf_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    embedding_dir = tmp_path / "embeddings"
+    embedding_dir.mkdir()
+    artifact_path = embedding_dir / "policy-a.embeddings.json"
+    artifact_path.write_text(
+        build_embedding_bundle_artifact(str(artifact_path)).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    manifest_path = tmp_path / "qdrant-manifest.jsonl"
+    fake_client = FakeQdrantClient()
+    stale_point = SimpleNamespace(
+        id="legacy-policy-a",
+        payload={
+            "chunk_id": "policy-a:v2:legacy",
+            "source_pdf_id": "policy-a",
+            "text": "legacy stale payload",
+        },
+    )
+    unrelated_point = SimpleNamespace(
+        id="policy-b-existing",
+        payload={
+            "chunk_id": "policy-b:v2:0000",
+            "source_pdf_id": "policy-b",
+            "text": "other source",
+        },
+    )
+    fake_client.points = {
+        stale_point.id: stale_point,
+        unrelated_point.id: unrelated_point,
+    }
+
+    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
+    monkeypatch.setattr(
+        "rag.ingestion.get_settings",
+        lambda: Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+    )
+
+    exit_code = main(
+        [
+            "index-embeddings",
+            "--embedding-dir",
+            str(embedding_dir),
+            "--manifest-path",
+            str(manifest_path),
+        ]
+    )
+
+    assert exit_code == 0
+    assert fake_client.delete_calls == 1
+    assert "legacy-policy-a" not in fake_client.points
+    assert "policy-b-existing" in fake_client.points
+    assert len(fake_client.points) == 3
 
 
 def test_qdrant_indexing_retries_transient_failures(

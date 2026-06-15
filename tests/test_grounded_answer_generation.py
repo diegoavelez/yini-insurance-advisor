@@ -573,6 +573,168 @@ def test_generate_grounded_answer_narrows_arl_account_update_guide_evidence(
     ]
 
 
+def test_generate_grounded_answer_compacts_broad_arl_remuneration_policy_citations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    monkeypatch.setattr(
+        "rag.ingestion.classify_query_scope",
+        lambda _query: SimpleNamespace(scope="supported", reason="supported"),
+    )
+
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="arl-rem:v2:0001",
+                source_pdf_id="arl__politica-de-remuneracion-canal-externo",
+                source_pdf_relative_path="ARL/politica de remuneracion canal externo.pdf",
+                chunk_schema_version="v2",
+                chunk_index=1,
+                text=(
+                    "Clientes nuevos (venta) para el Canal Externo. La remuneración "
+                    "depende del tipo de cliente y condiciones del negocio."
+                ),
+                document_name="esquema remuneracion canal externo arl",
+                document_version=None,
+                document_type="policy",
+                product="arl",
+                page=None,
+                section="Clientes nuevos (venta) para el Canal Externo",
+                section_path=[
+                    "Esquema remuneración canal externo ARL",
+                    "Clientes nuevos (venta) para el Canal Externo",
+                ],
+                clause_id=None,
+                score=0.95,
+            ),
+            RetrievedChunk(
+                chunk_id="arl-rem:v2:0002",
+                source_pdf_id="arl__politica-de-remuneracion-canal-externo",
+                source_pdf_relative_path="ARL/politica de remuneracion canal externo.pdf",
+                chunk_schema_version="v2",
+                chunk_index=2,
+                text=(
+                    "Apetito Comercial por grupos Clientes nuevos (venta) para el "
+                    "Canal Externo."
+                ),
+                document_name="esquema remuneracion canal externo arl",
+                document_version=None,
+                document_type="policy",
+                product="arl",
+                page=None,
+                section=(
+                    "Apetito Comercial por grupos Clientes nuevos (venta) para el "
+                    "Canal Externo"
+                ),
+                section_path=[
+                    "Esquema remuneración canal externo ARL",
+                    (
+                        "Apetito Comercial por grupos Clientes nuevos (venta) para el "
+                        "Canal Externo"
+                    ),
+                ],
+                clause_id=None,
+                score=0.9,
+            ),
+            RetrievedChunk(
+                chunk_id="arl-rem:v2:0003",
+                source_pdf_id="arl__politica-de-remuneracion-canal-externo",
+                source_pdf_relative_path="ARL/politica de remuneracion canal externo.pdf",
+                chunk_schema_version="v2",
+                chunk_index=3,
+                text="Pago de comisiones por Atracción. | Sector | % Comisión |",
+                document_name="esquema remuneracion canal externo arl",
+                document_version=None,
+                document_type="policy",
+                product="arl",
+                page=None,
+                section="Pago de comisiones por Atracción",
+                section_path=[
+                    "Esquema remuneración canal externo ARL",
+                    "Pago de comisiones por Atracción",
+                ],
+                clause_id=None,
+                score=0.87,
+            ),
+            RetrievedChunk(
+                chunk_id="arl-rem:v2:0004",
+                source_pdf_id="arl__politica-de-remuneracion-canal-externo",
+                source_pdf_relative_path="ARL/politica de remuneracion canal externo.pdf",
+                chunk_schema_version="v2",
+                chunk_index=4,
+                text="Por cambio de intermediario. Aplica una regla específica.",
+                document_name="esquema remuneracion canal externo arl",
+                document_version=None,
+                document_type="policy",
+                product="arl",
+                page=None,
+                section="Por cambio de intermediario",
+                section_path=[
+                    "Esquema remuneración canal externo ARL",
+                    "Por cambio de intermediario",
+                ],
+                clause_id=None,
+                score=0.84,
+            ),
+            RetrievedChunk(
+                chunk_id="arl-rem:v2:0005",
+                source_pdf_id="arl__politica-de-remuneracion-canal-externo",
+                source_pdf_relative_path="ARL/politica de remuneracion canal externo.pdf",
+                chunk_schema_version="v2",
+                chunk_index=5,
+                text=(
+                    "Política de designación de intermediarios en la Solución de "
+                    "Riesgos Laborales."
+                ),
+                document_name="esquema remuneracion canal externo arl",
+                document_version=None,
+                document_type="policy",
+                product="arl",
+                page=None,
+                section=(
+                    "Política de designación de intermediarios en la Solución de "
+                    "Riesgos Laborales"
+                ),
+                section_path=[
+                    "Esquema remuneración canal externo ARL",
+                    (
+                        "Política de designación de intermediarios en la Solución de "
+                        "Riesgos Laborales"
+                    ),
+                ],
+                clause_id=None,
+                score=0.81,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(query="¿Cuál es el esquema de remuneración del canal externo ARL?"),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=(lambda prompt, settings: "Respuesta remuneración ARL."),
+    )
+
+    assert result.response.confidence == "high"
+    assert [citation.chunk_id for citation in result.response.citations] == [
+        "arl-rem:v2:0001",
+        "arl-rem:v2:0002",
+        "arl-rem:v2:0003",
+        "arl-rem:v2:0004",
+    ]
+    assert [item.section for item in result.response.documentary_basis] == [
+        "Clientes nuevos (venta) para el Canal Externo",
+        "Apetito Comercial por grupos Clientes nuevos (venta) para el Canal Externo",
+        "Pago de comisiones por Atracción",
+        "Por cambio de intermediario",
+    ]
+
+
 def test_generate_grounded_answer_downgrades_answerable_response_without_citations(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,

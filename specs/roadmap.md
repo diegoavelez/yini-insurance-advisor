@@ -1357,6 +1357,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `muevete-libre-coverage-breadth-evidence-balancing`
 - `muevete-libre-intrasection-coverage-chunk-prioritization`
 - `muevete-libre-coverage-retrieval-alignment`
+- `muevete-libre-heading-hierarchy-normalization`
 - `soat-corpus-baseline-ingestion-and-retrieval`
 - `soat-coverage-document-type-alignment`
 - `soat-coverage-evidence-prioritization-alignment`
@@ -1378,7 +1379,7 @@ Operational category rollup:
 - `movilidad-transversales` baseline onboarding: completed
 - `movilidad-viajes` onboarding + policy disambiguation alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: completed
-- `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
+- `MUEVETE LIBRE` onboarding + coverage hardening: completed
 - `SOAT` onboarding + coverage alignment: completed
 - `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
 
@@ -1441,6 +1442,10 @@ Completed slice index:
 - `movilidad-suscripcion-financing-evidence-precision`
 - `movilidad-suscripcion-financiacion-individual-retrieval-recovery`
 - `muevete-libre-corpus-baseline-ingestion-and-retrieval`
+- `muevete-libre-coverage-retrieval-alignment`
+- `muevete-libre-coverage-breadth-evidence-balancing`
+- `muevete-libre-intrasection-coverage-chunk-prioritization`
+- `muevete-libre-heading-hierarchy-normalization`
 - `soat-corpus-baseline-ingestion-and-retrieval`
 - `soat-coverage-document-type-alignment`
 - `soat-coverage-evidence-prioritization-alignment`
@@ -1697,15 +1702,15 @@ Implementation note:
   `Clientes nuevos (venta) para el Canal Externo` chunk, while explicit
   percentage/sector queries still lead with `Pago de comisiones por
   Atracción`.
+- That `arl-remuneracion-policy-broad-answer-citation-compaction` slice is now
+  closed: broad ARL remuneration answers keep `confidence=high` while
+  compacting documentary basis and citations to the direct overview, appetite,
+  table, and change-of-intermediary support chunks, excluding lateral policy
+  designación sections in focused tests and live `answer-query` validation.
 - The ARL folder is now operationally corrected for the current MVP scope:
   representative `retrieve-chunks` and `answer-query` flows succeed for the
   FAQ, both guides, and the remuneration policy with the intended evidence
   ordering.
-- The next optional ARL refinement is
-  `arl-remuneracion-policy-broad-answer-citation-compaction`: broad policy
-  answers are already supported and grounded, but they still cite several
-  complementary chunks; a future slice could compact documentary basis/citation
-  breadth if operators want a shorter evidence trail for overview questions.
 - Broader taxonomy inference, automatic classification, and UI filter work
   remain intentionally out of scope.
 

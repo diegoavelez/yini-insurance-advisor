@@ -974,6 +974,102 @@ def test_normalize_known_document_markdown_rewrites_collective_nested_headings()
     )
 
 
+def test_normalize_known_document_markdown_rewrites_muevete_libre_heading_hierarchy() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "clausulado muevete libre v2.pdf",
+        cleaned_markdown_text=(
+            "## PLAN MUÉVETE LIBRE\n\n"
+            "## SECCIÓN 1 Coberturas principales\n\n"
+            "## 2. Gastos de defensa judicial\n\n"
+            "## 2.1. Cobertura\n\n"
+            "Si un tercero te presenta una reclamación.\n\n"
+            "## a) Muerte accidental\n\n"
+            "SURA pagará a tus beneficiarios.\n"
+        ),
+    )
+
+    assert normalized.startswith("# PLAN MUÉVETE LIBRE")
+    assert "## SECCIÓN 1 Coberturas principales" in normalized
+    assert "### 2. Gastos de defensa judicial" in normalized
+    assert "#### 2.1. Cobertura" in normalized
+    assert "##### a) Muerte accidental" in normalized
+    normalized_lines = normalized.splitlines()
+    assert "## 2. Gastos de defensa judicial" not in normalized_lines
+    assert "## 2.1. Cobertura" not in normalized_lines
+
+
+def test_split_markdown_blocks_preserves_muevete_libre_parent_child_hierarchy() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "clausulado muevete libre v2.pdf",
+        cleaned_markdown_text=(
+            "## PLAN MUÉVETE LIBRE\n\n"
+            "## SECCIÓN 1 Coberturas principales\n\n"
+            "## 2. Gastos de defensa judicial\n\n"
+            "## 2.1. Cobertura\n\n"
+            "Si un tercero te presenta una reclamación.\n"
+        ),
+    )
+
+    blocks = split_markdown_blocks(normalized)
+
+    assert blocks[-1].section == "2.1. Cobertura"
+    assert blocks[-1].section_path == (
+        "PLAN MUÉVETE LIBRE",
+        "SECCIÓN 1 Coberturas principales",
+        "2. Gastos de defensa judicial",
+        "2.1. Cobertura",
+    )
+
+
+def test_build_chunk_records_deduplicates_muevete_libre_prefixed_heading_echo() -> None:
+    normalized = normalize_known_document_markdown(
+        source_pdf_path=Path(".") / "clausulado muevete libre v2.pdf",
+        cleaned_markdown_text=(
+            "## PLAN MUÉVETE LIBRE\n\n"
+            "## SECCIÓN 1 Coberturas principales\n\n"
+            "## 2. Gastos de defensa judicial\n\n"
+            "## 2.1. Cobertura\n\n"
+            "Si un tercero te presenta una reclamación.\n"
+        ),
+    )
+
+    chunk_records = build_chunk_records(
+        source_pdf_id="muevete",
+        document_name="PLAN MUÉVETE LIBRE",
+        document_version=None,
+        document_type="policy",
+        product="muevete libre",
+        source_pdf_path=Path("data/raw/MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf"),
+        source_pdf_relative_path=Path("MOVILIDAD/MUEVETE LIBRE/clausulado muevete libre v2.pdf"),
+        cleaned_markdown_output_path=Path(
+            "data/processed/movilidad__muevete-libre__clausulado-muevete-libre-v2.cleaned.md"
+        ),
+        cleaned_markdown_text=normalized,
+        chunk_size=400,
+        chunk_overlap=20,
+    )
+
+    matching_chunk = next(
+        chunk for chunk in chunk_records if chunk.section == "2.1. Cobertura"
+    )
+
+    assert matching_chunk.section_path == [
+        "PLAN MUÉVETE LIBRE",
+        "SECCIÓN 1 Coberturas principales",
+        "2. Gastos de defensa judicial",
+        "2.1. Cobertura",
+    ]
+    assert matching_chunk.text.startswith(
+        "# PLAN MUÉVETE LIBRE\n\n"
+        "## SECCIÓN 1 Coberturas principales\n\n"
+        "### 2. Gastos de defensa judicial\n\n"
+        "#### 2.1. Cobertura\n\n"
+    )
+    assert (
+        "#### 2.1. Cobertura\n\n#### 2.1. Cobertura" not in matching_chunk.text
+    )
+
+
 def test_split_markdown_blocks_uses_normalized_suscripcion_collective_nested_path() -> None:
     normalized = normalize_known_document_markdown(
         source_pdf_path=Path(".") / "politicas de suscripcion de movilidad.pdf",

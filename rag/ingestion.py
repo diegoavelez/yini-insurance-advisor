@@ -133,7 +133,12 @@ DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
 DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 1800.0
 QDRANT_POINT_ID_NAMESPACE = uuid.UUID("8c39ce79-53d7-47e5-baad-95c5f1548599")
-QDRANT_FILTERABLE_PAYLOAD_FIELDS = ("document_type", "product", "document_name")
+QDRANT_FILTERABLE_PAYLOAD_FIELDS = (
+    "document_type",
+    "product",
+    "document_name",
+    "source_pdf_id",
+)
 MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
 RAG_LOGGER = logging.getLogger("yini.rag")
@@ -833,6 +838,17 @@ SUSCRIPCION_PAGE_HEADING_PATTERN = re.compile(r"^##\s+Page\s+\d+\s*$", re.IGNORE
 SUSCRIPCION_TOC_ENTRY_PATTERN = re.compile(
     r"^\d{1,2}(?:\.\d{1,2})?\.?\s+.+\.{5,}\s*\d+\s*$"
 )
+MUEVETE_LIBRE_ROOT_HEADING_PATTERN = re.compile(
+    r"^#+\s+PLAN\s+MU[EÉ]VETE\s+LIBRE\s*$",
+    re.IGNORECASE,
+)
+MUEVETE_LIBRE_SECTION_GROUP_PATTERN = re.compile(
+    r"^SECCI[ÓO]N\s+\d+\s+.+$",
+    re.IGNORECASE,
+)
+MUEVETE_LIBRE_TOP_LEVEL_HEADING_PATTERN = re.compile(r"^\d+\.\s+.+$")
+MUEVETE_LIBRE_SUBSECTION_HEADING_PATTERN = re.compile(r"^\d+\.\d+\.?\s+.+$")
+MUEVETE_LIBRE_LITERAL_SUBSECTION_PATTERN = re.compile(r"^[a-z]\)\s+.+$", re.IGNORECASE)
 
 
 def suscripcion_heading_has_uppercase_surface(value: str) -> bool:
@@ -1052,6 +1068,66 @@ def normalize_choque_simple_process_markdown(
     return f"{normalized_text}\n"
 
 
+def normalize_muevete_libre_markdown(cleaned_markdown_text: str) -> str:
+    """Rewrite the Muévete Libre clausulado into a semantic heading hierarchy."""
+
+    normalized_lines: list[str] = ["# PLAN MUÉVETE LIBRE"]
+    emitted_root = True
+
+    def append_line(line: str) -> None:
+        stripped_line = line.strip()
+        if not stripped_line:
+            if normalized_lines and normalized_lines[-1] != "":
+                normalized_lines.append("")
+            return
+        if normalized_lines and normalized_lines[-1] == stripped_line:
+            return
+        normalized_lines.append(stripped_line)
+
+    def append_heading(level: str, heading_text: str) -> None:
+        append_line("")
+        append_line(f"{level} {heading_text.strip()}")
+
+    for raw_line in cleaned_markdown_text.splitlines():
+        stripped_line = raw_line.strip()
+        if not stripped_line:
+            append_line("")
+            continue
+
+        if MUEVETE_LIBRE_ROOT_HEADING_PATTERN.match(stripped_line):
+            if not emitted_root:
+                append_line("# PLAN MUÉVETE LIBRE")
+                emitted_root = True
+            continue
+
+        heading_candidate = stripped_line.lstrip("#").strip()
+        if not heading_candidate:
+            continue
+
+        if MUEVETE_LIBRE_SECTION_GROUP_PATTERN.match(heading_candidate):
+            append_heading("##", heading_candidate)
+            continue
+
+        if MUEVETE_LIBRE_SUBSECTION_HEADING_PATTERN.match(heading_candidate):
+            append_heading("####", heading_candidate)
+            continue
+
+        if MUEVETE_LIBRE_TOP_LEVEL_HEADING_PATTERN.match(heading_candidate):
+            append_heading("###", heading_candidate)
+            continue
+
+        if MUEVETE_LIBRE_LITERAL_SUBSECTION_PATTERN.match(heading_candidate):
+            append_heading("#####", heading_candidate)
+            continue
+
+        append_line(heading_candidate if stripped_line.startswith("#") else stripped_line)
+
+    normalized_text = "\n".join(normalized_lines).strip()
+    if not normalized_text:
+        return cleaned_markdown_text
+    return f"{normalized_text}\n"
+
+
 def normalize_arl_rui_faq_markdown(cleaned_markdown_text: str) -> str:
     """Rewrite the ARL/RUI FAQ into semantic question-led markdown."""
 
@@ -1175,6 +1251,8 @@ def normalize_known_document_markdown(
         return normalize_arl_commissions_guide_markdown(cleaned_markdown_text)
     if "politicas de suscripcion de movilidad" in normalized_stem:
         return normalize_suscripcion_policy_markdown(cleaned_markdown_text)
+    if "clausulado muevete libre" in normalized_stem:
+        return normalize_muevete_libre_markdown(cleaned_markdown_text)
     if "proceso atencion choque simple" in normalized_stem:
         return normalize_choque_simple_process_markdown(
             cleaned_markdown_text,
@@ -2497,6 +2575,10 @@ ARL_REMUNERATION_POLICY_TABLE_SECTION_ANCHORS = (
     "pago de comisiones por atraccion",
 )
 
+ARL_REMUNERATION_POLICY_CHANGE_INTERMEDIARY_SECTION_ANCHORS = (
+    "por cambio de intermediario",
+)
+
 
 def query_has_arl_remuneration_policy_intent(query: str) -> bool:
     """Return whether one query broadly targets the ARL remuneration policy."""
@@ -2728,6 +2810,51 @@ def is_arl_remuneration_table_chunk(chunk: RetrievedChunk) -> bool:
     )
 
 
+def is_arl_remuneration_appetite_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk belongs to the appetite/grouping support family."""
+
+    if not is_arl_remuneration_policy_chunk(chunk):
+        return False
+    normalized_section = normalize_equivalence_text(chunk.section or "")
+    return normalized_section in ARL_REMUNERATION_POLICY_APPETITE_SECTION_ANCHORS
+
+
+def is_arl_remuneration_change_intermediary_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk directly covers change-of-intermediary rules."""
+
+    if not is_arl_remuneration_policy_chunk(chunk):
+        return False
+    normalized_label_surface = normalize_equivalence_text(
+        "\n".join(
+            value
+            for value in (
+                chunk.document_name,
+                chunk.section,
+                *chunk.section_path,
+            )
+            if value
+        )
+    )
+    return any(
+        anchor in normalized_label_surface
+        for anchor in ARL_REMUNERATION_POLICY_CHANGE_INTERMEDIARY_SECTION_ANCHORS
+    )
+
+
+def is_arl_remuneration_overview_citation_support_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one chunk directly supports broad ARL remuneration overviews."""
+
+    return any(
+        matcher(chunk)
+        for matcher in (
+            is_arl_remuneration_overview_chunk,
+            is_arl_remuneration_appetite_chunk,
+            is_arl_remuneration_table_chunk,
+            is_arl_remuneration_change_intermediary_chunk,
+        )
+    )
+
+
 def build_arl_remuneration_policy_priority_key(
     chunk: RetrievedChunk,
     *,
@@ -2939,6 +3066,14 @@ def select_citation_evidence_chunks(
     """Return the narrower citation/doc-basis subset for one answer query."""
 
     citation_chunks = list(retrieved_chunks)
+    if query_has_arl_remuneration_overview_intent(query):
+        direct_remuneration_overview_chunks = [
+            chunk
+            for chunk in citation_chunks
+            if is_arl_remuneration_overview_citation_support_chunk(chunk)
+        ]
+        if direct_remuneration_overview_chunks:
+            return direct_remuneration_overview_chunks
     if query_has_arl_account_update_guide_intent(query):
         direct_account_update_chunks = [
             chunk for chunk in citation_chunks if is_arl_account_update_guide_chunk(chunk)
@@ -4690,6 +4825,20 @@ def build_qdrant_query_filter(filters: object) -> object | None:
     return qdrant_models.Filter(must=conditions)
 
 
+def build_qdrant_source_pdf_filter(source_pdf_id: str) -> object:
+    """Build a narrow Qdrant filter that matches one source document family."""
+
+    qdrant_models = get_qdrant_models()
+    return qdrant_models.Filter(
+        must=[
+            qdrant_models.FieldCondition(
+                key="source_pdf_id",
+                match=qdrant_models.MatchValue(value=source_pdf_id),
+            )
+        ]
+    )
+
+
 def build_qdrant_points(embedding_bundle: EmbeddingBundle) -> list[object]:
     """Map one embedding bundle into deterministic Qdrant points."""
 
@@ -5386,6 +5535,24 @@ def upsert_points_with_retry(
             attempt += 1
 
 
+def prune_existing_source_points(
+    *,
+    client: object,
+    settings: Settings,
+    source_pdf_id: str,
+) -> None:
+    """Delete existing points for one source PDF before reindexing that bundle."""
+
+    delete_points = getattr(client, "delete", None)
+    if not callable(delete_points):
+        return
+    delete_points(
+        collection_name=settings.qdrant_collection,
+        points_selector=build_qdrant_source_pdf_filter(source_pdf_id),
+        wait=True,
+    )
+
+
 def smoke_validate_indexing(client: object, settings: Settings, expected_points: int) -> None:
     """Run a narrow operational smoke check after indexing."""
 
@@ -5407,6 +5574,11 @@ def index_embedding_bundle(
 
     embedding_bundle = load_embedding_bundle(embedding_artifact_path)
     ensure_qdrant_collection(client, settings, embedding_bundle.vector_dimension)
+    prune_existing_source_points(
+        client=client,
+        settings=settings,
+        source_pdf_id=embedding_bundle.source_pdf_id,
+    )
     points = build_qdrant_points(embedding_bundle)
     upsert_points_with_retry(
         client=client,
