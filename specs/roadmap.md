@@ -1304,6 +1304,8 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `document-metadata-filter-enablement`
 - `operator-curated-term-equivalence-normalization`
 - `rag-lexical-normalization-seam-extraction`
+- `rag-arl-remuneration-domain-seam-extraction`
+- `rag-document-canonicalization-seam-extraction`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
 - `autos-plan-comparison-retrieval-alignment`
@@ -1392,6 +1394,8 @@ Completed slice index:
 - `document-metadata-filter-enablement`
 - `operator-curated-term-equivalence-normalization`
 - `rag-lexical-normalization-seam-extraction`
+- `rag-arl-remuneration-domain-seam-extraction`
+- `rag-document-canonicalization-seam-extraction`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
 - `autos-plan-comparison-retrieval-alignment`
@@ -1479,11 +1483,21 @@ Implementation note:
   `rag/term_equivalences.py` seam, reducing further coupling growth inside
   `rag/ingestion.py` while additional categories continue onboarding.
 - Additional `rag/ingestion.py` decoupling is still intentionally deferred
-  until the current category-onboarding wave settles. The next documented
-  post-onboarding refactor candidates are:
-  - `rag-document-canonicalization-seam-extraction`
-  - `rag-markdown-chunk-normalization-seam-extraction`
-  - `rag-arl-remuneration-domain-seam-extraction`
+  until the current category-onboarding wave settles. The first documented
+  post-onboarding refactor candidates now closed are:
+  - `rag-arl-remuneration-domain-seam-extraction`, which moved the stabilized
+    ARL remuneration-policy ranking and citation-compaction helpers behind a
+    dedicated `rag` seam.
+  - `rag-document-canonicalization-seam-extraction`, which moved document-name
+    extraction, safe heading promotion, collision-safe `source_pdf_id`
+    derivation, artifact-path construction, and overlay-first
+    product/document-type resolution behind a dedicated `rag` seam.
+  - `rag-markdown-chunk-normalization-seam-extraction`, which moved
+    document-specific markdown cleanup, semantic block grouping, section-path
+    prefixing, and overlap-disable heuristics behind a dedicated `rag` seam
+    while keeping `rag.ingestion.py` as the orchestration layer.
+  There are no further documented post-onboarding refactor candidates at this
+  time.
 - When those comparison bundles match, retrieval can use a larger candidate
   pool plus deterministic lexical reranking before returning the final top-k.
 - Chunk text can now be prefixed with its governing `section_path` headings

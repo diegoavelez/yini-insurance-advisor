@@ -2,6 +2,7 @@
 
 ## 2026-06-14
 
+- Extract the remaining documented post-onboarding `rag` seams by moving ARL remuneration ranking helpers, document canonicalization/artifact-path resolution, and markdown chunk normalization/grouping logic into dedicated `rag` modules, add focused canonicalization coverage, and close the roadmap note that no further post-onboarding refactor candidates remain.
 - Normalize `MUEVETE LIBRE` heading hierarchy into semantic parent-child levels, add source-level Qdrant reindex pruning plus `source_pdf_id` payload indexing so corrected chunks replace stale legacy points, and validate live that `¿Qué cubre Muévete Libre?` still answers with `confidence=high` using the cleaned hierarchical coverage sections.
 - Compact broad ARL remuneration-policy grounded-answer citations to the direct overview, appetite, table, and change-of-intermediary support chunks so `¿Cuál es el esquema de remuneración del canal externo ARL?` keeps `confidence=high` while dropping lateral policy-designation evidence from the documentary basis.
 - Close the remaining `Phase 18` roadmap traceability gap by reconciling the dated slice index, completed-slice index, and operational category rollup for `movilidad-viajes` and the full `movilidad-suscripcion` remediation sequence, leaving no outstanding `Phase 18` slices after live retrieval and grounded-answer validation confirmed the `13.11` financiación individual path is already recovered.
