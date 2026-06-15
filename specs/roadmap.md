@@ -1316,6 +1316,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `rag-ingestion-artifact-assembly-and-skip-policy-seam-extraction`
 - `rag-manifest-recording-and-artifact-iteration-seam-extraction`
 - `rag-batch-command-loop-and-failure-handling-seam-extraction`
+- `rag-runtime-backend-and-provider-bridge-seam-extraction`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
 - `autos-plan-comparison-retrieval-alignment`
@@ -1545,11 +1546,16 @@ Implementation note:
     appenders, and deterministic source/chunk/embedding artifact iteration
     behind a dedicated `rag` seam while keeping batch command orchestration
     in `rag.ingestion.py`.
+  - `rag-batch-command-loop-and-failure-handling-seam-extraction`, which
+    moved the repeated ingestion/embedding/indexing batch loops, fail-fast
+    branching, per-artifact exception recovery, and manifest-append
+    orchestration behind a dedicated `rag` seam while keeping top-level CLI
+    dispatch in `rag.ingestion.py`.
   The next documented post-onboarding refactor candidate is
-  `rag-batch-command-loop-and-failure-handling-seam-extraction`, covering the
-  repeated ingestion/embedding/indexing batch loops, fail-fast branching,
-  per-artifact exception recovery, and manifest-append orchestration while
-  keeping top-level CLI dispatch in `rag.ingestion.py`.
+  `rag-runtime-backend-and-provider-bridge-seam-extraction`, covering runtime
+  backend availability checks, embedding/Groq provider loading, asset-warmup
+  support helpers, and completion/vector generation bridges while keeping the
+  warmup and command orchestration surfaces in `rag.ingestion.py`.
 - When those comparison bundles match, retrieval can use a larger candidate
   pool plus deterministic lexical reranking before returning the final top-k.
 - Chunk text can now be prefixed with its governing `section_path` headings

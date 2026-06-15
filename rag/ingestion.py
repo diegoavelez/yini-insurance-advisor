@@ -41,6 +41,7 @@ from rag import (
     evidence_selection,
     ingestion_artifacts,
     ingestion_batch,
+    ingestion_batch_runtime,
     local_hybrid_recall,
     pdf_conversion,
     qdrant_store,
@@ -668,6 +669,7 @@ def deduplicate_exact_pv_applicability_chunks(
 
 
 append_manifest_record = ingestion_batch.append_manifest_record
+execute_batch_operation = ingestion_batch_runtime.execute_batch_operation
 
 
 def write_processed_metadata(record: ProcessedDocument, processed_output_path: Path) -> None:
@@ -755,6 +757,11 @@ existing_embedding_artifact_matches_chunk_bundle = (
     ingestion_artifacts.existing_embedding_artifact_matches_chunk_bundle
 )
 iter_embedding_artifacts = ingestion_batch.iter_embedding_artifacts
+recover_failed_ingestion_record = ingestion_batch_runtime.recover_failed_ingestion_record
+recover_failed_embedding_generation_record = (
+    ingestion_batch_runtime.recover_failed_embedding_generation_record
+)
+recover_failed_indexing_record = ingestion_batch_runtime.recover_failed_indexing_record
 
 
 def retrieve_ranked_chunks(
@@ -1186,79 +1193,46 @@ def run_ingestion(args: argparse.Namespace) -> int:
         )
         return 2
 
-    encountered_failures = False
-
-    for source_pdf_path in source_pdfs:
-        try:
-            record = ingest_one_pdf(
-                input_dir=input_dir,
-                source_pdf_path=source_pdf_path,
-                markdown_dir=markdown_dir,
-                processed_dir=processed_dir,
-                overwrite=args.overwrite,
-                chunk_size=args.chunk_size,
-                chunk_overlap=args.chunk_overlap,
-                pdf_conversion_backend=args.pdf_conversion_backend,
-                docling_startup_timeout_seconds=args.docling_startup_timeout_seconds,
-                metadata_overlays=metadata_overlays,
-                term_equivalences=term_equivalences,
-                metadata_refresh_requested=metadata_overlay_path is not None,
+    return execute_batch_operation(
+        items=source_pdfs,
+        process_item_fn=lambda source_pdf_path: ingest_one_pdf(
+            input_dir=input_dir,
+            source_pdf_path=source_pdf_path,
+            markdown_dir=markdown_dir,
+            processed_dir=processed_dir,
+            overwrite=args.overwrite,
+            chunk_size=args.chunk_size,
+            chunk_overlap=args.chunk_overlap,
+            pdf_conversion_backend=args.pdf_conversion_backend,
+            docling_startup_timeout_seconds=args.docling_startup_timeout_seconds,
+            metadata_overlays=metadata_overlays,
+            term_equivalences=term_equivalences,
+            metadata_refresh_requested=metadata_overlay_path is not None,
+        ),
+        recover_failure_record_fn=lambda source_pdf_path, exc: recover_failed_ingestion_record(
+            source_pdf_path=source_pdf_path,
+            input_dir=input_dir,
+            markdown_dir=markdown_dir,
+            processed_dir=processed_dir,
+            metadata_overlays=metadata_overlays,
+            term_equivalences=term_equivalences,
+            error=exc,
+            derive_source_pdf_id_fn=derive_source_pdf_id,
+            build_ingestion_artifact_paths_fn=build_ingestion_artifact_paths,
+            resolve_document_type_fn=resolve_document_type,
+            resolve_document_product_fn=resolve_document_product,
+            remove_artifact_if_exists_fn=remove_artifact_if_exists,
+            build_processed_document_fn=build_processed_document,
+        ),
+        append_record_fn=lambda record: append_manifest_record(manifest_path, record),
+        is_failure_record_fn=lambda record: record.ingestion_status == "failed",
+        format_failure_message_fn=(
+            lambda source_pdf_path, record: (
+                f"Failed to ingest {source_pdf_path.name}: {record.error_message}"
             )
-        except Exception as exc:
-            encountered_failures = True
-            source_pdf_relative_path = source_pdf_path.relative_to(input_dir)
-            source_pdf_id = derive_source_pdf_id(
-                input_dir=input_dir,
-                source_pdf_path=source_pdf_path,
-            )
-            (
-                markdown_output_path,
-                cleaned_markdown_output_path,
-                processed_output_path,
-                chunk_artifact_path,
-            ) = build_ingestion_artifact_paths(
-                source_pdf_id=source_pdf_id,
-                markdown_dir=markdown_dir,
-                processed_dir=processed_dir,
-            )
-            overlay_entry = metadata_overlays.get(source_pdf_id)
-            resolved_document_type = resolve_document_type(
-                source_pdf_relative_path=source_pdf_relative_path,
-                overlay_entry=overlay_entry,
-                term_equivalences=term_equivalences,
-            )
-            resolved_product = resolve_document_product(
-                source_pdf_relative_path=source_pdf_relative_path,
-                overlay_entry=overlay_entry,
-                term_equivalences=term_equivalences,
-            )
-            remove_artifact_if_exists(cleaned_markdown_output_path)
-            remove_artifact_if_exists(processed_output_path)
-            remove_artifact_if_exists(chunk_artifact_path)
-            record = build_processed_document(
-                source_pdf_id=source_pdf_id,
-                source_pdf_path=source_pdf_path,
-                source_pdf_relative_path=source_pdf_relative_path,
-                markdown_output_path=markdown_output_path,
-                cleaned_markdown_output_path=cleaned_markdown_output_path,
-                processed_output_path=processed_output_path,
-                ingestion_status="failed",
-                document_type=resolved_document_type,
-                product=resolved_product,
-                error_message=str(exc),
-            )
-
-        append_manifest_record(manifest_path, record)
-
-        if record.ingestion_status == "failed":
-            print(
-                f"Failed to ingest {source_pdf_path.name}: {record.error_message}",
-                file=sys.stderr,
-            )
-            if args.fail_fast:
-                return 1
-
-    return 0 if not (encountered_failures and args.fail_fast) else 1
+        ),
+        fail_fast=args.fail_fast,
+    )
 
 
 def run_docling_warmup(args: argparse.Namespace) -> int:
@@ -1319,55 +1293,38 @@ def run_embedding_generation(args: argparse.Namespace) -> int:
         )
         return 2
 
-    encountered_failures = False
-
-    for chunk_artifact_path in chunk_artifacts:
-        embedding_artifact_path = embedding_dir / (
-            f"{chunk_artifact_path.name.removesuffix('.chunks.json')}.embeddings.json"
-        )
-        try:
-            record = generate_embeddings_for_chunk_bundle(
+    return execute_batch_operation(
+        items=chunk_artifacts,
+        process_item_fn=lambda chunk_artifact_path: generate_embeddings_for_chunk_bundle(
+            chunk_artifact_path=chunk_artifact_path,
+            embedding_dir=embedding_dir,
+            settings=settings,
+            overwrite=args.overwrite,
+        ),
+        recover_failure_record_fn=lambda chunk_artifact_path, exc: (
+            recover_failed_embedding_generation_record(
                 chunk_artifact_path=chunk_artifact_path,
                 embedding_dir=embedding_dir,
                 settings=settings,
-                overwrite=args.overwrite,
+                error=exc,
+                load_chunk_bundle_fn=load_chunk_bundle,
+                remove_artifact_if_exists_fn=remove_artifact_if_exists,
+                build_embedding_generation_record_fn=build_embedding_generation_record,
+                build_failed_embedding_record_from_artifact_path_fn=(
+                    build_failed_embedding_record_from_artifact_path
+                ),
             )
-        except Exception as exc:
-            encountered_failures = True
-            try:
-                chunk_bundle = load_chunk_bundle(chunk_artifact_path)
-                embedding_artifact_path = (
-                    embedding_dir / f"{chunk_bundle.source_pdf_id}.embeddings.json"
-                )
-                remove_artifact_if_exists(embedding_artifact_path)
-                record = build_embedding_generation_record(
-                    chunk_bundle=chunk_bundle,
-                    embedding_artifact_path=embedding_artifact_path,
-                    settings=settings,
-                    generation_status="failed",
-                    error_message=str(exc),
-                )
-            except Exception as load_exc:
-                remove_artifact_if_exists(embedding_artifact_path)
-                record = build_failed_embedding_record_from_artifact_path(
-                    chunk_artifact_path=chunk_artifact_path,
-                    embedding_artifact_path=embedding_artifact_path,
-                    settings=settings,
-                    error_message=f"{exc}; chunk artifact load failed: {load_exc}",
-                )
-
-        append_embedding_manifest_record(manifest_path, record)
-
-        if record.generation_status == "failed":
-            print(
+        ),
+        append_record_fn=lambda record: append_embedding_manifest_record(manifest_path, record),
+        is_failure_record_fn=lambda record: record.generation_status == "failed",
+        format_failure_message_fn=(
+            lambda chunk_artifact_path, record: (
                 f"Failed to generate embeddings for {chunk_artifact_path.name}: "
-                f"{record.error_message}",
-                file=sys.stderr,
+                f"{record.error_message}"
             )
-            if args.fail_fast:
-                return 1
-
-    return 0 if not (encountered_failures and args.fail_fast) else 1
+        ),
+        fail_fast=args.fail_fast,
+    )
 
 
 def run_qdrant_indexing(args: argparse.Namespace) -> int:
@@ -1393,47 +1350,37 @@ def run_qdrant_indexing(args: argparse.Namespace) -> int:
         return 2
 
     client = create_qdrant_client(settings)
-    encountered_failures = False
-
-    for embedding_artifact_path in embedding_artifacts:
-        try:
-            record = index_embedding_bundle(
+    return execute_batch_operation(
+        items=embedding_artifacts,
+        process_item_fn=lambda embedding_artifact_path: index_embedding_bundle(
+            embedding_artifact_path=embedding_artifact_path,
+            client=client,
+            settings=settings,
+            max_retries=args.max_retries,
+            retry_backoff_seconds=args.retry_backoff_seconds,
+        ),
+        recover_failure_record_fn=lambda embedding_artifact_path, exc: (
+            recover_failed_indexing_record(
                 embedding_artifact_path=embedding_artifact_path,
-                client=client,
                 settings=settings,
-                max_retries=args.max_retries,
-                retry_backoff_seconds=args.retry_backoff_seconds,
+                error=exc,
+                load_embedding_bundle_fn=load_embedding_bundle,
+                build_indexing_record_fn=build_indexing_record,
+                build_failed_indexing_record_from_artifact_path_fn=(
+                    build_failed_indexing_record_from_artifact_path
+                ),
             )
-        except Exception as exc:
-            encountered_failures = True
-            try:
-                embedding_bundle = load_embedding_bundle(embedding_artifact_path)
-                record = build_indexing_record(
-                    embedding_bundle=embedding_bundle,
-                    settings=settings,
-                    indexing_status="failed",
-                    indexed_point_count=0,
-                    error_message=str(exc),
-                )
-            except Exception as load_exc:
-                record = build_failed_indexing_record_from_artifact_path(
-                    embedding_artifact_path=embedding_artifact_path,
-                    settings=settings,
-                    error_message=f"{exc}; embedding artifact load failed: {load_exc}",
-                )
-
-        append_indexing_manifest_record(manifest_path, record)
-
-        if record.indexing_status == "failed":
-            print(
+        ),
+        append_record_fn=lambda record: append_indexing_manifest_record(manifest_path, record),
+        is_failure_record_fn=lambda record: record.indexing_status == "failed",
+        format_failure_message_fn=(
+            lambda embedding_artifact_path, record: (
                 f"Failed to index embeddings for {embedding_artifact_path.name}: "
-                f"{record.error_message}",
-                file=sys.stderr,
+                f"{record.error_message}"
             )
-            if args.fail_fast:
-                return 1
-
-    return 0 if not (encountered_failures and args.fail_fast) else 1
+        ),
+        fail_fast=args.fail_fast,
+    )
 
 
 def run_retrieval(args: argparse.Namespace, *, request_id: str | None = None) -> int:
