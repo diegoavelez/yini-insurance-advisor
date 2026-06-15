@@ -1641,8 +1641,8 @@ def test_normalize_retrieval_query_applies_pac_clausulado_document_name() -> Non
         term_equivalences=TermEquivalenceSet(
             query_filter_rules=[
                 QueryFilterRule(
-                    all_of=["pac"],
-                    any_of=["clausulado", "qué cubre", "cobertura"],
+                    all_of=["60 mas"],
+                    any_of=["pac", "plan complementario", "clausulado", "qué cubre", "cobertura"],
                     filters={
                         "product": "pac",
                         "document_type": "policy",
@@ -1658,6 +1658,76 @@ def test_normalize_retrieval_query_applies_pac_clausulado_document_name() -> Non
     assert normalized_query.filters.document_name == "Es tiempo devIvIr mas historias."
 
 
+def test_normalize_retrieval_query_applies_general_pac_clausulado_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el plan complementario PAC?",
+            filters={"product": "pac", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["60 mas"],
+                    any_of=["pac", "plan complementario", "clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "Es tiempo devIvIr mas historias.",
+                    },
+                ),
+                QueryFilterRule(
+                    all_of=["plan complementario"],
+                    any_of=["clausulado", "qué cubre", "cobertura", "pac"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "OBLIGACIONES DE EPS SURA",
+                    },
+                ),
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "OBLIGACIONES DE EPS SURA"
+
+
+def test_normalize_retrieval_query_applies_explicit_general_pac_clausulado_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué cubre el clausulado del plan complementario PAC?",
+            filters={"product": "pac", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["60 mas"],
+                    any_of=["pac", "plan complementario", "clausulado", "qué cubre", "cobertura"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "Es tiempo devIvIr mas historias.",
+                    },
+                ),
+                QueryFilterRule(
+                    all_of=["plan complementario"],
+                    any_of=["clausulado", "qué cubre", "cobertura", "pac"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "OBLIGACIONES DE EPS SURA",
+                    },
+                ),
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "OBLIGACIONES DE EPS SURA"
+
+
 def test_normalize_retrieval_query_applies_pac_asegurabilidad_document_name() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(
@@ -1667,7 +1737,8 @@ def test_normalize_retrieval_query_applies_pac_asegurabilidad_document_name() ->
         term_equivalences=TermEquivalenceSet(
             query_filter_rules=[
                 QueryFilterRule(
-                    all_of=["asegurabilidad", "pac"],
+                    all_of=["asegurabilidad", "60 mas"],
+                    any_of=["pac", "plan complementario"],
                     filters={
                         "product": "pac",
                         "document_type": "policy",
@@ -1681,6 +1752,41 @@ def test_normalize_retrieval_query_applies_pac_asegurabilidad_document_name() ->
     assert normalized_query.filters.product == "pac"
     assert normalized_query.filters.document_type == "policy"
     assert normalized_query.filters.document_name == "Plan Complementario 60 más"
+
+
+def test_normalize_retrieval_query_applies_general_pac_asegurabilidad_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Qué condiciones de asegurabilidad tiene el plan complementario PAC?",
+            filters={"product": "pac", "document_type": "policy"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["asegurabilidad", "60 mas"],
+                    any_of=["pac", "plan complementario"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "Plan Complementario 60 más",
+                    },
+                ),
+                QueryFilterRule(
+                    all_of=["asegurabilidad"],
+                    any_of=["pac", "plan complementario"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "policy",
+                        "document_name": "Políticas Plan Complementario EPS SURA",
+                    },
+                ),
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "policy"
+    assert normalized_query.filters.document_name == "Políticas Plan Complementario EPS SURA"
 
 
 def test_normalize_retrieval_query_applies_pac_afiliacion_form_document_name() -> None:
@@ -1797,6 +1903,94 @@ def test_normalize_retrieval_query_applies_pac_medios_pago_document_name() -> No
     assert (
         normalized_query.filters.document_name
         == "Por eso queremos presentarte los medios de pago que más se ajustan a sus necesidades."
+    )
+
+
+def test_normalize_retrieval_query_applies_pac_global_web_factura_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cómo actualizar el correo para factura global web en PAC?",
+            filters={"product": "pac"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["factura", "global web"],
+                    any_of=["correo", "actualizacion", "pac"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "guide",
+                        "document_name": (
+                            "Instructivo para actualizar correo para envío factura Plan Complementario EPS SURA"
+                        ),
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "guide"
+    assert (
+        normalized_query.filters.document_name
+        == "Instructivo para actualizar correo para envío factura Plan Complementario EPS SURA"
+    )
+
+
+def test_normalize_retrieval_query_applies_pac_global_web_declinacion_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cómo descargar la carta de declinación y pospuestos en PAC?",
+            filters={"product": "pac"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["declinacion", "pospuestos"],
+                    any_of=["carta", "descargar", "pac"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "guide",
+                        "document_name": "Objetivo",
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name == "Objetivo"
+
+
+def test_normalize_retrieval_query_applies_pac_global_web_relacion_asegurados_document_name() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cómo obtener el informe de relación de asegurados en PAC?",
+            filters={"product": "pac"},
+        ),
+        term_equivalences=TermEquivalenceSet(
+            query_filter_rules=[
+                QueryFilterRule(
+                    all_of=["relacion de asegurados"],
+                    any_of=["informe", "obtener", "pac"],
+                    filters={
+                        "product": "pac",
+                        "document_type": "guide",
+                        "document_name": (
+                            "Instructivo para descargar relación de asegurados Plan Complementario EPS SURA"
+                        ),
+                    },
+                )
+            ]
+        ),
+    )
+
+    assert normalized_query.filters.product == "pac"
+    assert normalized_query.filters.document_type == "guide"
+    assert (
+        normalized_query.filters.document_name
+        == "Instructivo para descargar relación de asegurados Plan Complementario EPS SURA"
     )
 
 

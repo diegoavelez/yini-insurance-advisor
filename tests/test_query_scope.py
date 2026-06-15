@@ -79,6 +79,26 @@ def test_classify_query_scope_supports_pac_operational_queries() -> None:
     assert decision.scope == "supported"
 
 
+def test_classify_query_scope_supports_pac_long_instructivos_queries() -> None:
+    cotizador_decision = classify_query_scope(
+        "¿Cómo incluir asegurados en el cotizador del plan complementario PAC?"
+    )
+    novedades_decision = classify_query_scope(
+        "¿Cómo gestionar formularios web de novedades del plan complementario PAC?"
+    )
+
+    assert cotizador_decision.scope == "supported"
+    assert novedades_decision.scope == "supported"
+
+
+def test_classify_query_scope_supports_pac_canales_transaccionales_queries() -> None:
+    decision = classify_query_scope(
+        "¿Qué canales transaccionales y de apoyo tiene el plan complementario PAC?"
+    )
+
+    assert decision.scope == "supported"
+
+
 def test_classify_query_scope_supports_suscripcion_facturacion_por_asegurado_queries() -> None:
     decision = classify_query_scope(
         "¿Qué condiciones aplican a la facturación por asegurado en pólizas colectivas?"

@@ -1114,7 +1114,7 @@ Operational category rollup:
 - `SOAT` onboarding + coverage alignment: completed
 - `VIAJES` onboarding + baseline retrieval: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
-- `EPS/PAC` follow-on cohort onboarding: active (`PAC 60+ core` and `formularios / gestión básica` completed)
+- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
 
 Completed slice index:
 
@@ -1137,6 +1137,11 @@ Completed slice index:
 - `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
 - `eps-pac-60-mas-policy-family-coverage-alignment`
 - `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-global-web-guides-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-long-instructivos-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-policy-family-coverage-alignment`
+- `eps-pac-clausulado-tradicional-isolated-onboarding`
+- `eps-pac-canales-transaccionales-isolated-onboarding`
 
 ---
 
@@ -1195,7 +1200,7 @@ Operational category rollup:
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
-- `EPS/PAC` follow-on cohort onboarding: active (`PAC 60+ core` and `formularios / gestión básica` completed)
+- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
 
 Completed slice index:
 
@@ -1208,6 +1213,11 @@ Completed slice index:
 - `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
 - `eps-pac-60-mas-policy-family-coverage-alignment`
 - `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-global-web-guides-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-long-instructivos-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-policy-family-coverage-alignment`
+- `eps-pac-clausulado-tradicional-isolated-onboarding`
+- `eps-pac-canales-transaccionales-isolated-onboarding`
 
 remaining in `Phase 16`:
 
@@ -1358,7 +1368,7 @@ Operational category rollup:
 - `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
 - `SOAT` onboarding + coverage alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: active
-- `EPS/PAC` follow-on cohort onboarding: active (`PAC 60+ core` and `formularios / gestión básica` completed)
+- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
 
 Completed slice index:
 
@@ -1412,6 +1422,11 @@ Completed slice index:
 - `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
 - `eps-pac-60-mas-policy-family-coverage-alignment`
 - `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-global-web-guides-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-long-instructivos-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-policy-family-coverage-alignment`
+- `eps-pac-clausulado-tradicional-isolated-onboarding`
+- `eps-pac-canales-transaccionales-isolated-onboarding`
 
 remaining in `Phase 18`:
 

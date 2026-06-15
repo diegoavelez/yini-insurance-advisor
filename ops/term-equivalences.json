@@ -369,9 +369,11 @@
     },
     {
       "all_of": [
-        "pac"
+        "60 mas"
       ],
       "any_of": [
+        "pac",
+        "plan complementario",
         "clausulado",
         "qué cubre",
         "que cubre",
@@ -402,13 +404,36 @@
       "filters": {
         "product": "pac",
         "document_type": "policy",
-        "document_name": "Es tiempo devIvIr mas historias."
+        "document_name": "OBLIGACIONES DE EPS SURA"
+      }
+    },
+    {
+      "all_of": [
+        "pac"
+      ],
+      "any_of": [
+        "clausulado",
+        "qué cubre",
+        "que cubre",
+        "cubre",
+        "cobertura",
+        "ampara",
+        "amparo"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "policy",
+        "document_name": "OBLIGACIONES DE EPS SURA"
       }
     },
     {
       "all_of": [
         "asegurabilidad",
-        "pac"
+        "60 mas"
+      ],
+      "any_of": [
+        "pac",
+        "plan complementario"
       ],
       "filters": {
         "product": "pac",
@@ -418,7 +443,25 @@
     },
     {
       "all_of": [
+        "asegurabilidad"
+      ],
+      "any_of": [
+        "pac",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "policy",
+        "document_name": "Políticas Plan Complementario EPS SURA"
+      }
+    },
+    {
+      "all_of": [
         "asegurabilidad",
+        "60 mas"
+      ],
+      "any_of": [
+        "pac",
         "plan complementario"
       ],
       "filters": {
@@ -486,6 +529,60 @@
         "product": "pac",
         "document_type": "guide",
         "document_name": "Por eso queremos presentarte los medios de pago que más se ajustan a sus necesidades."
+      }
+    },
+    {
+      "all_of": [
+        "factura",
+        "global web"
+      ],
+      "any_of": [
+        "correo",
+        "actualizacion",
+        "actualización",
+        "pac",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "guide",
+        "document_name": "Instructivo para actualizar correo para envío factura Plan Complementario EPS SURA"
+      }
+    },
+    {
+      "all_of": [
+        "declinacion",
+        "pospuestos"
+      ],
+      "any_of": [
+        "carta",
+        "global web",
+        "descargar",
+        "pac",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "guide",
+        "document_name": "Objetivo"
+      }
+    },
+    {
+      "all_of": [
+        "relacion de asegurados"
+      ],
+      "any_of": [
+        "informe",
+        "global web",
+        "descargar",
+        "obtener",
+        "pac",
+        "plan complementario"
+      ],
+      "filters": {
+        "product": "pac",
+        "document_type": "guide",
+        "document_name": "Instructivo para descargar relación de asegurados Plan Complementario EPS SURA"
       }
     },
     {

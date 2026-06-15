@@ -52,6 +52,38 @@
       "document_type": "guide",
       "product": "pac"
     },
+    "eps__plan-complementario-pac__instructivo-actualizacion-correo-para-factura-global-web-v2": {
+      "document_type": "guide",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__instructivo-descarga-carta-de-declinacion-y-pospuestos-global-web-v2": {
+      "document_type": "guide",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__instructivo-informe-de-relacion-de-asegurados-global-web-v2": {
+      "document_type": "guide",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__instructivo-inclusion-de-asegurados-cotizador-v2": {
+      "document_type": "guide",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__instructivo-formularios-web-novedades-pac-v6": {
+      "document_type": "guide",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__politicas-asegurabilidad-pac-v16": {
+      "document_type": "policy",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__clausulado-pac-tradicional-sura-v1": {
+      "document_type": "policy",
+      "product": "pac"
+    },
+    "eps__plan-complementario-pac__informacion-canales-transaccionales-y-apoyo-v1": {
+      "document_type": "guide",
+      "product": "pac"
+    },
     "movilidad__autos__ayudaventas-asistencia-pequenos-eventos": {
       "document_type": "guide",
       "product": "auto"
