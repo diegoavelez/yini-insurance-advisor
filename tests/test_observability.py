@@ -233,6 +233,16 @@ def test_retrieve_ranked_chunks_emits_correlated_events(
     )
     monkeypatch.setattr(rag_ingestion, "search_qdrant_chunks", lambda **_kwargs: [object()])
     monkeypatch.setattr(rag_ingestion, "map_search_hit_to_retrieved_chunk", lambda _hit: chunk)
+    monkeypatch.setattr(
+        rag_ingestion,
+        "retrieve_local_lexical_candidates",
+        lambda *_args, **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        rag_ingestion,
+        "rerank_chunks_for_query_expansion_rules",
+        lambda chunks, **_kwargs: chunks,
+    )
 
     result = rag_ingestion.retrieve_ranked_chunks(
         RetrievalQuery(query="What is covered?", top_k=5),

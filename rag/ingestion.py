@@ -8,11 +8,8 @@ import importlib
 import importlib.util
 import logging
 import os
-import re
 import subprocess
 import sys
-import time
-import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -22,8 +19,6 @@ from contracts import (
     AdvisorDraftResponse,
     ChunkBundle,
     ChunkRecord,
-    Citation,
-    DocumentaryBasisItem,
     DocumentMetadataOverlayEntry,
     DocumentMetadataOverlaySet,
     DocumentRetrievalResult,
@@ -32,7 +27,6 @@ from contracts import (
     EmbeddingIndexingRecord,
     EmbeddingRecord,
     GroundedAnswerResult,
-    GroundingVerification,
     ProcessedDocument,
     RetrievalQuery,
     RetrievedChunk,
@@ -49,27 +43,44 @@ from ops.observability import (
     log_startup_diagnostics,
     log_timed_event,
 )
-from rag.arl_remuneration import (
-    is_arl_remuneration_overview_citation_support_chunk,
-    prioritize_arl_remuneration_policy_evidence,
-    query_has_arl_remuneration_overview_intent,
-    query_has_arl_remuneration_policy_intent,
-)
+from rag import evidence_selection, local_hybrid_recall, qdrant_store
 from rag.document_canonicalization import (
     build_ingestion_artifact_paths,
     build_processed_document,
     derive_source_pdf_id,
     extract_document_metadata,
-    infer_canonical_product_from_relative_path,
     resolve_document_product,
     resolve_document_type,
+)
+from rag.grounded_answers import (
+    assess_grounding as _assess_grounding,
+)
+from rag.grounded_answers import (
+    build_citations_from_chunks as _build_citations_from_chunks,
+)
+from rag.grounded_answers import (
+    build_documentary_basis as _build_documentary_basis,
+)
+from rag.grounded_answers import (
+    build_grounded_prompt as _build_grounded_prompt,
+)
+from rag.grounded_answers import (
+    build_insufficient_evidence_response as _build_insufficient_evidence_response,
+)
+from rag.grounded_answers import (
+    build_missing_citation_guardrail_response as _build_missing_citation_guardrail_response,
+)
+from rag.grounded_answers import (
+    build_prompt_injection_refusal_response as _build_prompt_injection_refusal_response,
+)
+from rag.grounded_answers import (
+    build_unsupported_query_response as _build_unsupported_query_response,
 )
 from rag.markdown_chunk_normalization import (
     MarkdownBlock,
     ensure_chunk_text_includes_section_context,
     expand_large_blocks,
     group_semantic_blocks,
-    is_pv_applicability_section_path,
     markdown_has_non_heading_content,
     normalize_known_document_markdown,
     should_disable_chunk_overlap_for_entries,
@@ -79,11 +90,8 @@ from rag.markdown_chunk_normalization import (
     normalize_pv_commercial_block as _normalize_pv_commercial_block,
 )
 from rag.term_equivalences import (
-    augment_query_with_term_equivalences,
     get_matching_query_expansion_rules,
     load_term_equivalences,
-    normalize_equivalence_text,
-    query_contains_equivalent_phrase,
     tokenize_lexical_surface,
 )
 
@@ -91,39 +99,6 @@ EMPTY_BOILERPLATE_LINES = {"[]", "[ ]", "[]()", "![]()", "<!-- image -->"}
 CHUNK_SCHEMA_VERSION = "v2"
 DEFAULT_CHUNK_SIZE = 1200
 DEFAULT_CHUNK_OVERLAP = 200
-QUERY_COVERAGE_INTENT_PHRASES = (
-    "qué cubre",
-    "que cubre",
-    "cubre",
-    "cobertura",
-    "ampara",
-    "amparo",
-)
-ARL_RUI_NORMATIVE_ANCHORS = (
-    "ley 1562",
-    "decreto 1117",
-    "resolucion 0136",
-)
-EXPLICIT_COVERAGE_SECTION_PATTERN = re.compile(
-    r"^(?:\d+(?:\.\d+)*\.?\s*)?cobertura(?:\s+\S.*)?$",
-    re.IGNORECASE,
-)
-LEADING_SECTION_NUMBER_PATTERN = re.compile(r"^(\d+(?:\.\d+)*)")
-DESCRIPTIVE_COVERAGE_OPENERS = (
-    "si como consecuencia",
-    "si le haces daño",
-    "si contrataste la cobertura",
-    "sura te pagará",
-    "sura coordinará y pagará",
-)
-OPERATIONAL_COVERAGE_OPENERS = (
-    "recuerda que",
-    "en caso de no hacerlo",
-    "cuando elijas el valor asegurado",
-    "en caso de sufrir",
-    "solo podrás reclamar",
-    "debes realizar",
-)
 EMBEDDING_SCHEMA_VERSION = "v1"
 SUPPORTED_EMBEDDING_PROVIDER = "sentence-transformers"
 DEFAULT_EMBEDDING_DIR = "data/processed/embeddings"
@@ -132,17 +107,159 @@ DEFAULT_QDRANT_INDEXING_MANIFEST = "data/processed/qdrant-indexing-manifest.json
 DEFAULT_QDRANT_MAX_RETRIES = 3
 DEFAULT_QDRANT_RETRY_BACKOFF_SECONDS = 0.25
 DEFAULT_DOCLING_STARTUP_TIMEOUT_SECONDS = 1800.0
-QDRANT_POINT_ID_NAMESPACE = uuid.UUID("8c39ce79-53d7-47e5-baad-95c5f1548599")
-QDRANT_FILTERABLE_PAYLOAD_FIELDS = (
-    "document_type",
-    "product",
-    "document_name",
-    "source_pdf_id",
-)
 MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE = 2
 ADVISOR_REVIEW_NOTICE = "This response is a draft for advisor review."
 RAG_LOGGER = logging.getLogger("yini.rag")
 normalize_pv_commercial_block = _normalize_pv_commercial_block
+build_qdrant_point_id = qdrant_store.build_qdrant_point_id
+build_qdrant_points = qdrant_store.build_qdrant_points
+build_qdrant_source_pdf_filter = qdrant_store.build_qdrant_source_pdf_filter
+build_candidate_pool_limit = evidence_selection.build_candidate_pool_limit
+build_grounded_prompt = _build_grounded_prompt
+build_citations_from_chunks = _build_citations_from_chunks
+build_documentary_basis = _build_documentary_basis
+create_qdrant_client = qdrant_store.create_qdrant_client
+ensure_qdrant_collection = qdrant_store.ensure_qdrant_collection
+get_qdrant_models = qdrant_store.get_qdrant_models
+is_transient_qdrant_error = qdrant_store.is_transient_qdrant_error
+label_surface_has_explicit_coverage_section = (
+    evidence_selection.label_surface_has_explicit_coverage_section
+)
+map_search_hit_to_retrieved_chunk = qdrant_store.map_search_hit_to_retrieved_chunk
+prune_existing_source_points = qdrant_store.prune_existing_source_points
+QUERY_COVERAGE_INTENT_PHRASES = evidence_selection.QUERY_COVERAGE_INTENT_PHRASES
+query_has_arl_account_update_guide_intent = (
+    evidence_selection.query_has_arl_account_update_guide_intent
+)
+query_has_arl_commissions_guide_intent = evidence_selection.query_has_arl_commissions_guide_intent
+query_has_arl_rui_normativity_intent = evidence_selection.query_has_arl_rui_normativity_intent
+query_has_movilidad_pv_benefit_intent = evidence_selection.query_has_movilidad_pv_benefit_intent
+query_has_movilidad_suscripcion_billing_by_insured_intent = (
+    evidence_selection.query_has_movilidad_suscripcion_billing_by_insured_intent
+)
+query_has_movilidad_suscripcion_collective_billing_intent = (
+    evidence_selection.query_has_movilidad_suscripcion_collective_billing_intent
+)
+query_has_movilidad_suscripcion_collective_billing_renewal_intent = (
+    evidence_selection.query_has_movilidad_suscripcion_collective_billing_renewal_intent
+)
+query_has_movilidad_suscripcion_individual_financing_intent = (
+    evidence_selection.query_has_movilidad_suscripcion_individual_financing_intent
+)
+query_has_movilidad_suscripcion_policy_intent = (
+    evidence_selection.query_has_movilidad_suscripcion_policy_intent
+)
+search_qdrant_chunks = qdrant_store.search_qdrant_chunks
+sleep_with_backoff = qdrant_store.sleep_with_backoff
+smoke_validate_indexing = qdrant_store.smoke_validate_indexing
+upsert_points_with_retry = qdrant_store.upsert_points_with_retry
+
+
+def assess_grounding(
+    *,
+    retrieved_chunks: list[RetrievedChunk],
+    citations: list,
+):
+    """Build a typed grounding assessment from evidence availability."""
+
+    return _assess_grounding(
+        retrieved_chunks=retrieved_chunks,
+        citations=citations,
+        min_retrieval_chunks_for_high_confidence=MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE,
+    )
+
+
+def build_insufficient_evidence_response(
+    *,
+    query: str,
+    retrieved_chunks: list[RetrievedChunk],
+    limitation_note: str | None = None,
+) -> GroundedAnswerResult:
+    """Return a typed limited grounded response for insufficient evidence."""
+
+    return _build_insufficient_evidence_response(
+        query=query,
+        retrieved_chunks=retrieved_chunks,
+        limitation_note=limitation_note,
+        advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+        min_retrieval_chunks_for_high_confidence=MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE,
+    )
+
+
+def build_unsupported_query_response(*, query: str) -> GroundedAnswerResult:
+    """Return a typed conservative refusal for out-of-scope queries."""
+
+    return _build_unsupported_query_response(
+        query=query,
+        advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+    )
+
+
+def build_prompt_injection_refusal_response(*, query: str) -> GroundedAnswerResult:
+    """Return a typed conservative refusal for prompt-injection-like queries."""
+
+    return _build_prompt_injection_refusal_response(
+        query=query,
+        advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+    )
+
+
+def build_missing_citation_guardrail_response(
+    *,
+    query: str,
+    retrieved_chunks: list[RetrievedChunk],
+) -> GroundedAnswerResult:
+    """Return a typed guarded outcome for citationless answerable responses."""
+
+    return _build_missing_citation_guardrail_response(
+        query=query,
+        retrieved_chunks=retrieved_chunks,
+        advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+    )
+
+
+def rerank_chunks_for_query_expansion_rules(
+    chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+    matched_expansion_rules: Sequence[object],
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Apply deterministic domain-specific reranking for retrieved chunks."""
+
+    return evidence_selection.rerank_chunks_for_query_expansion_rules(
+        chunks,
+        query=query,
+        matched_expansion_rules=matched_expansion_rules,
+        top_k=top_k,
+    )
+
+
+def select_answer_evidence_chunks(
+    retrieved_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+) -> list[RetrievedChunk]:
+    """Return the answer-facing evidence subset for one retrieval query."""
+
+    return evidence_selection.select_answer_evidence_chunks(
+        retrieved_chunks,
+        query=query,
+        min_retrieval_chunks_for_high_confidence=MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE,
+    )
+
+
+def select_citation_evidence_chunks(
+    retrieved_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+) -> list[RetrievedChunk]:
+    """Return the citation-facing evidence subset for one answer query."""
+
+    return evidence_selection.select_citation_evidence_chunks(
+        retrieved_chunks,
+        query=query,
+    )
 
 
 def parse_bool(value: str) -> bool:
@@ -394,23 +511,6 @@ def create_groq_client(settings: Settings):
 
     groq_module = importlib.import_module("groq")
     return groq_module.Groq(api_key=settings.groq_api_key.get_secret_value())
-
-
-def get_qdrant_models():
-    """Return qdrant-client models lazily to keep import costs scoped."""
-
-    qdrant_http = importlib.import_module("qdrant_client.http.models")
-    return qdrant_http
-
-
-def create_qdrant_client(settings: Settings):
-    """Create a configured Qdrant client from validated settings."""
-
-    qdrant_client = importlib.import_module("qdrant_client")
-    return qdrant_client.QdrantClient(
-        url=settings.qdrant_url,
-        api_key=settings.qdrant_api_key.get_secret_value() if settings.qdrant_api_key else None,
-    )
 
 
 @lru_cache(maxsize=8)
@@ -749,375 +849,31 @@ def load_document_metadata_overlays(
         metadata_overlay_path.read_text(encoding="utf-8")
     )
     return overlay_set.documents
-def build_candidate_pool_limit(
-    *,
-    query: str,
-    top_k: int,
-    matched_expansion_rules: Sequence[object],
-) -> int:
-    """Return the Qdrant candidate-pool limit for one retrieval query."""
-
-    if not matched_expansion_rules:
-        if query_has_arl_remuneration_policy_intent(query):
-            return min(max(top_k * 3, top_k + 6), 20)
-        if query_has_movilidad_suscripcion_policy_intent(
-            query
-        ) or query_has_movilidad_suscripcion_collective_billing_intent(
-            query
-        ) or query_has_movilidad_suscripcion_billing_by_insured_intent(
-            query
-        ) or query_has_movilidad_suscripcion_collective_billing_renewal_intent(
-            query
-        ) or query_has_movilidad_suscripcion_individual_financing_intent(query):
-            return min(max(top_k * 3, top_k + 6), 20)
-        return top_k
-    return min(max(top_k * 3, top_k + 4), 20)
 
 
-def rerank_chunks_for_query_expansion_rules(
-    chunks: Sequence[RetrievedChunk],
-    *,
-    query: str,
-    matched_expansion_rules: Sequence[object],
-    top_k: int,
-) -> list[RetrievedChunk]:
-    """Apply deterministic lexical reranking based on matched curated expansion rules."""
-
-    if not matched_expansion_rules:
-        ranked_chunks = list(chunks)
-        if query_has_arl_remuneration_policy_intent(query):
-            return prioritize_arl_remuneration_policy_evidence(
-                ranked_chunks,
-                query=query,
-                top_k=top_k,
-            )
-        if query_has_movilidad_suscripcion_policy_intent(
-            query
-        ) or query_has_movilidad_suscripcion_collective_billing_intent(
-            query
-        ) or query_has_movilidad_suscripcion_billing_by_insured_intent(
-            query
-        ) or query_has_movilidad_suscripcion_collective_billing_renewal_intent(
-            query
-        ) or query_has_movilidad_suscripcion_individual_financing_intent(query):
-            return prioritize_movilidad_suscripcion_policy_evidence(
-                ranked_chunks,
-                query=query,
-                top_k=top_k,
-            )
-        return ranked_chunks[:top_k]
-
-    reranked_candidates: list[tuple[float, int, RetrievedChunk]] = []
-    deductible_intent = query_contains_equivalent_phrase(query, "deducible")
-    coverage_intent = any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in QUERY_COVERAGE_INTENT_PHRASES
-    )
-    for index, chunk in enumerate(chunks):
-        score_bonus = 0.0
-        section_labels = [
-            section_label
-            for section_label in (chunk.section, *chunk.section_path)
-            if section_label
-        ]
-        label_surface = "\n".join(
-            value
-            for value in (
-                chunk.document_name,
-                chunk.section,
-                *chunk.section_path,
-            )
-            if value
-        )
-        body_surface = chunk.text
-        for matched_rule in matched_expansion_rules:
-            for term in matched_rule.append_terms:
-                if any(
-                    query_contains_equivalent_phrase(section_label, term)
-                    for section_label in section_labels
-                ):
-                    exact_match_token_count = len(tokenize_lexical_surface(term))
-                    if query_contains_equivalent_phrase(term, "qué cubre este seguro"):
-                        score_bonus += 1.45
-                    elif exact_match_token_count >= 5:
-                        score_bonus += 0.60
-                    else:
-                        score_bonus += 0.18
-                elif query_contains_equivalent_phrase(label_surface, term):
-                    score_bonus += 0.12
-                elif query_contains_equivalent_phrase(body_surface, term):
-                    score_bonus += 0.04
-        if deductible_intent and query_contains_equivalent_phrase(label_surface, "deducible"):
-            score_bonus += 0.35
-        if coverage_intent and label_surface_has_explicit_coverage_section(label_surface):
-            score_bonus += 0.30
-        reranked_candidates.append(
-            (
-                chunk.score + score_bonus,
-                -index,
-                chunk.model_copy(update={"score": chunk.score + score_bonus}),
-            )
-        )
-
-    reranked_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    ranked_chunks = [candidate[2] for candidate in reranked_candidates]
-    if coverage_intent:
-        return diversify_explicit_coverage_sections(ranked_chunks, top_k=top_k)
-    if query_has_movilidad_pv_benefit_intent(query):
-        return diversify_movilidad_pv_benefit_sections(ranked_chunks, top_k=top_k)
-    if query_has_arl_remuneration_policy_intent(query):
-        return prioritize_arl_remuneration_policy_evidence(
-            ranked_chunks,
-            query=query,
-            top_k=top_k,
-        )
-    if query_has_movilidad_suscripcion_policy_intent(
-        query
-    ) or query_has_movilidad_suscripcion_collective_billing_intent(
-        query
-    ) or query_has_movilidad_suscripcion_billing_by_insured_intent(
-        query
-    ) or query_has_movilidad_suscripcion_collective_billing_renewal_intent(
-        query
-    ) or query_has_movilidad_suscripcion_individual_financing_intent(query):
-        return prioritize_movilidad_suscripcion_policy_evidence(
-            ranked_chunks,
-            query=query,
-            top_k=top_k,
-        )
-    return ranked_chunks[:top_k]
-
-
-def build_hybrid_recall_terms(
-    query: str,
-    *,
-    matched_expansion_rules: Sequence[object],
-) -> list[str]:
-    """Build deterministic lexical-recall phrases for one retrieval query."""
-
-    ordered_terms: list[str] = []
-    seen_terms: set[str] = set()
-    anchor_token_sets = [
-        tokenize_lexical_surface(" ".join(matched_rule.all_of))
-        for matched_rule in matched_expansion_rules
-        if matched_rule.all_of
-    ]
-
-    def append_term_if_new(term: str, *, allow_anchor_overlap: bool = False) -> None:
-        normalized_term = normalize_equivalence_text(term)
-        if not normalized_term or normalized_term in seen_terms:
-            return
-        term_tokens = tokenize_lexical_surface(term)
-        if (
-            not allow_anchor_overlap
-            and any(
-                anchor_tokens and anchor_tokens.issubset(term_tokens)
-                for anchor_tokens in anchor_token_sets
-            )
-        ):
-            return
-        seen_terms.add(normalized_term)
-        ordered_terms.append(term)
-
-    append_term_if_new(query, allow_anchor_overlap=True)
-    for matched_rule in matched_expansion_rules:
-        for term in matched_rule.append_terms:
-            append_term_if_new(term)
-    return ordered_terms
-
-
-def build_collective_billing_hybrid_recall_terms(query: str) -> list[str]:
-    """Return narrow lexical recall terms for suscripción collective billing queries."""
-
-    if not query_has_movilidad_suscripcion_collective_billing_intent(query):
-        return []
-
-    ordered_terms: list[str] = []
-    seen_terms: set[str] = set()
-    for term in (
-        query,
-        "pólizas colectivas",
-        "modalidades de facturación",
-        "facturación agrupada con devolución por asegurado",
-        "devolución por asegurado",
-    ):
-        normalized_term = normalize_equivalence_text(term)
-        if not normalized_term or normalized_term in seen_terms:
-            continue
-        seen_terms.add(normalized_term)
-        ordered_terms.append(term)
-    return ordered_terms
-
-
-def build_billing_by_insured_hybrid_recall_terms(query: str) -> list[str]:
-    """Return narrow lexical recall terms for suscripción billing-by-insured queries."""
-
-    if not query_has_movilidad_suscripcion_billing_by_insured_intent(query):
-        return []
-
-    ordered_terms: list[str] = []
-    seen_terms: set[str] = set()
-    for term in (
-        query,
-        "pólizas colectivas",
-        "facturación por asegurado",
-        "cada asegurado",
-        "modalidad de facturación",
-    ):
-        normalized_term = normalize_equivalence_text(term)
-        if not normalized_term or normalized_term in seen_terms:
-            continue
-        seen_terms.add(normalized_term)
-        ordered_terms.append(term)
-    return ordered_terms
-
-
-def build_individual_financing_hybrid_recall_terms(query: str) -> list[str]:
-    """Return narrow lexical recall terms for suscripción individual financing queries."""
-
-    if not query_has_movilidad_suscripcion_individual_financing_intent(query):
-        return []
-
-    ordered_terms: list[str] = []
-    seen_terms: set[str] = set()
-    for term in (
-        query,
-        "pólizas individuales",
-        "financiación de pólizas individuales",
-        "anual financiada",
-        "beneficiario oneroso",
-    ):
-        normalized_term = normalize_equivalence_text(term)
-        if not normalized_term or normalized_term in seen_terms:
-            continue
-        seen_terms.add(normalized_term)
-        ordered_terms.append(term)
-    return ordered_terms
-
-
-@lru_cache(maxsize=1)
-def load_local_chunk_corpus(chunk_dir: str = DEFAULT_CHUNK_DIR) -> tuple[ChunkRecord, ...]:
-    """Load the local chunk corpus for optional hybrid lexical recall."""
-
-    resolved_chunk_dir = Path(chunk_dir)
-    if not resolved_chunk_dir.exists():
-        return ()
-
-    chunk_records: list[ChunkRecord] = []
-    for chunk_artifact_path in iter_chunk_artifacts(resolved_chunk_dir, "*.chunks.json"):
-        chunk_records.extend(load_chunk_bundle(chunk_artifact_path).chunks)
-    return tuple(chunk_records)
-
-
-def chunk_record_matches_filters(
-    chunk_record: ChunkRecord,
-    filters: object,
-    *,
-    term_equivalences: TermEquivalenceSet,
-) -> bool:
-    """Return whether one local chunk record satisfies retrieval filters."""
-
-    resolved_product = chunk_record.product or infer_canonical_product_from_relative_path(
-        chunk_record.source_pdf_relative_path,
-        term_equivalences=term_equivalences,
-    )
-    filter_mappings = (
-        ("document_type", chunk_record.document_type),
-        ("product", resolved_product),
-        ("document_name", chunk_record.document_name),
-        ("version", chunk_record.document_version),
-    )
-    for filter_name, chunk_value in filter_mappings:
-        filter_value = getattr(filters, filter_name, None)
-        if filter_value is None:
-            continue
-        if chunk_value != filter_value:
-            return False
-    return True
-
-
-def score_chunk_record_for_hybrid_recall(
-    chunk_record: ChunkRecord,
-    *,
-    query: str,
-    lexical_terms: Sequence[str],
-) -> float:
-    """Score one local chunk record for deterministic lexical comparison recall."""
-
-    if not lexical_terms:
-        return 0.0
-
-    label_surface = "\n".join(
-        value
-        for value in (
-            chunk_record.document_name,
-            chunk_record.section,
-            *chunk_record.section_path,
-        )
-        if value
-    )
-    body_surface = chunk_record.text
-    label_tokens = tokenize_lexical_surface(label_surface)
-    body_tokens = tokenize_lexical_surface(body_surface)
-    deductible_intent = query_contains_equivalent_phrase(query, "deducible")
-    coverage_intent = any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in QUERY_COVERAGE_INTENT_PHRASES
-    )
-
-    total_score = 0.0
-    if deductible_intent and query_contains_equivalent_phrase(label_surface, "deducible"):
-        total_score += 2.0
-    if coverage_intent and label_surface_has_explicit_coverage_section(label_surface):
-        total_score += 1.75
-    for term in lexical_terms:
-        normalized_term = normalize_equivalence_text(term)
-        if not normalized_term:
-            continue
-        term_tokens = tokenize_lexical_surface(term)
-        if query_contains_equivalent_phrase(label_surface, term):
-            total_score += 2.0
-            continue
-        if query_contains_equivalent_phrase(body_surface, term):
-            total_score += 1.0
-            continue
-        if term_tokens and term_tokens.issubset(label_tokens):
-            total_score += 1.25
-            continue
-        if term_tokens and term_tokens.issubset(body_tokens):
-            total_score += 0.75
-            continue
-        if term_tokens:
-            label_overlap = len(term_tokens & label_tokens) / len(term_tokens)
-            body_overlap = len(term_tokens & body_tokens) / len(term_tokens)
-            total_score += max(label_overlap * 0.5, body_overlap * 0.25)
-    return total_score
-
-
-def build_retrieved_chunk_from_chunk_record(
-    chunk_record: ChunkRecord,
-    *,
-    score: float,
-) -> RetrievedChunk:
-    """Map one local chunk record into a retrieval result item."""
-
-    return RetrievedChunk(
-        chunk_id=chunk_record.chunk_id,
-        source_pdf_id=chunk_record.source_pdf_id,
-        source_pdf_relative_path=chunk_record.source_pdf_relative_path,
-        chunk_schema_version=chunk_record.chunk_schema_version,
-        chunk_index=chunk_record.chunk_index,
-        text=chunk_record.text,
-        document_name=chunk_record.document_name,
-        document_version=chunk_record.document_version,
-        document_type=chunk_record.document_type,
-        product=chunk_record.product,
-        page=None,
-        section=chunk_record.section,
-        section_path=list(chunk_record.section_path),
-        clause_id=None,
-        score=score,
-    )
+build_hybrid_recall_terms = local_hybrid_recall.build_hybrid_recall_terms
+build_collective_billing_hybrid_recall_terms = (
+    local_hybrid_recall.build_collective_billing_hybrid_recall_terms
+)
+build_billing_by_insured_hybrid_recall_terms = (
+    local_hybrid_recall.build_billing_by_insured_hybrid_recall_terms
+)
+build_individual_financing_hybrid_recall_terms = (
+    local_hybrid_recall.build_individual_financing_hybrid_recall_terms
+)
+chunk_record_matches_filters = local_hybrid_recall.chunk_record_matches_filters
+score_chunk_record_for_hybrid_recall = local_hybrid_recall.score_chunk_record_for_hybrid_recall
+build_retrieved_chunk_from_chunk_record = (
+    local_hybrid_recall.build_retrieved_chunk_from_chunk_record
+)
+merge_hybrid_retrieval_candidates = (
+    local_hybrid_recall.merge_hybrid_retrieval_candidates
+)
+canonicalize_filter_value = local_hybrid_recall.canonicalize_filter_value
+normalize_retrieval_query_with_term_equivalences = (
+    local_hybrid_recall.normalize_retrieval_query_with_term_equivalences
+)
+load_local_chunk_corpus = local_hybrid_recall.load_local_chunk_corpus
 
 
 def retrieve_local_lexical_candidates(
@@ -1129,1005 +885,23 @@ def retrieve_local_lexical_candidates(
 ) -> list[RetrievedChunk]:
     """Return deterministic local lexical candidates for comparison-oriented queries."""
 
-    if candidate_limit < 1:
-        return []
-
-    lexical_terms = build_hybrid_recall_terms(
-        retrieval_query.query,
+    return local_hybrid_recall.retrieve_local_lexical_candidates(
+        retrieval_query,
+        term_equivalences=term_equivalences,
         matched_expansion_rules=matched_expansion_rules,
-    )
-    if not lexical_terms:
-        lexical_terms = build_individual_financing_hybrid_recall_terms(
-            retrieval_query.query
-        )
-    if not lexical_terms:
-        lexical_terms = build_billing_by_insured_hybrid_recall_terms(
-            retrieval_query.query
-        )
-    if not lexical_terms:
-        lexical_terms = build_collective_billing_hybrid_recall_terms(
-            retrieval_query.query
-        )
-    if not lexical_terms:
-        return []
-
-    scored_candidates: list[tuple[float, int, RetrievedChunk]] = []
-    for index, chunk_record in enumerate(load_local_chunk_corpus()):
-        if not chunk_record_matches_filters(
-            chunk_record,
-            retrieval_query.filters,
-            term_equivalences=term_equivalences,
-        ):
-            continue
-        lexical_score = score_chunk_record_for_hybrid_recall(
-            chunk_record,
-            query=retrieval_query.query,
-            lexical_terms=lexical_terms,
-        )
-        if lexical_score <= 0:
-            continue
-        scored_candidates.append(
-            (
-                lexical_score,
-                -index,
-                build_retrieved_chunk_from_chunk_record(
-                    chunk_record,
-                    score=lexical_score,
-                ),
-            )
-        )
-
-    scored_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    return [candidate[2] for candidate in scored_candidates[:candidate_limit]]
-
-
-def merge_hybrid_retrieval_candidates(
-    semantic_chunks: Sequence[RetrievedChunk],
-    lexical_chunks: Sequence[RetrievedChunk],
-) -> list[RetrievedChunk]:
-    """Merge semantic and lexical candidates with deterministic score fusion."""
-
-    merged_candidates: dict[str, RetrievedChunk] = {
-        chunk.chunk_id: chunk for chunk in semantic_chunks
-    }
-    for lexical_chunk in lexical_chunks:
-        existing_chunk = merged_candidates.get(lexical_chunk.chunk_id)
-        if existing_chunk is None:
-            merged_candidates[lexical_chunk.chunk_id] = lexical_chunk
-            continue
-        merged_candidates[lexical_chunk.chunk_id] = existing_chunk.model_copy(
-            update={"score": existing_chunk.score + (lexical_chunk.score * 0.2)}
-        )
-    return list(merged_candidates.values())
-
-
-def canonicalize_filter_value(
-    *,
-    field_name: str,
-    value: str | None,
-    term_equivalences: TermEquivalenceSet,
-) -> str | None:
-    """Map one filter value to its canonical operator-curated equivalent."""
-
-    if value is None:
-        return None
-
-    normalized_value = normalize_equivalence_text(value)
-    field_aliases = term_equivalences.filter_aliases.get(field_name, {})
-    for canonical_value, aliases in field_aliases.items():
-        if normalized_value == normalize_equivalence_text(canonical_value):
-            return canonical_value
-        if normalized_value in {normalize_equivalence_text(alias) for alias in aliases}:
-            return canonical_value
-    return value
-
-
-def label_surface_has_explicit_coverage_section(label_surface: str) -> bool:
-    """Return whether one label surface contains an explicit coverage heading."""
-
-    for raw_line in label_surface.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        normalized_line = normalize_equivalence_text(line)
-        if normalized_line in {"coberturas principales", "coberturas opcionales"}:
-            return True
-        if EXPLICIT_COVERAGE_SECTION_PATTERN.match(line):
-            return True
-    return False
-
-
-def build_section_sort_key(section: str | None) -> tuple[int, ...]:
-    """Return a deterministic numeric-first ordering key for one section label."""
-
-    if not section:
-        return (9999,)
-    match = LEADING_SECTION_NUMBER_PATTERN.match(section.strip())
-    if match is None:
-        return (9999,)
-    return tuple(int(part) for part in match.group(1).split("."))
-
-
-def coverage_section_identity(chunk: RetrievedChunk) -> tuple[str, ...]:
-    """Return a stable identity for coverage-section diversification."""
-
-    if chunk.section_path:
-        return tuple(chunk.section_path)
-    if chunk.section:
-        return (chunk.section,)
-    return (chunk.chunk_id,)
-
-
-def query_has_movilidad_pv_benefit_intent(query: str) -> bool:
-    """Return whether one query explicitly asks for movilidad PV benefits."""
-
-    if not query_contains_equivalent_phrase(query, "propuesta de valor"):
-        return False
-    if not query_contains_equivalent_phrase(query, "movilidad"):
-        return False
-    return any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in (
-            "beneficios",
-            "beneficio",
-            "incluye",
-            "incluyen",
-            "diferenciales",
-            "ventajas",
-        )
+        candidate_limit=candidate_limit,
+        load_local_chunk_corpus_fn=load_local_chunk_corpus,
     )
 
 
-def is_movilidad_pv_document_family_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one retrieved chunk belongs to the movilidad PV family."""
-
-    return normalize_equivalence_text(chunk.document_name) == "propuesta de valor movilidad"
-
-
-def query_has_movilidad_suscripcion_policy_intent(query: str) -> bool:
-    """Return whether one query broadly asks for movilidad suscripción policies."""
-
-    if not query_contains_equivalent_phrase(query, "suscripcion"):
-        return False
-    if not query_contains_equivalent_phrase(query, "movilidad"):
-        return False
-    return any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in (
-            "politicas",
-            "reglas",
-            "lineamientos",
-            "criterios",
-        )
-    )
-
-
-def query_has_movilidad_suscripcion_collective_billing_intent(query: str) -> bool:
-    """Return whether one query explicitly asks about collective billing."""
-
-    if not query_contains_equivalent_phrase(query, "movilidad"):
-        return False
-    if not query_contains_equivalent_phrase(query, "polizas colectivas"):
-        return False
-    return any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in (
-            "facturacion",
-            "cobro",
-            "factura",
-            "pago",
-        )
-    )
-
-
-def query_has_movilidad_suscripcion_billing_by_insured_intent(query: str) -> bool:
-    """Return whether one query explicitly asks about billing by insured in collective policies."""
-
-    if not any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in ("poliza colectiva", "polizas colectivas")
-    ):
-        return False
-    if not any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in ("facturacion", "cobro", "factura")
-    ):
-        return False
-    return any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in ("por asegurado", "asegurado", "asegurados")
-    )
-
-
-def query_has_movilidad_suscripcion_collective_billing_renewal_intent(query: str) -> bool:
-    """Return whether one query asks about renewal-time billing-mode changes."""
-
-    if not any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in ("poliza colectiva", "polizas colectivas")
-    ):
-        return False
-    if not any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in ("facturacion", "forma de pago", "modalidad de facturacion")
-    ):
-        return False
-    return any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in ("renovacion", "renovación")
-    )
-
-
-def query_has_movilidad_suscripcion_individual_financing_intent(query: str) -> bool:
-    """Return whether one query asks about suscripción financing for individual policies."""
-
-    if not query_contains_equivalent_phrase(query, "movilidad"):
-        return False
-    if not any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in ("poliza individual", "polizas individuales")
-    ):
-        return False
-    return any(
-        query_contains_equivalent_phrase(query, phrase)
-        for phrase in ("financiacion", "financiada", "financiado")
-    )
-
-
-def is_movilidad_suscripcion_document_family_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one retrieved chunk belongs to the suscripción policy family."""
-
-    return (
-        normalize_equivalence_text(chunk.document_name)
-        == "politicas de suscripcion de movilidad"
-    )
-
-
-def build_chunk_body_without_markdown_headings(text: str) -> str:
-    """Return chunk body lines after removing markdown heading-only lines."""
-
-    return "\n".join(
-        stripped_line
-        for stripped_line in (line.strip() for line in text.splitlines())
-        if stripped_line and not stripped_line.startswith("#")
-    )
-
-
-def score_movilidad_suscripcion_evidence_richness(chunk: RetrievedChunk) -> float:
-    """Return a deterministic preference score for richer suscripción evidence."""
-
-    body_surface = build_chunk_body_without_markdown_headings(chunk.text)
-    normalized_body = normalize_equivalence_text(body_surface)
-    if not normalized_body:
-        return -3.0
-
-    body_lines = [line for line in body_surface.splitlines() if line.strip()]
-    total_score = 0.0
-    if len(normalized_body) >= 32:
-        total_score += 1.0
-    else:
-        total_score -= 1.0
-    if len(normalized_body) >= 96:
-        total_score += 0.8
-    if len(normalized_body) >= 180:
-        total_score += 0.6
-    if len(body_lines) >= 2:
-        total_score += 0.35
-    if count_bullet_lines(body_surface) > 0:
-        total_score += 0.25
-    return total_score
-
-
-def is_movilidad_suscripcion_collective_billing_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one chunk belongs to the collective billing subtree."""
-
-    normalized_labels = [
-        normalize_equivalence_text(value)
-        for value in (chunk.section, *chunk.section_path)
-        if value
-    ]
-    return any(label.startswith("14 6") or label.startswith("14.6") for label in normalized_labels)
-
-
-def is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(
-    chunk: RetrievedChunk,
-) -> bool:
-    """Return whether one chunk belongs to the documented grouped-refund billing subsection."""
-
-    normalized_labels = [
-        normalize_equivalence_text(value)
-        for value in (chunk.section, *chunk.section_path)
-        if value
-    ]
-    return any(
-        label.startswith("14.6.2.")
-        and "facturacion" in label
-        and "devolucion por asegurado" in label
-        for label in normalized_labels
-    )
-
-
-def is_movilidad_suscripcion_individual_financing_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one chunk belongs to the individual financing subsection."""
-
-    normalized_labels = [
-        normalize_equivalence_text(value)
-        for value in (chunk.section, *chunk.section_path)
-        if value
-    ]
-    return any(
-        (
-            label.startswith("13.11.")
-            or label.startswith("13 11 ")
-            or label == "13.11 financiacion de polizas individuales"
-        )
-        and "financiacion de polizas individuales" in label
-        for label in normalized_labels
-    )
-
-
-def is_movilidad_suscripcion_individual_payment_change_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one chunk belongs to individual payment-change rules."""
-
-    normalized_labels = [
-        normalize_equivalence_text(value)
-        for value in (chunk.section, *chunk.section_path)
-        if value
-    ]
-    return any(
-        label in {
-            "13.10. cambio en forma de pago negocio individual (produccion = cobro)",
-            "13.1. 2. cambio de plan de pagos anual financiado",
-        }
-        for label in normalized_labels
-    )
-
-
-def is_movilidad_suscripcion_direct_financing_support_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one chunk directly supports financing-individual answers."""
-
-    return (
-        is_movilidad_suscripcion_individual_financing_chunk(chunk)
-        or is_movilidad_suscripcion_individual_payment_change_chunk(chunk)
-    )
-
-
-def is_movilidad_suscripcion_billing_by_insured_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one chunk contains billing-by-insured evidence."""
-
-    label_surface = "\n".join(
-        value
-        for value in (
-            chunk.document_name,
-            chunk.section,
-            *chunk.section_path,
-            chunk.text,
-        )
-        if value
-    )
-    return query_contains_equivalent_phrase(label_surface, "facturacion por asegurado")
-
-
-def score_movilidad_suscripcion_billing_by_insured_intent_alignment(
-    chunk: RetrievedChunk,
-    *,
-    query: str,
-) -> float:
-    """Return a narrow preference score for billing-by-insured prompts."""
-
-    if not query_has_movilidad_suscripcion_billing_by_insured_intent(query):
-        return 0.0
-    if is_movilidad_suscripcion_billing_by_insured_chunk(chunk):
-        return 3.0
-    if is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(chunk):
-        return 0.75
-    return 0.0
-
-
-def score_movilidad_suscripcion_collective_billing_renewal_intent_alignment(
-    chunk: RetrievedChunk,
-    *,
-    query: str,
-) -> float:
-    """Return a narrow preference score for renewal-specific collective billing prompts."""
-
-    if not query_has_movilidad_suscripcion_collective_billing_renewal_intent(query):
-        return 0.0
-    if is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(chunk):
-        return 3.0
-    if is_movilidad_suscripcion_collective_billing_chunk(chunk):
-        return 1.0
-    if is_movilidad_suscripcion_individual_payment_change_chunk(chunk):
-        return -2.0
-    return 0.0
-
-
-def score_movilidad_suscripcion_individual_financing_intent_alignment(
-    chunk: RetrievedChunk,
-    *,
-    query: str,
-) -> float:
-    """Return a narrow preference score for individual-financing suscripción prompts."""
-
-    if not query_has_movilidad_suscripcion_individual_financing_intent(query):
-        return 0.0
-    if is_movilidad_suscripcion_individual_financing_chunk(chunk):
-        return 3.0
-    if is_movilidad_suscripcion_individual_payment_change_chunk(chunk):
-        return 2.0
-    if is_movilidad_suscripcion_collective_billing_chunk(chunk):
-        return -2.0
-    return 0.0
-
-
-def score_movilidad_suscripcion_collective_billing_intent_alignment(
-    chunk: RetrievedChunk,
-    *,
-    query: str,
-) -> float:
-    """Return a narrow preference score for collective billing prompts."""
-
-    if not query_has_movilidad_suscripcion_collective_billing_intent(query):
-        return 0.0
-    if is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(chunk):
-        return 2.5
-    if is_movilidad_suscripcion_collective_billing_chunk(chunk):
-        return 1.0
-    if is_movilidad_suscripcion_individual_financing_chunk(chunk):
-        return -1.5
-    return 0.0
-
-
-def extract_chunk_body_lead_line(text: str) -> str:
-    """Return the first meaningful body line from one chunk."""
-
-    body_surface = build_chunk_body_without_markdown_headings(text)
-    for line in body_surface.splitlines():
-        stripped_line = line.strip()
-        if not stripped_line:
-            continue
-        normalized_line = stripped_line.lstrip("-•➢* ").strip()
-        if normalized_line:
-            return normalized_line
-    return ""
-
-
-def score_movilidad_suscripcion_collective_billing_lead_quality(
-    chunk: RetrievedChunk,
-    *,
-    query: str,
-) -> float:
-    """Return a local lead-quality preference for grouped-refund billing chunks."""
-
-    if not query_has_movilidad_suscripcion_collective_billing_intent(query):
-        return 0.0
-    if not is_movilidad_suscripcion_collective_billing_grouped_refund_chunk(chunk):
-        return 0.0
-
-    lead_line = extract_chunk_body_lead_line(chunk.text)
-    if not lead_line:
-        return -2.0
-
-    lead_score = 0.0
-    if lead_line[0].islower():
-        lead_score -= 1.0
-    else:
-        lead_score += 0.5
-    if len(lead_line) >= 48:
-        lead_score += 0.25
-    return lead_score
-
-
-def build_movilidad_suscripcion_policy_section_priority_key(
-    chunk: RetrievedChunk,
-    *,
-    query: str,
-) -> tuple[float, float, float, float, float, float, float]:
-    """Return the deterministic section-ordering key for suscripción policy prioritization."""
-
-    return (
-        score_movilidad_suscripcion_individual_financing_intent_alignment(
-            chunk,
-            query=query,
-        ),
-        score_movilidad_suscripcion_collective_billing_renewal_intent_alignment(
-            chunk,
-            query=query,
-        ),
-        score_movilidad_suscripcion_billing_by_insured_intent_alignment(
-            chunk,
-            query=query,
-        ),
-        score_movilidad_suscripcion_collective_billing_intent_alignment(
-            chunk,
-            query=query,
-        ),
-        score_movilidad_suscripcion_collective_billing_lead_quality(
-            chunk,
-            query=query,
-        ),
-        score_movilidad_suscripcion_evidence_richness(chunk),
-        chunk.score,
-    )
-
-
-def build_movilidad_suscripcion_policy_duplicate_resolution_key(
-    chunk: RetrievedChunk,
-    *,
-    query: str,
-) -> tuple[float, float, float, float, float, int]:
-    """Return the deterministic duplicate-resolution key for suscripción chunks."""
-
-    chunk_index = chunk.chunk_index if isinstance(chunk.chunk_index, int) else 10**9
-    section_key = build_movilidad_suscripcion_policy_section_priority_key(
-        chunk,
-        query=query,
-    )
-    return (
-        *section_key,
-        -chunk_index,
-    )
-
-
-def count_bullet_lines(text: str) -> int:
-    """Return the number of bullet-style lines in one chunk surface."""
-
-    return sum(1 for line in text.splitlines() if line.lstrip().startswith("- "))
-
-
-def score_movilidad_pv_benefit_breadth(chunk: RetrievedChunk) -> float:
-    """Return a deterministic breadth preference for PV benefit sections."""
-
-    total_score = 0.0
-    bullet_count = count_bullet_lines(chunk.text)
-    total_score += min(bullet_count * 0.45, 2.25)
-
-    normalized_text = normalize_equivalence_text(chunk.text)
-    if len(normalized_text) >= 180:
-        total_score += 0.40
-    if len(normalized_text) >= 320:
-        total_score += 0.35
-
-    repeated_section_heading_count = 0
-    if chunk.section:
-        normalized_section = normalize_equivalence_text(chunk.section)
-        repeated_section_heading_count = normalized_text.count(normalized_section)
-    if repeated_section_heading_count >= 2:
-        total_score -= 0.25
-
-    return total_score
-
-
-def score_explicit_coverage_chunk_descriptiveness(chunk: RetrievedChunk) -> float:
-    """Return a local preference score for descriptive coverage chunks."""
-
-    normalized_text = normalize_equivalence_text(chunk.text)
-    total_score = 0.0
-    for opener in DESCRIPTIVE_COVERAGE_OPENERS:
-        if opener in normalized_text:
-            total_score += 2.0
-    for opener in OPERATIONAL_COVERAGE_OPENERS:
-        if opener in normalized_text:
-            total_score -= 1.25
-    if "## " in chunk.text:
-        total_score += 0.25
-    return total_score
-
-
-def diversify_explicit_coverage_sections(
-    ranked_chunks: Sequence[RetrievedChunk],
-    *,
-    top_k: int,
-) -> list[RetrievedChunk]:
-    """Prefer breadth across explicit coverage sections before duplicates."""
-
-    if top_k < 1:
-        return []
-
-    best_by_section: dict[tuple[str, ...], RetrievedChunk] = {}
-    section_order: list[tuple[str, ...]] = []
-    remaining_chunks: list[RetrievedChunk] = []
-
-    for chunk in ranked_chunks:
-        label_surface = "\n".join(
-            value
-            for value in (
-                chunk.document_name,
-                chunk.section,
-                *chunk.section_path,
-            )
-            if value
-        )
-        if not label_surface_has_explicit_coverage_section(label_surface):
-            remaining_chunks.append(chunk)
-            continue
-        section_id = coverage_section_identity(chunk)
-        existing_chunk = best_by_section.get(section_id)
-        if existing_chunk is None:
-            best_by_section[section_id] = chunk
-            section_order.append(section_id)
-            continue
-        candidate_key = (
-            score_explicit_coverage_chunk_descriptiveness(chunk),
-            chunk.score,
-        )
-        existing_key = (
-            score_explicit_coverage_chunk_descriptiveness(existing_chunk),
-            existing_chunk.score,
-        )
-        if candidate_key > existing_key:
-            remaining_chunks.append(existing_chunk)
-            best_by_section[section_id] = chunk
-            continue
-        remaining_chunks.append(chunk)
-
-    prioritized_coverage_chunks = sorted(
-        (best_by_section[section_id] for section_id in section_order),
-        key=lambda chunk: (
-            build_section_sort_key(chunk.section),
-            -score_explicit_coverage_chunk_descriptiveness(chunk),
-            -chunk.score,
-        ),
-    )
-
-    final_chunks: list[RetrievedChunk] = []
-    seen_chunk_ids: set[str] = set()
-    for chunk in (*prioritized_coverage_chunks, *ranked_chunks, *remaining_chunks):
-        if chunk.chunk_id in seen_chunk_ids:
-            continue
-        final_chunks.append(chunk)
-        seen_chunk_ids.add(chunk.chunk_id)
-        if len(final_chunks) >= top_k:
-            break
-    return final_chunks
-
-
-def diversify_movilidad_pv_benefit_sections(
-    ranked_chunks: Sequence[RetrievedChunk],
-    *,
-    top_k: int,
-) -> list[RetrievedChunk]:
-    """Prefer broader distinct PV benefit sections before repeated sections."""
-
-    if top_k < 1:
-        return []
-
-    best_by_section: dict[tuple[str, ...], RetrievedChunk] = {}
-    section_order: list[tuple[str, ...]] = []
-    remaining_chunks: list[RetrievedChunk] = []
-
-    for chunk in ranked_chunks:
-        if not is_movilidad_pv_document_family_chunk(chunk):
-            remaining_chunks.append(chunk)
-            continue
-        section_id = coverage_section_identity(chunk)
-        existing_chunk = best_by_section.get(section_id)
-        if existing_chunk is None:
-            best_by_section[section_id] = chunk
-            section_order.append(section_id)
-            continue
-        candidate_key = (
-            score_movilidad_pv_benefit_breadth(chunk),
-            chunk.score,
-        )
-        existing_key = (
-            score_movilidad_pv_benefit_breadth(existing_chunk),
-            existing_chunk.score,
-        )
-        if candidate_key > existing_key:
-            remaining_chunks.append(existing_chunk)
-            best_by_section[section_id] = chunk
-            continue
-        remaining_chunks.append(chunk)
-
-    prioritized_pv_chunks = sorted(
-        (best_by_section[section_id] for section_id in section_order),
-        key=lambda chunk: (
-            score_movilidad_pv_benefit_breadth(chunk),
-            chunk.score,
-        ),
-        reverse=True,
-    )
-
-    final_chunks: list[RetrievedChunk] = []
-    seen_chunk_ids: set[str] = set()
-    seen_pv_section_ids: set[tuple[str, ...]] = set()
-    for chunk in (*prioritized_pv_chunks, *ranked_chunks, *remaining_chunks):
-        if chunk.chunk_id in seen_chunk_ids:
-            continue
-        if is_movilidad_pv_document_family_chunk(chunk):
-            section_id = coverage_section_identity(chunk)
-            if section_id in seen_pv_section_ids:
-                continue
-            seen_pv_section_ids.add(section_id)
-        final_chunks.append(chunk)
-        seen_chunk_ids.add(chunk.chunk_id)
-        if len(final_chunks) >= top_k:
-            break
-    return final_chunks
-
-
-def prioritize_movilidad_suscripcion_policy_evidence(
-    ranked_chunks: Sequence[RetrievedChunk],
-    *,
-    query: str,
-    top_k: int,
-) -> list[RetrievedChunk]:
-    """Prefer richer and broader suscripción policy chunks ahead of duplicates."""
-
-    if top_k < 1:
-        return []
-
-    best_by_section: dict[tuple[str, ...], RetrievedChunk] = {}
-    section_order: list[tuple[str, ...]] = []
-    deferred_duplicate_chunks: list[RetrievedChunk] = []
-    remaining_chunks: list[RetrievedChunk] = []
-
-    for chunk in ranked_chunks:
-        if not is_movilidad_suscripcion_document_family_chunk(chunk):
-            remaining_chunks.append(chunk)
-            continue
-        section_id = coverage_section_identity(chunk)
-        existing_chunk = best_by_section.get(section_id)
-        if existing_chunk is None:
-            best_by_section[section_id] = chunk
-            section_order.append(section_id)
-            continue
-        candidate_key = build_movilidad_suscripcion_policy_duplicate_resolution_key(
-            chunk,
-            query=query,
-        )
-        existing_key = build_movilidad_suscripcion_policy_duplicate_resolution_key(
-            existing_chunk,
-            query=query,
-        )
-        if candidate_key > existing_key:
-            deferred_duplicate_chunks.append(existing_chunk)
-            best_by_section[section_id] = chunk
-            continue
-        deferred_duplicate_chunks.append(chunk)
-
-    prioritized_suscripcion_chunks = sorted(
-        (best_by_section[section_id] for section_id in section_order),
-        key=lambda chunk: build_movilidad_suscripcion_policy_section_priority_key(
-            chunk,
-            query=query,
-        ),
-        reverse=True,
-    )
-
-    final_chunks: list[RetrievedChunk] = []
-    seen_chunk_ids: set[str] = set()
-    for chunk in (
-        *prioritized_suscripcion_chunks,
-        *deferred_duplicate_chunks,
-        *remaining_chunks,
-    ):
-        if chunk.chunk_id in seen_chunk_ids:
-            continue
-        final_chunks.append(chunk)
-        seen_chunk_ids.add(chunk.chunk_id)
-        if len(final_chunks) >= top_k:
-            break
-    return final_chunks
-
-
-def select_answer_evidence_chunks(
-    retrieved_chunks: Sequence[RetrievedChunk],
-    *,
-    query: str,
-) -> list[RetrievedChunk]:
-    """Return the answer-facing evidence subset for one retrieval query."""
-
-    ranked_chunks = list(retrieved_chunks)
-    if not query_has_movilidad_suscripcion_individual_financing_intent(query):
-        return ranked_chunks
-
-    direct_financing_chunks = [
-        chunk
-        for chunk in ranked_chunks
-        if is_movilidad_suscripcion_direct_financing_support_chunk(chunk)
-    ]
-    if len(direct_financing_chunks) < MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE:
-        return ranked_chunks
-    return direct_financing_chunks
-
-
-def query_has_arl_commissions_guide_intent(query: str) -> bool:
-    """Return whether one query explicitly targets the ARL commissions guide."""
-
-    normalized_query = normalize_equivalence_text(query)
-    return (
-        "arl" in normalized_query
-        and "comision" in normalized_query
-        and any(
-            phrase in normalized_query
-            for phrase in (
-                "consulto",
-                "consultar",
-                "consulta",
-                "liquidacion",
-                "liquidar",
-            )
-        )
-    )
-
-
-def is_arl_commissions_guide_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one chunk belongs to the ARL commissions guide family."""
-
-    if chunk.product != "arl" or chunk.document_type != "guide":
-        return False
-    normalized_document_name = normalize_equivalence_text(chunk.document_name)
-    normalized_source_id = normalize_equivalence_text(chunk.source_pdf_id)
-    return (
-        "consulta liquidacion de comisiones" in normalized_document_name
-        or "instructivos-consulta-de-comisiones-arl-sura" in normalized_source_id
-    )
-
-
-def query_has_arl_account_update_guide_intent(query: str) -> bool:
-    """Return whether one query explicitly targets the ARL account-update guide."""
-
-    normalized_query = normalize_equivalence_text(query)
-    return (
-        "arl" in normalized_query
-        and "cuenta bancaria" in normalized_query
-        and any(
-            phrase in normalized_query
-            for phrase in (
-                "actualizo",
-                "actualizar",
-                "actualizacion",
-                "pago de comisiones",
-            )
-        )
-    )
-
-
-def is_arl_account_update_guide_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one chunk belongs to the ARL account-update guide family."""
-
-    if chunk.product != "arl" or chunk.document_type != "guide":
-        return False
-    normalized_document_name = normalize_equivalence_text(chunk.document_name)
-    normalized_source_id = normalize_equivalence_text(chunk.source_pdf_id)
-    return (
-        "actualizacion de cuenta bancaria" in normalized_document_name
-        or "instructivos-actualizacion-cuenta-bancaria-v2" in normalized_source_id
-    )
-
-
-def query_has_arl_rui_normativity_intent(query: str) -> bool:
-    """Return whether one query explicitly asks for ARL/RUI normativity."""
-
-    normalized_query = normalize_equivalence_text(query)
-    return (
-        "normatividad" in normalized_query
-        and (
-            "rui" in normalized_query
-            or "registro unico" in normalized_query
-            or "intermediario" in normalized_query
-        )
-    )
-
-
-def is_arl_rui_normativity_support_chunk(chunk: RetrievedChunk) -> bool:
-    """Return whether one chunk directly supports ARL/RUI normativity answers."""
-
-    if chunk.product != "arl" or chunk.document_type != "faq":
-        return False
-    if "registro-unico-de-intermediacion-rui" not in chunk.source_pdf_id:
-        return False
-    normalized_section = normalize_equivalence_text(chunk.section or "")
-    if "cual es la normatividad que rige el registro unico de intermediarios" in (
-        normalized_section
-    ):
-        return True
-    normalized_text = normalize_equivalence_text(chunk.text)
-    matching_anchors = sum(
-        1 for anchor in ARL_RUI_NORMATIVE_ANCHORS if anchor in normalized_text
-    )
-    return matching_anchors >= 2
-
-
-def select_citation_evidence_chunks(
-    retrieved_chunks: Sequence[RetrievedChunk],
-    *,
-    query: str,
-) -> list[RetrievedChunk]:
-    """Return the narrower citation/doc-basis subset for one answer query."""
-
-    citation_chunks = list(retrieved_chunks)
-    if query_has_arl_remuneration_overview_intent(query):
-        direct_remuneration_overview_chunks = [
-            chunk
-            for chunk in citation_chunks
-            if is_arl_remuneration_overview_citation_support_chunk(chunk)
-        ]
-        if direct_remuneration_overview_chunks:
-            return direct_remuneration_overview_chunks
-    if query_has_arl_account_update_guide_intent(query):
-        direct_account_update_chunks = [
-            chunk for chunk in citation_chunks if is_arl_account_update_guide_chunk(chunk)
-        ]
-        if direct_account_update_chunks:
-            return direct_account_update_chunks
-    if query_has_arl_commissions_guide_intent(query):
-        direct_commissions_chunks = [
-            chunk for chunk in citation_chunks if is_arl_commissions_guide_chunk(chunk)
-        ]
-        if direct_commissions_chunks:
-            return direct_commissions_chunks
-    if not query_has_arl_rui_normativity_intent(query):
-        return citation_chunks
-
-    direct_normativity_chunks = [
-        chunk for chunk in citation_chunks if is_arl_rui_normativity_support_chunk(chunk)
-    ]
-    if direct_normativity_chunks:
-        return direct_normativity_chunks
-    return citation_chunks
-
-
-def normalize_retrieval_query_with_term_equivalences(
-    retrieval_query: RetrievalQuery,
-    *,
-    term_equivalences: TermEquivalenceSet,
-) -> RetrievalQuery:
-    """Apply operator-curated term equivalences to query text and filters."""
-
-    normalized_filters = {
-        "document_type": canonicalize_filter_value(
-            field_name="document_type",
-            value=retrieval_query.filters.document_type,
-            term_equivalences=term_equivalences,
-        ),
-        "product": canonicalize_filter_value(
-            field_name="product",
-            value=retrieval_query.filters.product,
-            term_equivalences=term_equivalences,
-        ),
-        "document_name": retrieval_query.filters.document_name,
-        "version": retrieval_query.filters.version,
-    }
-    skip_document_name_injection_for_individual_financing = (
-        query_has_movilidad_suscripcion_individual_financing_intent(
-            retrieval_query.query
-        )
-    )
-    for query_filter_rule in term_equivalences.query_filter_rules:
-        matches_all = all(
-            query_contains_equivalent_phrase(retrieval_query.query, phrase)
-            for phrase in query_filter_rule.all_of
-        )
-        matches_any = not query_filter_rule.any_of or any(
-            query_contains_equivalent_phrase(retrieval_query.query, phrase)
-            for phrase in query_filter_rule.any_of
-        )
-        if not (matches_all and matches_any):
-            continue
-        for field_name, field_value in query_filter_rule.filters.items():
-            if field_name not in normalized_filters or normalized_filters[field_name] is not None:
-                continue
-            if (
-                skip_document_name_injection_for_individual_financing
-                and field_name == "document_name"
-            ):
-                continue
-            if field_name in {"document_type", "product"}:
-                normalized_filters[field_name] = canonicalize_filter_value(
-                    field_name=field_name,
-                    value=field_value,
-                    term_equivalences=term_equivalences,
-                )
-                continue
-            normalized_filters[field_name] = field_value
-
-    return RetrievalQuery(
-        query=augment_query_with_term_equivalences(retrieval_query.query, term_equivalences),
-        top_k=retrieval_query.top_k,
-        filters=normalized_filters,
+def deduplicate_exact_pv_applicability_chunks(
+    chunk_records: Sequence[ChunkRecord],
+) -> list[ChunkRecord]:
+    """Drop exact duplicate standalone PV applicability chunks conservatively."""
+
+    return local_hybrid_recall.deduplicate_exact_pv_applicability_chunks(
+        chunk_records,
+        chunk_schema_version=CHUNK_SCHEMA_VERSION,
     )
 
 
@@ -2158,57 +932,6 @@ def remove_artifact_if_exists(path: Path) -> None:
 
     if path.exists():
         path.unlink()
-
-
-def is_standalone_pv_applicability_chunk(chunk_record: ChunkRecord) -> bool:
-    """Return whether one chunk is a standalone PV applicability chunk."""
-
-    if not is_pv_applicability_section_path(chunk_record.section_path):
-        return False
-    return chunk_record.section == "PLANES QUE APLICA"
-
-
-def deduplicate_exact_pv_applicability_chunks(
-    chunk_records: Sequence[ChunkRecord],
-) -> list[ChunkRecord]:
-    """Drop exact duplicate standalone PV applicability chunks conservatively."""
-
-    deduplicated_records: list[ChunkRecord] = []
-    seen_surfaces: set[tuple[str, str]] = set()
-
-    for chunk_record in chunk_records:
-        if not is_standalone_pv_applicability_chunk(chunk_record):
-            deduplicated_records.append(chunk_record)
-            continue
-        normalized_text = normalize_equivalence_text(chunk_record.text)
-        dedup_key = (chunk_record.source_pdf_id, normalized_text)
-        if dedup_key in seen_surfaces:
-            continue
-        seen_surfaces.add(dedup_key)
-        deduplicated_records.append(chunk_record)
-
-    rebuilt_records: list[ChunkRecord] = []
-    for chunk_index, chunk_record in enumerate(deduplicated_records):
-        rebuilt_records.append(
-            ChunkRecord(
-                chunk_id=f"{chunk_record.source_pdf_id}:{CHUNK_SCHEMA_VERSION}:{chunk_index:04d}",
-                source_pdf_id=chunk_record.source_pdf_id,
-                document_name=chunk_record.document_name,
-                document_version=chunk_record.document_version,
-                document_type=chunk_record.document_type,
-                product=chunk_record.product,
-                source_pdf_path=chunk_record.source_pdf_path,
-                source_pdf_relative_path=chunk_record.source_pdf_relative_path,
-                cleaned_markdown_output_path=chunk_record.cleaned_markdown_output_path,
-                text=chunk_record.text,
-                chunk_index=chunk_index,
-                chunk_schema_version=chunk_record.chunk_schema_version,
-                section=chunk_record.section,
-                section_path=chunk_record.section_path,
-            )
-        )
-
-    return rebuilt_records
 
 
 def build_chunk_records(
@@ -2601,207 +1324,6 @@ def iter_embedding_artifacts(embedding_dir: Path, glob_pattern: str) -> list[Pat
     return sorted(path for path in embedding_dir.glob(glob_pattern) if path.is_file())
 
 
-def build_qdrant_point_id(embedding_record: EmbeddingRecord) -> str:
-    """Return the deterministic Qdrant point id for one embedding record."""
-
-    return str(uuid.uuid5(QDRANT_POINT_ID_NAMESPACE, embedding_record.chunk_id))
-
-
-def build_qdrant_point_payload(embedding_record: EmbeddingRecord) -> dict[str, object]:
-    """Map a typed embedding record into a Qdrant payload."""
-
-    return {
-        "chunk_id": embedding_record.chunk_id,
-        "source_pdf_id": embedding_record.source_pdf_id,
-        "source_pdf_relative_path": embedding_record.payload.source_pdf_relative_path,
-        "chunk_schema_version": embedding_record.chunk_schema_version,
-        "embedding_provider": embedding_record.embedding_provider,
-        "embedding_model": embedding_record.embedding_model,
-        "document_name": embedding_record.payload.document_name,
-        "document_version": embedding_record.payload.document_version,
-        "document_type": embedding_record.payload.document_type,
-        "product": embedding_record.payload.product,
-        "chunk_index": embedding_record.payload.chunk_index,
-        "section": embedding_record.payload.section,
-        "section_path": embedding_record.payload.section_path,
-        "text": embedding_record.payload.text,
-    }
-
-
-def build_qdrant_query_filter(filters: object) -> object | None:
-    """Map typed retrieval filters into a Qdrant filter object."""
-
-    filter_mappings = {
-        "document_type": "document_type",
-        "product": "product",
-        "document_name": "document_name",
-        "version": "document_version",
-    }
-    filter_values = {
-        field_name: getattr(filters, field_name, None) for field_name in filter_mappings
-    }
-    if all(value is None for value in filter_values.values()):
-        return None
-
-    conditions: list[object] = []
-    qdrant_models = get_qdrant_models()
-
-    for field_name, payload_key in filter_mappings.items():
-        value = filter_values[field_name]
-        if value is None:
-            continue
-        conditions.append(
-            qdrant_models.FieldCondition(
-                key=payload_key,
-                match=qdrant_models.MatchValue(value=value),
-            )
-        )
-
-    if not conditions:
-        return None
-
-    return qdrant_models.Filter(must=conditions)
-
-
-def build_qdrant_source_pdf_filter(source_pdf_id: str) -> object:
-    """Build a narrow Qdrant filter that matches one source document family."""
-
-    qdrant_models = get_qdrant_models()
-    return qdrant_models.Filter(
-        must=[
-            qdrant_models.FieldCondition(
-                key="source_pdf_id",
-                match=qdrant_models.MatchValue(value=source_pdf_id),
-            )
-        ]
-    )
-
-
-def build_qdrant_points(embedding_bundle: EmbeddingBundle) -> list[object]:
-    """Map one embedding bundle into deterministic Qdrant points."""
-
-    qdrant_models = get_qdrant_models()
-    return [
-        qdrant_models.PointStruct(
-            id=build_qdrant_point_id(embedding_record),
-            vector=embedding_record.vector,
-            payload=build_qdrant_point_payload(embedding_record),
-        )
-        for embedding_record in embedding_bundle.embeddings
-    ]
-
-
-def map_search_hit_to_retrieved_chunk(hit: object) -> RetrievedChunk:
-    """Map one Qdrant search hit into a typed retrieval result."""
-
-    payload = getattr(hit, "payload", None)
-    if not isinstance(payload, dict):
-        raise RuntimeError("Qdrant search hit payload is missing or invalid.")
-
-    chunk_id = payload.get("chunk_id")
-    text = payload.get("text")
-    document_name = payload.get("document_name")
-    if (
-        not isinstance(chunk_id, str)
-        or not isinstance(text, str)
-        or not isinstance(document_name, str)
-    ):
-        raise RuntimeError("Qdrant search hit payload is missing required retrieval fields.")
-
-    score = getattr(hit, "score", None)
-    if score is None:
-        score = 0.0
-
-    source_pdf_id = payload.get("source_pdf_id")
-    if not isinstance(source_pdf_id, str):
-        source_pdf_id = None
-    source_pdf_relative_path = payload.get("source_pdf_relative_path")
-    if not isinstance(source_pdf_relative_path, str):
-        source_pdf_relative_path = None
-    chunk_schema_version = payload.get("chunk_schema_version")
-    if not isinstance(chunk_schema_version, str):
-        chunk_schema_version = None
-    chunk_index = payload.get("chunk_index")
-    if not isinstance(chunk_index, int):
-        chunk_index = None
-    document_version = payload.get("document_version")
-    if not isinstance(document_version, str):
-        document_version = None
-    document_type = payload.get("document_type")
-    if not isinstance(document_type, str):
-        document_type = None
-    product = payload.get("product")
-    if not isinstance(product, str):
-        product = None
-    page = payload.get("page")
-    if not isinstance(page, int):
-        page = None
-    section = payload.get("section")
-    if not isinstance(section, str):
-        section = None
-    section_path = payload.get("section_path")
-    if not isinstance(section_path, list) or not all(
-        isinstance(value, str) for value in section_path
-    ):
-        section_path = []
-    clause_id = payload.get("clause_id")
-    if not isinstance(clause_id, str):
-        clause_id = None
-
-    return RetrievedChunk(
-        chunk_id=chunk_id,
-        source_pdf_id=source_pdf_id,
-        source_pdf_relative_path=source_pdf_relative_path,
-        chunk_schema_version=chunk_schema_version,
-        chunk_index=chunk_index,
-        text=text,
-        document_name=document_name,
-        document_version=document_version,
-        document_type=document_type,
-        product=product,
-        page=page,
-        section=section,
-        section_path=section_path,
-        clause_id=clause_id,
-        score=float(score),
-    )
-
-
-def search_qdrant_chunks(
-    *,
-    client: object,
-    settings: Settings,
-    retrieval_query: RetrievalQuery,
-    query_vector: list[float],
-    candidate_limit: int | None = None,
-) -> list[object]:
-    """Execute one Qdrant search for retrieval."""
-
-    query_filter = build_qdrant_query_filter(retrieval_query.filters)
-    resolved_limit = candidate_limit or retrieval_query.top_k
-    if hasattr(client, "search"):
-        return client.search(
-            collection_name=settings.qdrant_collection,
-            query_vector=query_vector,
-            query_filter=query_filter,
-            limit=resolved_limit,
-            with_payload=True,
-        )
-    if hasattr(client, "query_points"):
-        response = client.query_points(
-            collection_name=settings.qdrant_collection,
-            query=query_vector,
-            query_filter=query_filter,
-            limit=resolved_limit,
-            with_payload=True,
-        )
-        points = getattr(response, "points", None)
-        if not isinstance(points, list):
-            raise RuntimeError("Qdrant query_points response did not include ranked points.")
-        return points
-    raise RuntimeError("Installed Qdrant client does not expose a supported retrieval method.")
-
-
 def retrieve_ranked_chunks(
     retrieval_query: RetrievalQuery,
     *,
@@ -2872,232 +1394,6 @@ def retrieve_ranked_chunks(
         return result
 
 
-def build_grounded_prompt(
-    *,
-    query: str,
-    retrieved_chunks: list[RetrievedChunk],
-) -> str:
-    """Build a deterministic grounded-answer prompt from retrieved evidence."""
-
-    evidence_sections: list[str] = []
-    for chunk in retrieved_chunks:
-        evidence_sections.append(
-            "\n".join(
-                [
-                    f"Chunk ID: {chunk.chunk_id}",
-                    f"Document: {chunk.document_name}",
-                    f"Section: {chunk.section or 'Unknown'}",
-                    f"Text: {chunk.text}",
-                ]
-            )
-        )
-
-    evidence_block = "\n\n---\n\n".join(evidence_sections)
-    return (
-        "Answer the advisor's question using only the evidence below.\n"
-        "If the evidence is insufficient, say that explicitly and do not invent details.\n\n"
-        f"Question: {query}\n\n"
-        f"Evidence:\n{evidence_block}"
-    )
-
-
-def build_citations_from_chunks(retrieved_chunks: list[RetrievedChunk]) -> list[Citation]:
-    """Derive explicit citations from retrieved evidence."""
-
-    citations: list[Citation] = []
-    for chunk in retrieved_chunks:
-        citations.append(
-            Citation(
-                document_name=chunk.document_name,
-                source_pdf_relative_path=chunk.source_pdf_relative_path,
-                document_type=chunk.document_type,
-                product=chunk.product,
-                chunk_id=chunk.chunk_id,
-                page=chunk.page,
-                section=chunk.section,
-                clause_id=chunk.clause_id,
-                quote=chunk.text[:280],
-            )
-        )
-    return citations
-
-
-def build_documentary_basis(retrieved_chunks: list[RetrievedChunk]) -> list[DocumentaryBasisItem]:
-    """Map retrieved evidence into documentary basis items."""
-
-    return [
-        DocumentaryBasisItem(
-            document_name=chunk.document_name,
-            source_pdf_relative_path=chunk.source_pdf_relative_path,
-            document_type=chunk.document_type,
-            product=chunk.product,
-            page=chunk.page,
-            section=chunk.section,
-            clause_id=chunk.clause_id,
-            note=f"Derived from chunk {chunk.chunk_id}",
-        )
-        for chunk in retrieved_chunks
-    ]
-
-
-def assess_grounding(
-    *,
-    retrieved_chunks: list[RetrievedChunk],
-    citations: list[Citation],
-) -> GroundingVerification:
-    """Build a simple typed grounding assessment from evidence availability."""
-
-    if not retrieved_chunks:
-        return GroundingVerification(
-            supported=False,
-            confidence="low",
-            unsupported_claims=["No retrieval evidence was available."],
-            missing_citations=["No citations available because retrieval returned no chunks."],
-        )
-
-    if len(retrieved_chunks) >= MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE and citations:
-        return GroundingVerification(supported=True, confidence="high")
-
-    return GroundingVerification(
-        supported=True,
-        confidence="medium",
-        missing_citations=(
-            [] if citations else ["No citations were derived from retrieved evidence."]
-        ),
-    )
-
-
-def build_insufficient_evidence_response(
-    *,
-    query: str,
-    retrieved_chunks: list[RetrievedChunk],
-    limitation_note: str | None = None,
-) -> GroundedAnswerResult:
-    """Return a typed limited grounded response for insufficient evidence."""
-
-    citations = build_citations_from_chunks(retrieved_chunks)
-    verification = assess_grounding(retrieved_chunks=retrieved_chunks, citations=citations)
-    limitations = [
-        limitation_note or "Retrieved evidence is insufficient for a strong grounded answer."
-    ]
-    return GroundedAnswerResult(
-        query=query,
-        response=AdvisorDraftResponse(
-            suggested_answer=(
-                "I do not have enough grounded evidence in the retrieved documents to answer "
-                "this confidently."
-            ),
-            documentary_basis=build_documentary_basis(retrieved_chunks),
-            citations=citations,
-            confidence="low",
-            limitations=limitations,
-            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
-        ),
-        verification=verification,
-    )
-
-
-def build_unsupported_query_response(*, query: str) -> GroundedAnswerResult:
-    """Return a typed conservative refusal for out-of-scope queries."""
-
-    verification = GroundingVerification(
-        supported=False,
-        confidence="low",
-        unsupported_claims=[
-            "The query is outside the supported insurance-document scope for this assistant."
-        ],
-        missing_citations=["No citations are available for an out-of-scope refusal outcome."],
-    )
-    return GroundedAnswerResult(
-        query=query,
-        response=AdvisorDraftResponse(
-            suggested_answer=(
-                "I cannot answer that request within the supported insurance-document scope "
-                "of this assistant."
-            ),
-            documentary_basis=[],
-            citations=[],
-            confidence="low",
-            limitations=["This request is outside the supported insurance-document scope."],
-            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
-        ),
-        verification=verification,
-    )
-
-
-def build_prompt_injection_refusal_response(*, query: str) -> GroundedAnswerResult:
-    """Return a typed conservative refusal for prompt-injection-like queries."""
-
-    verification = GroundingVerification(
-        supported=False,
-        confidence="low",
-        unsupported_claims=[
-            (
-                "The query included instructions that conflict with the assistant's "
-                "grounded-use boundaries."
-            )
-        ],
-        missing_citations=["No citations are available for a prompt-injection refusal outcome."],
-    )
-    return GroundedAnswerResult(
-        query=query,
-        response=AdvisorDraftResponse(
-            suggested_answer=(
-                "I cannot follow instructions that attempt to override the assistant's "
-                "grounded-use rules or reveal hidden system behavior."
-            ),
-            documentary_basis=[],
-            citations=[],
-            confidence="low",
-            limitations=[
-                (
-                    "This request triggered a prompt-injection guardrail and was refused "
-                    "conservatively."
-                )
-            ],
-            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
-        ),
-        verification=verification,
-    )
-
-
-def build_missing_citation_guardrail_response(
-    *,
-    query: str,
-    retrieved_chunks: list[RetrievedChunk],
-) -> GroundedAnswerResult:
-    """Return a typed guarded outcome for citationless answerable responses."""
-
-    verification = GroundingVerification(
-        supported=False,
-        confidence="low",
-        unsupported_claims=[
-            "No traceable citations could be derived from the retrieved evidence."
-        ],
-        missing_citations=["At least one citation is required for an answerable response."],
-    )
-    return GroundedAnswerResult(
-        query=query,
-        response=AdvisorDraftResponse(
-            suggested_answer=(
-                "I cannot provide a grounded answer because the retrieved evidence did not "
-                "produce traceable citations."
-            ),
-            documentary_basis=build_documentary_basis(retrieved_chunks),
-            citations=[],
-            confidence="low",
-            limitations=[
-                (
-                    "At least one traceable citation is required before surfacing "
-                    "an answerable response."
-                )
-            ],
-            advisor_review_notice=ADVISOR_REVIEW_NOTICE,
-        ),
-        verification=verification,
-    )
-
-
 def generate_grounded_answer(
     retrieval_query: RetrievalQuery,
     *,
@@ -3129,7 +1425,10 @@ def generate_grounded_answer(
                 triggered_signals=injection_decision.signals,
                 refusal_reason=injection_decision.reason,
             )
-            result = build_prompt_injection_refusal_response(query=retrieval_query.query)
+            result = _build_prompt_injection_refusal_response(
+                query=retrieval_query.query,
+                advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+            )
             return result
         scope_decision = classify_query_scope(retrieval_query.query)
         if scope_decision.scope == "unsupported":
@@ -3140,7 +1439,10 @@ def generate_grounded_answer(
                 scope="unsupported",
                 refusal_reason=scope_decision.reason,
             )
-            result = build_unsupported_query_response(query=retrieval_query.query)
+            result = _build_unsupported_query_response(
+                query=retrieval_query.query,
+                advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+            )
             return result
         resolved_settings = validate_startup_settings(
             settings or get_settings(),
@@ -3162,17 +1464,25 @@ def generate_grounded_answer(
             query=retrieval_query.query,
         )
         if not answer_evidence_chunks:
-            result = build_insufficient_evidence_response(
+            result = _build_insufficient_evidence_response(
                 query=retrieval_query.query,
                 retrieved_chunks=answer_evidence_chunks,
+                advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+                min_retrieval_chunks_for_high_confidence=(
+                    MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE
+                ),
             )
             return result
         if len(answer_evidence_chunks) < MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE:
-            result = build_insufficient_evidence_response(
+            result = _build_insufficient_evidence_response(
                 query=retrieval_query.query,
                 retrieved_chunks=answer_evidence_chunks,
                 limitation_note=(
                     "Retrieved evidence is too limited to support a strong grounded answer."
+                ),
+                advisor_review_notice=ADVISOR_REVIEW_NOTICE,
+                min_retrieval_chunks_for_high_confidence=(
+                    MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE
                 ),
             )
             return result
@@ -3191,9 +1501,10 @@ def generate_grounded_answer(
                 retrieved_chunk_count=len(answer_evidence_chunks),
                 citation_count=0,
             )
-            result = build_missing_citation_guardrail_response(
+            result = _build_missing_citation_guardrail_response(
                 query=retrieval_query.query,
                 retrieved_chunks=answer_evidence_chunks,
+                advisor_review_notice=ADVISOR_REVIEW_NOTICE,
             )
             return result
         prompt = build_grounded_prompt(
@@ -3202,9 +1513,10 @@ def generate_grounded_answer(
         )
         completion_fn = completion_generator or generate_grounded_completion
         suggested_answer = completion_fn(prompt, resolved_settings)
-        verification = assess_grounding(
+        verification = _assess_grounding(
             retrieved_chunks=answer_evidence_chunks,
             citations=citations,
+            min_retrieval_chunks_for_high_confidence=MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE,
         )
 
         limitations: list[str] = []
@@ -3227,71 +1539,6 @@ def generate_grounded_answer(
             verification=verification,
         )
         return result
-
-
-def get_collection_vector_size(collection_info: object) -> int | None:
-    """Extract collection vector size from a Qdrant collection descriptor."""
-
-    config = getattr(collection_info, "config", None)
-    params = getattr(config, "params", None)
-    vectors = getattr(params, "vectors", None)
-    if vectors is None:
-        return None
-    size = getattr(vectors, "size", None)
-    if isinstance(size, int):
-        return size
-    if isinstance(vectors, dict):
-        first_vector = next(iter(vectors.values()), None)
-        nested_size = getattr(first_vector, "size", None)
-        if isinstance(nested_size, int):
-            return nested_size
-    return None
-
-
-def ensure_qdrant_collection(client: object, settings: Settings, vector_size: int) -> None:
-    """Create or validate the target Qdrant collection."""
-
-    qdrant_models = get_qdrant_models()
-
-    try:
-        collection_info = client.get_collection(settings.qdrant_collection)
-    except Exception:
-        client.create_collection(
-            collection_name=settings.qdrant_collection,
-            vectors_config=qdrant_models.VectorParams(
-                size=vector_size,
-                distance=qdrant_models.Distance.COSINE,
-            ),
-        )
-        collection_info = client.get_collection(settings.qdrant_collection)
-
-    configured_size = get_collection_vector_size(collection_info)
-    if configured_size != vector_size:
-        raise RuntimeError(
-            "Configured Qdrant collection is incompatible with the embedding vector dimension."
-        )
-
-    ensure_qdrant_payload_indexes(client, settings)
-
-
-def ensure_qdrant_payload_indexes(client: object, settings: Settings) -> None:
-    """Ensure payload indexes exist for retrieval-facing metadata filters."""
-
-    create_payload_index = getattr(client, "create_payload_index", None)
-    if not callable(create_payload_index):
-        return
-
-    qdrant_models = get_qdrant_models()
-    field_schema_keyword = getattr(qdrant_models, "PayloadSchemaType", None)
-    keyword_value = getattr(field_schema_keyword, "KEYWORD", "keyword")
-
-    for field_name in QDRANT_FILTERABLE_PAYLOAD_FIELDS:
-        create_payload_index(
-            collection_name=settings.qdrant_collection,
-            field_name=field_name,
-            field_schema=keyword_value,
-            wait=True,
-        )
 
 
 def build_indexing_record(
@@ -3333,71 +1580,6 @@ def build_failed_indexing_record_from_artifact_path(
         error_message=error_message,
         indexed_at=datetime.now(UTC),
     )
-
-
-def is_transient_qdrant_error(exc: Exception) -> bool:
-    """Return whether an indexing exception is retryable."""
-
-    return bool(
-        getattr(exc, "transient", False)
-        or isinstance(exc, TimeoutError)
-        or isinstance(exc, ConnectionError)
-    )
-
-
-def sleep_with_backoff(delay_seconds: float) -> None:
-    """Sleep for the configured retry backoff duration."""
-
-    time.sleep(delay_seconds)
-
-
-def upsert_points_with_retry(
-    *,
-    client: object,
-    settings: Settings,
-    points: list[object],
-    max_retries: int,
-    retry_backoff_seconds: float,
-) -> None:
-    """Upsert Qdrant points with deterministic retry behavior."""
-
-    attempt = 0
-    while True:
-        try:
-            client.upsert(collection_name=settings.qdrant_collection, points=points, wait=True)
-            return
-        except Exception as exc:
-            if attempt >= max_retries or not is_transient_qdrant_error(exc):
-                raise
-            sleep_with_backoff(retry_backoff_seconds * (2**attempt))
-            attempt += 1
-
-
-def prune_existing_source_points(
-    *,
-    client: object,
-    settings: Settings,
-    source_pdf_id: str,
-) -> None:
-    """Delete existing points for one source PDF before reindexing that bundle."""
-
-    delete_points = getattr(client, "delete", None)
-    if not callable(delete_points):
-        return
-    delete_points(
-        collection_name=settings.qdrant_collection,
-        points_selector=build_qdrant_source_pdf_filter(source_pdf_id),
-        wait=True,
-    )
-
-
-def smoke_validate_indexing(client: object, settings: Settings, expected_points: int) -> None:
-    """Run a narrow operational smoke check after indexing."""
-
-    count_response = client.count(collection_name=settings.qdrant_collection, exact=True)
-    count_value = getattr(count_response, "count", None)
-    if not isinstance(count_value, int) or count_value < min(expected_points, 1):
-        raise RuntimeError("Qdrant smoke validation did not confirm indexed points.")
 
 
 def index_embedding_bundle(

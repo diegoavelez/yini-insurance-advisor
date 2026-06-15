@@ -12,6 +12,7 @@ from contracts import (
     VectorPayload,
 )
 from core.config import DEFAULT_EMBEDDING_MODEL, Settings
+from rag import qdrant_store
 from rag.ingestion import build_parser, build_qdrant_point_id, main
 
 
@@ -285,7 +286,7 @@ def test_qdrant_indexing_bootstraps_collection_and_indexes_points(
     manifest_path = tmp_path / "qdrant-manifest.jsonl"
     fake_client = FakeQdrantClient()
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
     monkeypatch.setattr(
@@ -350,7 +351,7 @@ def test_qdrant_indexing_fails_for_incompatible_collection_shape(
     fake_client = FakeQdrantClient()
     fake_client.collection_size = 5
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
     monkeypatch.setattr(
@@ -394,7 +395,7 @@ def test_qdrant_indexing_is_idempotent_across_reruns(
     manifest_path = tmp_path / "qdrant-manifest.jsonl"
     fake_client = FakeQdrantClient()
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
     monkeypatch.setattr(
@@ -455,7 +456,7 @@ def test_qdrant_indexing_skips_payload_index_creation_when_client_lacks_support(
     manifest_path = tmp_path / "qdrant-manifest.jsonl"
     fake_client = FakeQdrantClientWithoutPayloadIndex()
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
     monkeypatch.setattr(
@@ -514,7 +515,7 @@ def test_qdrant_indexing_prunes_legacy_points_for_same_source_pdf_id(
         unrelated_point.id: unrelated_point,
     }
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
     monkeypatch.setattr(
@@ -567,11 +568,12 @@ def test_qdrant_indexing_retries_transient_failures(
 
     fake_client.upsert = flaky_upsert  # type: ignore[method-assign]
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
     monkeypatch.setattr(
-        "rag.ingestion.sleep_with_backoff",
+        qdrant_store,
+        "sleep_with_backoff",
         lambda seconds: sleep_calls.append(seconds),
     )
     monkeypatch.setattr(
@@ -616,7 +618,7 @@ def test_qdrant_indexing_records_permanent_upsert_failure(
 
     fake_client.upsert = failing_upsert  # type: ignore[method-assign]
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
     monkeypatch.setattr(
@@ -677,7 +679,7 @@ def test_qdrant_indexing_continues_after_one_failure_when_fail_fast_is_false(
 
     fake_client.upsert = selective_upsert  # type: ignore[method-assign]
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr("rag.ingestion.create_qdrant_client", lambda settings: fake_client)
     monkeypatch.setattr(

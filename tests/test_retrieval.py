@@ -12,6 +12,7 @@ from contracts import (
     TermEquivalenceSet,
 )
 from core.config import Settings
+from rag import qdrant_store
 from rag.ingestion import (
     build_hybrid_recall_terms,
     build_parser,
@@ -2236,7 +2237,7 @@ def test_retrieve_ranked_chunks_uses_filters_in_qdrant_query(
 ) -> None:
     client = FakeQdrantRetrievalClient([])
 
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
     monkeypatch.setattr(
         "rag.ingestion.generate_embedding_vector",
@@ -2275,7 +2276,7 @@ def test_retrieve_ranked_chunks_supports_document_type_filter(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
 
     retrieve_ranked_chunks(
         RetrievalQuery(
@@ -2306,7 +2307,7 @@ def test_retrieve_ranked_chunks_supports_product_filter(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
 
     retrieve_ranked_chunks(
         RetrievalQuery(
@@ -2337,7 +2338,7 @@ def test_retrieve_ranked_chunks_supports_combined_metadata_filters(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
 
     retrieve_ranked_chunks(
         RetrievalQuery(
@@ -2644,7 +2645,7 @@ def test_retrieve_ranked_chunks_applies_movilidad_pv_document_family_filter(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr(
         "rag.ingestion.load_term_equivalences",
         lambda: TermEquivalenceSet(
@@ -2721,7 +2722,7 @@ def test_retrieve_ranked_chunks_applies_utilitarios_pesados_guide_document_famil
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr(
         "rag.ingestion.load_term_equivalences",
         lambda: TermEquivalenceSet(
@@ -2785,7 +2786,7 @@ def test_retrieve_ranked_chunks_applies_financing_guide_document_family_filter(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr(
         "rag.ingestion.load_term_equivalences",
         lambda: TermEquivalenceSet(
@@ -2861,7 +2862,7 @@ def test_retrieve_ranked_chunks_applies_viajes_international_document_filter(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr(
         "rag.ingestion.load_term_equivalences",
         lambda: TermEquivalenceSet(
@@ -2917,7 +2918,7 @@ def test_retrieve_ranked_chunks_applies_viajes_national_document_filter(
         "rag.ingestion.generate_embedding_vector",
         lambda text, settings: [0.1, 0.2],
     )
-    monkeypatch.setattr("rag.ingestion.get_qdrant_models", fake_qdrant_models)
+    monkeypatch.setattr(qdrant_store, "get_qdrant_models", fake_qdrant_models)
     monkeypatch.setattr(
         "rag.ingestion.load_term_equivalences",
         lambda: TermEquivalenceSet(

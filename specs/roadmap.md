@@ -1306,6 +1306,11 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `rag-lexical-normalization-seam-extraction`
 - `rag-arl-remuneration-domain-seam-extraction`
 - `rag-document-canonicalization-seam-extraction`
+- `rag-qdrant-client-and-payload-seam-extraction`
+- `rag-qdrant-indexing-runtime-seam-extraction`
+- `rag-grounded-answer-assembly-and-guardrails-seam-extraction`
+- `rag-answer-evidence-selection-domain-seam-extraction`
+- `rag-local-hybrid-recall-and-query-normalization-seam-extraction`
 - `qdrant-metadata-filter-index-alignment`
 - `noisy-document-title-heading-guardrail`
 - `autos-plan-comparison-retrieval-alignment`
@@ -1496,8 +1501,31 @@ Implementation note:
     document-specific markdown cleanup, semantic block grouping, section-path
     prefixing, and overlap-disable heuristics behind a dedicated `rag` seam
     while keeping `rag.ingestion.py` as the orchestration layer.
-  There are no further documented post-onboarding refactor candidates at this
-  time.
+  - `rag-qdrant-client-and-payload-seam-extraction`, which moved Qdrant
+    point/payload mapping, retrieval-filter translation, source-document prune
+    filters, and collection/payload-index bootstrap behind a dedicated `rag`
+    seam while preserving the current indexing and retrieval contract.
+  - `rag-qdrant-indexing-runtime-seam-extraction`, which moved the remaining
+    Qdrant indexing retry/backoff, source-document prune execution, and
+    post-index smoke validation helpers behind the same dedicated `rag` seam
+    while preserving indexing manifest outcomes and idempotent reindexing
+    behavior.
+  - `rag-grounded-answer-assembly-and-guardrails-seam-extraction`, which moved
+    grounded-answer prompt construction, citation/documentary-basis derivation,
+    grounding verification, and conservative refusal/limited-response builders
+    behind a dedicated `rag` seam while keeping answer orchestration in
+    `rag.ingestion.py`.
+  - `rag-answer-evidence-selection-domain-seam-extraction`, which moved the
+    domain-specific candidate-pool sizing, reranking, evidence diversification,
+    answer-evidence narrowing, and citation-evidence narrowing helpers behind a
+    dedicated `rag` seam while preserving current retrieval and answer
+    orchestration behavior.
+  The next documented post-onboarding refactor candidate is
+  `rag-local-hybrid-recall-and-query-normalization-seam-extraction`, covering
+  retrieval-query normalization with term equivalences, domain-specific hybrid
+  recall term construction, local chunk filtering/scoring, and exact
+  applicability deduplication while keeping retrieval orchestration in
+  `rag.ingestion.py`.
 - When those comparison bundles match, retrieval can use a larger candidate
   pool plus deterministic lexical reranking before returning the final top-k.
 - Chunk text can now be prefixed with its governing `section_path` headings
