@@ -1099,6 +1099,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `utilitarios-pesados-policy-family-recovery`
 - `choque-simple-intent-evidence-routing-recovery`
 - `mvp-current-category-acceptance-matrix`
+- `mvp-current-category-acceptance-smoke-automation`
 - `eps-pac-asegurabilidad-policy-family-recovery`
 - `soat-tariff-table-label-recovery`
 
@@ -1577,9 +1578,18 @@ Implementation note:
   adapters, shared `RetrievalQuery` construction from CLI args, and top-level
   CLI request lifecycle logging/dispatch while keeping parser definitions and
   lower-level runtime/retrieval helpers in `rag.ingestion.py`.
-- Current execution focus is now `mvp-current-category-acceptance-matrix`:
-  prove the MVP against the categories already onboarded in the current corpus
-  before opening new category waves or continuing non-blocking coupling work.
+- The manual `mvp-current-category-acceptance-matrix` execution focus is now
+  closed: the currently onboarded corpus has live category-acceptance
+  evidence, and `mvp-current-category-acceptance-smoke-automation` adds a
+  committed smoke dataset plus deterministic local runner on top of that
+  manual acceptance pass.
+- The accepted category set is therefore no longer protected only by roadmap
+  notes and manual reruns; it now also has a typed regression artifact in
+  `data/eval/mvp-acceptance-smokes.json` and a deterministic runner in
+  `core/evaluation_runner.py`.
+- Remaining post-onboarding coupling slices can now resume without losing the
+  current MVP acceptance posture, unless a new corpus wave or fresh live
+  regression creates another direct MVP blocker.
 - The first live P1 snapshot on 2026-06-15 established:
   - `ARL` = `pass`
   - `MOVILIDAD/MUEVETE LIBRE` = `pass`

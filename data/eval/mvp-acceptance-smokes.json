@@ -1,0 +1,209 @@
+{
+  "version": "2026-06-18-current-category-acceptance-v1",
+  "cases": [
+    {
+      "case_id": "mvp-arl",
+      "category_family": "ARL",
+      "retrieval_query": "¿Cómo consulto la liquidación de comisiones de ARL?",
+      "grounded_answer_query": "¿Cuál es la normatividad que rige el RUI?",
+      "filters": {
+        "product": "arl"
+      },
+      "expected_retrieval_evidence": [
+        "instructivos consulta de comisiones arl sura v2.pdf"
+      ],
+      "expected_answer_evidence": [
+        "preguntas frecuentes registro unico de intermediacion - rui.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-autos",
+      "category_family": "MOVILIDAD/AUTOS",
+      "retrieval_query": "¿Qué diferencia hay entre los planes de autos?",
+      "grounded_answer_query": "¿Qué cubre el plan autos básico PT?",
+      "filters": {
+        "product": "auto",
+        "document_type": "guide"
+      },
+      "expected_retrieval_evidence": [
+        "diferenciales planes autos.pdf"
+      ],
+      "expected_answer_evidence": [
+        "generalidades plan autos basico pt v2.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-eps-pac",
+      "category_family": "EPS/PAC",
+      "retrieval_query": "¿Cómo actualizo el correo para factura Global Web?",
+      "grounded_answer_query": "¿Qué condiciones de asegurabilidad tiene PAC 60 Más?",
+      "filters": {
+        "product": "pac"
+      },
+      "expected_retrieval_evidence": [
+        "instructivo actualizacion correo para factura global web v2.pdf"
+      ],
+      "expected_answer_evidence": [
+        "politicas asegurabilidad pac 60 mas.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-soat",
+      "category_family": "MOVILIDAD/SOAT",
+      "retrieval_query": "¿Qué cubre el SOAT?",
+      "grounded_answer_query": "¿Cuáles son las tarifas SOAT 2026?",
+      "filters": {
+        "product": "soat"
+      },
+      "expected_retrieval_evidence": [
+        "clausulado soat.pdf"
+      ],
+      "expected_answer_evidence": [
+        "tarifas soat 2026.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-muevete-libre",
+      "category_family": "MOVILIDAD/MUEVETE LIBRE",
+      "retrieval_query": "¿Qué cubre Muévete Libre?",
+      "grounded_answer_query": "¿Qué cubre Muévete Libre?",
+      "filters": {
+        "product": "muevete libre",
+        "document_type": "policy"
+      },
+      "expected_retrieval_evidence": [
+        "clausulado muevete libre v2.pdf"
+      ],
+      "expected_answer_evidence": [
+        "clausulado muevete libre v2.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-motos",
+      "category_family": "MOVILIDAD/MOTOS",
+      "retrieval_query": "¿Qué diferencia hay entre los planes de motos?",
+      "grounded_answer_query": "¿Qué cubre el plan de motos?",
+      "filters": {
+        "product": "moto"
+      },
+      "expected_retrieval_evidence": [
+        "comparativo motos.pdf"
+      ],
+      "expected_answer_evidence": [
+        "clausulado-plan motos.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-bicis-patinetas",
+      "category_family": "MOVILIDAD/BICICLETAS Y PATINETAS",
+      "retrieval_query": "¿Cuál es el deducible del seguro de bicicletas y patinetas?",
+      "grounded_answer_query": "¿Qué cubre el seguro para bicicletas y patinetas?",
+      "filters": {
+        "product": "movilidad"
+      },
+      "expected_retrieval_evidence": [
+        "pv bicis y patinetas v2.pdf"
+      ],
+      "expected_answer_evidence": [
+        "clausulado-bicis y patinetas.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-viajes",
+      "category_family": "MOVILIDAD/VIAJES",
+      "retrieval_query": "¿Qué cubre el seguro de viaje nacional?",
+      "grounded_answer_query": "¿Qué cubre el seguro de viaje internacional?",
+      "filters": {
+        "product": "viajes",
+        "document_type": "policy"
+      },
+      "expected_retrieval_evidence": [
+        "clausulado viaje nacional v1.pdf"
+      ],
+      "expected_answer_evidence": [
+        "clausulado viaje internacional v1.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-utilitarios-pesados",
+      "category_family": "MOVILIDAD/UTILITARIO Y PESADOS",
+      "retrieval_query": "¿Qué beneficios tiene el seguro de utilitarios y pesados?",
+      "grounded_answer_query": "¿Qué cubre el plan de utilitarios y pesados?",
+      "filters": {
+        "product": "movilidad"
+      },
+      "expected_retrieval_evidence": [
+        "ayudaventas utilitarios y pesados v2.pdf"
+      ],
+      "expected_answer_evidence": [
+        "clausulado-plan utilitarios y pesados.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-choque-simple",
+      "category_family": "MOVILIDAD/TRANSVERSALES/choque simple",
+      "retrieval_query": "¿Cómo debo tomar fotos en un choque simple?",
+      "grounded_answer_query": "¿Cuál es el procedimiento de atención del choque simple?",
+      "filters": {
+        "product": "movilidad",
+        "document_type": "guide"
+      },
+      "expected_retrieval_evidence": [
+        "como tomar fotos choque simple v2.pdf"
+      ],
+      "expected_answer_evidence": [
+        "proceso atencion choque simple v2.pdf",
+        "circular choque simple.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-pv",
+      "category_family": "MOVILIDAD/PV",
+      "retrieval_query": "¿Qué beneficios incluye la propuesta de valor de movilidad?",
+      "grounded_answer_query": "¿Qué beneficios incluye la propuesta de valor de movilidad?",
+      "filters": {
+        "product": "movilidad"
+      },
+      "expected_retrieval_evidence": [
+        "pv planes movilidad v1.pdf",
+        "pv portafolio movilidad v2.pdf"
+      ],
+      "expected_answer_evidence": [
+        "pv planes movilidad v1.pdf",
+        "pv portafolio movilidad v2.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-financiacion",
+      "category_family": "MOVILIDAD/FINANCIACION",
+      "retrieval_query": "¿Cómo funciona la financiación de pólizas individuales?",
+      "grounded_answer_query": "¿Cómo funciona la financiación de pólizas individuales?",
+      "filters": {
+        "product": "movilidad",
+        "document_type": "guide"
+      },
+      "expected_retrieval_evidence": [
+        "instructivo financiacion de polizas v1.pdf"
+      ],
+      "expected_answer_evidence": [
+        "instructivo financiacion de polizas v1.pdf"
+      ]
+    },
+    {
+      "case_id": "mvp-movilidad-suscripcion",
+      "category_family": "MOVILIDAD/SUSCRIPCION",
+      "retrieval_query": "¿Cómo funciona la facturación por asegurado en movilidad?",
+      "grounded_answer_query": "¿Qué políticas de suscripción aplican para movilidad?",
+      "filters": {
+        "product": "movilidad",
+        "document_type": "policy"
+      },
+      "expected_retrieval_evidence": [
+        "politicas de suscripcion de movilidad.pdf"
+      ],
+      "expected_answer_evidence": [
+        "politicas de suscripcion de movilidad.pdf"
+      ]
+    }
+  ]
+}

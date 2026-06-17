@@ -149,3 +149,65 @@ class EvaluationRunResult(BaseModel):
         if len(question_ids) != len(set(question_ids)):
             raise ValueError("evaluation run result question ids must be unique.")
         return self
+
+
+class MvpAcceptanceSmokeFilters(BaseModel):
+    """Optional validated filters for one MVP acceptance smoke case."""
+
+    document_type: str | None = None
+    product: str | None = None
+    document_name: str | None = None
+    version: str | None = None
+
+
+class MvpAcceptanceSmokeCase(BaseModel):
+    """One accepted category smoke case derived from the manual MVP matrix."""
+
+    case_id: str = Field(min_length=1)
+    category_family: str = Field(min_length=1)
+    retrieval_query: str = Field(min_length=1)
+    grounded_answer_query: str = Field(min_length=1)
+    filters: MvpAcceptanceSmokeFilters = Field(default_factory=MvpAcceptanceSmokeFilters)
+    expected_retrieval_evidence: list[str] = Field(min_length=1)
+    expected_answer_evidence: list[str] = Field(min_length=1)
+
+
+class MvpAcceptanceSmokeCaseSet(BaseModel):
+    """Versioned typed set of MVP acceptance smoke cases."""
+
+    version: str = Field(min_length=1)
+    cases: list[MvpAcceptanceSmokeCase] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_case_ids(self) -> MvpAcceptanceSmokeCaseSet:
+        case_ids = [case.case_id for case in self.cases]
+        if len(case_ids) != len(set(case_ids)):
+            raise ValueError("MVP acceptance smoke case ids must be unique.")
+        return self
+
+
+class MvpAcceptanceSmokeCaseResult(BaseModel):
+    """Typed result for one MVP acceptance smoke case."""
+
+    case_id: str = Field(min_length=1)
+    status: EvaluationResultStatus
+    retrieval_matched: bool
+    answer_matched: bool
+    observed_retrieval_evidence: str | None = None
+    observed_answer_evidence: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+
+class MvpAcceptanceSmokeRunResult(BaseModel):
+    """Typed result for one MVP acceptance smoke run."""
+
+    run_id: str = Field(min_length=1)
+    acceptance_set_version: str = Field(min_length=1)
+    results: list[MvpAcceptanceSmokeCaseResult] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_case_ids(self) -> MvpAcceptanceSmokeRunResult:
+        case_ids = [result.case_id for result in self.results]
+        if len(case_ids) != len(set(case_ids)):
+            raise ValueError("MVP acceptance smoke result case ids must be unique.")
+        return self

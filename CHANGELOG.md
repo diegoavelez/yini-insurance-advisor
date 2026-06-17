@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-18
+
+- Automate the current MVP category-acceptance matrix by adding typed acceptance-smoke contracts, a committed `data/eval/mvp-acceptance-smokes.json` dataset, a deterministic evaluation runner that validates retrieval and answer evidence against expected document families, focused dataset/runner regression coverage, and roadmap traceability that closes the manual-only acceptance pass.
+
 ## 2026-06-15
 
 - Extract the post-onboarding runtime seam by moving embedding/Qdrant/Groq backend availability checks, provider bridges, Groq client and SentenceTransformer loading, offline asset warmup helpers, and embedding/completion generation into `rag/runtime_providers.py`, while updating the roadmap to close that seam and document `rag-cli-command-adapter-and-request-lifecycle-seam-extraction` as the next narrow coupling gap.

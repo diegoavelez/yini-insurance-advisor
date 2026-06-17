@@ -10,12 +10,14 @@ from contracts import (
     EvaluationQuestionSet,
     EvaluationRunResult,
     GoldenBehaviorSet,
+    MvpAcceptanceSmokeCaseSet,
     RetrievalExpectationSet,
 )
 from core.evaluation_dataset import (
     load_citation_expectation_set,
     load_evaluation_question_set,
     load_golden_behavior_set,
+    load_mvp_acceptance_smoke_set,
     load_retrieval_expectation_set,
     validate_citation_expectation_alignment,
     validate_golden_behavior_alignment,
@@ -30,6 +32,35 @@ def test_load_evaluation_question_set_returns_typed_dataset() -> None:
     assert isinstance(question_set, EvaluationQuestionSet)
     assert question_set.version == "2026-06-08-target-30-spanish-v1"
     assert len(question_set.questions) == 30
+
+
+def test_load_mvp_acceptance_smoke_set_returns_typed_dataset() -> None:
+    smoke_set = load_mvp_acceptance_smoke_set()
+
+    assert isinstance(smoke_set, MvpAcceptanceSmokeCaseSet)
+    assert smoke_set.version == "2026-06-18-current-category-acceptance-v1"
+    assert len(smoke_set.cases) == 13
+
+
+def test_mvp_acceptance_smoke_set_contains_current_category_families() -> None:
+    smoke_set = load_mvp_acceptance_smoke_set()
+
+    category_families = {case.category_family for case in smoke_set.cases}
+    assert category_families == {
+        "ARL",
+        "EPS/PAC",
+        "MOVILIDAD/AUTOS",
+        "MOVILIDAD/BICICLETAS Y PATINETAS",
+        "MOVILIDAD/FINANCIACION",
+        "MOVILIDAD/MOTOS",
+        "MOVILIDAD/MUEVETE LIBRE",
+        "MOVILIDAD/PV",
+        "MOVILIDAD/SOAT",
+        "MOVILIDAD/SUSCRIPCION",
+        "MOVILIDAD/TRANSVERSALES/choque simple",
+        "MOVILIDAD/UTILITARIO Y PESADOS",
+        "MOVILIDAD/VIAJES",
+    }
 
 
 def test_evaluation_question_set_prompts_are_spanish_facing() -> None:

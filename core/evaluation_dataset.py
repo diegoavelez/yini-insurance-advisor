@@ -9,6 +9,7 @@ from contracts.evaluation import (
     CitationExpectationSet,
     EvaluationQuestionSet,
     GoldenBehaviorSet,
+    MvpAcceptanceSmokeCaseSet,
     RetrievalExpectationSet,
 )
 
@@ -20,6 +21,9 @@ DEFAULT_RETRIEVAL_EXPECTATION_SET_PATH = (
 )
 DEFAULT_CITATION_EXPECTATION_SET_PATH = (
     PROJECT_ROOT / "data" / "eval" / "citation-expectations.json"
+)
+DEFAULT_MVP_ACCEPTANCE_SMOKE_SET_PATH = (
+    PROJECT_ROOT / "data" / "eval" / "mvp-acceptance-smokes.json"
 )
 
 
@@ -125,3 +129,11 @@ def validate_citation_expectation_alignment(
         raise ValueError("citation expectation set contains unknown question ids.")
     if missing_question_ids:
         raise ValueError("citation expectation set is missing question ids.")
+
+
+def load_mvp_acceptance_smoke_set(
+    path: Path = DEFAULT_MVP_ACCEPTANCE_SMOKE_SET_PATH,
+) -> MvpAcceptanceSmokeCaseSet:
+    """Load and validate the committed MVP acceptance smoke dataset."""
+
+    return MvpAcceptanceSmokeCaseSet.model_validate_json(path.read_text(encoding="utf-8"))
