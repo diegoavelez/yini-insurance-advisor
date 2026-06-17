@@ -64,8 +64,35 @@ instead. The project does not support Python 3.10.
 make setup
 make lint
 make test
+make test-release
 make app
 ```
+
+## MVP Final Test Baseline
+
+The authoritative deterministic pre-release gate for the current MVP is:
+
+```bash
+make test-release
+```
+
+This release gate intentionally reuses the already-committed local test
+surfaces and avoids requiring fresh live calls to Groq or Qdrant Cloud.
+
+Protected surfaces:
+
+- evaluation assets and hosted-like smoke coverage;
+- MCP compatibility and local roundtrip seams;
+- Gradio UI, observability, supported-scope, guardrail, and workflow behavior;
+- retrieval, grounded-answer, embeddings, indexing, CLI runtime, and ingestion
+  seams.
+
+Non-gating but still useful:
+
+- `make test` for the full local regression suite;
+- targeted category onboarding or live provider validation when the corpus or
+  runtime changes materially;
+- external batch-ingestion runs under the documented batch operator flow.
 
 ## Hugging Face Spaces Deployment
 

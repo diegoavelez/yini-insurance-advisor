@@ -22,7 +22,7 @@ BATCH_GLOB ?= **/*.pdf
 BATCH_CHUNK_GLOB ?= *.chunks.json
 BATCH_EMBEDDING_GLOB ?= *.embeddings.json
 
-.PHONY: setup lint test app run batch-setup batch-warmup batch-ingest batch-embeddings batch-index
+.PHONY: setup lint test test-release app run batch-setup batch-warmup batch-ingest batch-embeddings batch-index
 
 setup:
 	$(PYTHON_BIN) -m venv $(VENV)
@@ -34,6 +34,12 @@ lint:
 
 test:
 	$(PYTEST)
+
+test-release:
+	PYTHONPATH=. $(PYTEST) tests/test_evaluation_dataset.py tests/test_evaluation_runner.py tests/test_smoke.py -q
+	PYTHONPATH=. $(PYTEST) tests/test_mcp_server.py tests/test_mcp_client.py tests/test_mcp_compatibility.py tests/test_mcp_versioning.py -q
+	PYTHONPATH=. $(PYTEST) tests/test_app_ui.py tests/test_observability.py tests/test_query_scope.py tests/test_guardrail_abuse_cases.py tests/test_langgraph_workflow.py -q
+	PYTHONPATH=. $(PYTEST) tests/test_retrieval.py tests/test_grounded_answer_generation.py tests/test_document_canonicalization.py tests/test_term_equivalences.py tests/test_embedding_generation.py tests/test_qdrant_indexing.py tests/test_cli_runtime.py tests/test_ingestion.py -q
 
 app:
 	$(PYTHON) -m app.ui

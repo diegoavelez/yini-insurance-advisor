@@ -30,6 +30,81 @@ The baseline does not cover:
 - new retrieval-quality judgments beyond the currently committed smoke
   expectations.
 
+## Final MVP Release Gate
+
+The authoritative deterministic final-test baseline for the current MVP is:
+
+```bash
+make test-release
+```
+
+This release gate is intentionally narrower than `make test` and is meant to be
+the minimum local verification pass before release.
+
+Validated baseline:
+
+- `make test-release` passed locally against the current repository state.
+
+### Release-gate composition
+
+1. Evaluation and smoke baseline
+
+   ```bash
+   ./.venv/bin/python -m pytest tests/test_evaluation_dataset.py tests/test_evaluation_runner.py tests/test_smoke.py -q
+   ```
+
+   Protects:
+
+   - deterministic evaluation assets;
+   - hosted-like startup/readiness/citation/latency smoke callability;
+   - MVP acceptance smoke dataset and runner surface.
+
+2. MCP compatibility baseline
+
+   ```bash
+   ./.venv/bin/python -m pytest tests/test_mcp_server.py tests/test_mcp_client.py tests/test_mcp_compatibility.py tests/test_mcp_versioning.py -q
+   ```
+
+   Protects:
+
+   - local MCP server/client roundtrip;
+   - protocol-version policy;
+   - compatibility-boundary expectations for the current MCP surface.
+
+3. App and workflow baseline
+
+   ```bash
+   ./.venv/bin/python -m pytest tests/test_app_ui.py tests/test_observability.py tests/test_query_scope.py tests/test_guardrail_abuse_cases.py tests/test_langgraph_workflow.py -q
+   ```
+
+   Protects:
+
+   - Gradio UI state and rendering contract;
+   - observability and request-lifecycle events;
+   - supported-scope and guardrail behavior;
+   - workflow-level answer orchestration behavior.
+
+4. RAG backend baseline
+
+   ```bash
+   ./.venv/bin/python -m pytest tests/test_retrieval.py tests/test_grounded_answer_generation.py tests/test_document_canonicalization.py tests/test_term_equivalences.py tests/test_embedding_generation.py tests/test_qdrant_indexing.py tests/test_cli_runtime.py tests/test_ingestion.py -q
+   ```
+
+   Protects:
+
+   - retrieval and grounded-answer seams;
+   - document naming and canonicalization;
+   - term-equivalence normalization;
+   - embedding, indexing, CLI runtime, and ingestion correctness.
+
+### Non-gating coverage
+
+The following remain valuable but are not part of the minimum MVP release gate:
+
+- the broader `make test` suite;
+- targeted live Qdrant/Groq reruns after corpus or runtime changes;
+- batch-ingestion operator validation for new category onboarding.
+
 ## Evaluation Asset Inventory
 
 ### Deterministic local evaluation assets
@@ -164,6 +239,12 @@ Focused regression coverage:
 
 ```bash
 ./.venv/bin/python -m pytest tests/test_evaluation_dataset.py tests/test_evaluation_runner.py tests/test_smoke.py -q
+```
+
+Final deterministic MVP release gate:
+
+```bash
+make test-release
 ```
 
 ## Report Limits
