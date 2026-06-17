@@ -524,10 +524,9 @@ Current limitations:
 app/        Gradio MVP application entry point
 agents/     LangGraph workflow agents and orchestration surfaces
 contracts/  Shared typed contracts across ingestion, retrieval, and answers
-core/       Settings and logging bootstrap
+core/       Settings, logging, and MCP seams
 data/       Raw, markdown, processed, and eval data
 docs/       Supporting durable documentation
-mcp/        MCP integration package surfaces
 ops/        Guardrails and observability modules
 rag/        Ingestion and retrieval pipeline
 specs/      Constitution and implementation specs

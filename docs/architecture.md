@@ -14,7 +14,7 @@
 - `app/` contains the Gradio demo surface and request/rendering seams.
 - `agents/` contains the LangGraph workflow and agent orchestration seams.
 - `rag/` contains ingestion, retrieval, indexing, and grounded-answer seams.
-- `mcp/` and `core/mcp_*` contain MCP integration boundaries.
+- `core/mcp_*` contains the implemented MCP integration boundaries.
 - `ops/` contains observability and guardrail-facing operational seams.
 - `tests/` contains regression, smoke, and compatibility coverage.
 

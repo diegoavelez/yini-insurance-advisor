@@ -1104,6 +1104,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `roadmap-operational-rollup-status-sync`
 - `docx-mvp-exclusion-policy`
 - `phase-15-evaluation-report-baseline`
+- `phase-15-dead-code-and-surface-cleanup`
 - `eps-pac-asegurabilidad-policy-family-recovery`
 - `soat-tariff-table-label-recovery`
 
@@ -1140,6 +1141,9 @@ Implementation note:
   artifact in `docs/evaluation-report.md`, summarizing the current
   deterministic evaluation surfaces and the committed MVP acceptance smoke
   coverage.
+- the `Phase 15` dead-code cleanup deliverable is now satisfied by removing the
+  empty `mcp/` placeholder package surface and retaining `core/mcp_*` as the
+  only documented MCP implementation boundary.
 
 Completed slice index:
 
@@ -1160,6 +1164,7 @@ Completed slice index:
 - `bicicletas-patinetas-deductible-evidence-bias-remediation`
 - `bicicletas-patinetas-deductible-candidate-recall-remediation`
 - `phase-15-evaluation-report-baseline`
+- `phase-15-dead-code-and-surface-cleanup`
 - `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
 - `eps-pac-60-mas-policy-family-coverage-alignment`
 - `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
