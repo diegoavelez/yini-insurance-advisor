@@ -1101,6 +1101,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `mvp-current-category-acceptance-matrix`
 - `mvp-current-category-acceptance-smoke-automation`
 - `rag-cli-command-adapter-and-request-lifecycle-seam-extraction`
+- `roadmap-operational-rollup-status-sync`
 - `eps-pac-asegurabilidad-policy-family-recovery`
 - `soat-tariff-table-label-recovery`
 
@@ -1119,11 +1120,17 @@ Operational category rollup:
 - `movilidad-financiacion` onboarding + extraction/guide-family hardening:
   completed
 - `movilidad-transversales` baseline onboarding: completed
-- `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
+- `MUEVETE LIBRE` onboarding + coverage hardening: completed
 - `SOAT` onboarding + coverage alignment: completed
 - `VIAJES` onboarding + baseline retrieval: completed
-- `movilidad-suscripcion` onboarding + retrieval hardening: active
+- `movilidad-suscripcion` onboarding + retrieval hardening: completed
 - `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
+
+Implementation note:
+
+- This rollup is now synchronized with the later operational category posture
+  already documented in the roadmap, so it should no longer be used to infer
+  stale open work for `MUEVETE LIBRE` or `movilidad-suscripcion`.
 
 Completed slice index:
 
@@ -1189,6 +1196,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `qdrant-point-id-normalization`
 - `qdrant-retrieval-client-compatibility`
 - `docling-timeout-pdfium-fallback-remediation`
+- `roadmap-operational-rollup-status-sync`
 
 Current implementation status:
 
@@ -1206,9 +1214,9 @@ Operational category rollup:
   completed
 - `movilidad-transversales` baseline onboarding: completed
 - `VIAJES` onboarding + policy-variant disambiguation: completed
-- `MUEVETE LIBRE` onboarding + coverage hardening: partially completed
+- `MUEVETE LIBRE` onboarding + coverage hardening: completed
 - `SOAT` onboarding + coverage alignment: completed
-- `movilidad-suscripcion` onboarding + retrieval hardening: active
+- `movilidad-suscripcion` onboarding + retrieval hardening: completed
 - `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
 
 Completed slice index:
