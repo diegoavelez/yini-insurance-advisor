@@ -35,6 +35,7 @@ traceability work.
 - `specs/mission.md` contains product principles and anti-goals.
 - `specs/tech-stack.md` contains stack constraints and architecture boundaries.
 - `specs/roadmap.md` contains implementation order and current build status.
+- `docs/evaluation-report.md` contains the current MVP evaluation baseline.
 - `specs/` also contains dated implementation specs.
 
 ## Current Status

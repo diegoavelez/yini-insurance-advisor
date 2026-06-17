@@ -6,6 +6,7 @@
 - Extract the post-onboarding CLI adapter and request-lifecycle seam by moving shared `RetrievalQuery` construction, thin warmup/retrieval/answer command adapters, optional `request_id` invocation fallback, and top-level CLI request logging/dispatch into `rag/cli_runtime.py`, while keeping parser definitions and lower-level ingestion/retrieval helpers in `rag/ingestion.py` and locking the behavior with focused lifecycle regression coverage.
 - Synchronize stale Phase 15 and Phase 16 roadmap operational rollups so `MUEVETE LIBRE` and `movilidad-suscripcion` now match the later completed category posture already documented in the roadmap, and add a documentation-only corrective slice bundle for that traceability fix.
 - Establish the MVP `.docx` exclusion policy by documenting that Word forms are outside the RAG corpus, keeping ingestion and answer surfaces intentionally PDF-only, and updating the roadmap plus onboarding docs so `.docx` files are treated as excluded rather than deferred support.
+- Add the Phase 15 evaluation report baseline by publishing a durable `docs/evaluation-report.md` artifact that inventories the committed evaluation assets, records the current deterministic local baseline and hosted-like citation smoke results, summarizes the 13 protected MVP acceptance-smoke category families, and links that artifact from the README and roadmap.
 
 ## 2026-06-15
 

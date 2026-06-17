@@ -1103,6 +1103,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `rag-cli-command-adapter-and-request-lifecycle-seam-extraction`
 - `roadmap-operational-rollup-status-sync`
 - `docx-mvp-exclusion-policy`
+- `phase-15-evaluation-report-baseline`
 - `eps-pac-asegurabilidad-policy-family-recovery`
 - `soat-tariff-table-label-recovery`
 
@@ -1135,6 +1136,10 @@ Implementation note:
 - `.docx` Word forms are not a deferred MVP corpus feature; they are
   intentionally excluded from ingestion and from answer evidence/response
   outputs.
+- the `Phase 15` evaluation-report deliverable now has a durable baseline
+  artifact in `docs/evaluation-report.md`, summarizing the current
+  deterministic evaluation surfaces and the committed MVP acceptance smoke
+  coverage.
 
 Completed slice index:
 
@@ -1154,6 +1159,7 @@ Completed slice index:
 - `bicicletas-patinetas-pv-requirements-and-deductible-linear-normalization`
 - `bicicletas-patinetas-deductible-evidence-bias-remediation`
 - `bicicletas-patinetas-deductible-candidate-recall-remediation`
+- `phase-15-evaluation-report-baseline`
 - `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
 - `eps-pac-60-mas-policy-family-coverage-alignment`
 - `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
