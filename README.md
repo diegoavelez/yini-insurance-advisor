@@ -340,6 +340,12 @@ Incremental corpus note:
 - if an existing PDF is replaced in place and should be reprocessed, a rerun
   must use `--overwrite true`.
 
+MVP corpus boundary:
+
+- ingestion is intentionally PDF-only;
+- `.docx` forms are out of scope for the MVP, are not onboarded into the RAG
+  corpus, and are not returned as answer evidence or response artifacts.
+
 The command exits non-zero when:
 
 - Docling is not importable in the local runtime

@@ -30,6 +30,13 @@ A category is considered onboarded only when all of the following are true:
 
 Do not treat "ingestion completed" as equivalent to "category is ready".
 
+Current MVP boundary:
+
+- onboarding is PDF-only;
+- `.docx` forms are operational source documents outside the RAG corpus;
+- operators should not treat `.docx` files as ingestible category assets or
+  expected answer outputs.
+
 ## 2. Foldering Rule
 
 Preserve the business taxonomy in `data/raw/`.
@@ -69,6 +76,8 @@ Before running ingestion, confirm:
   overlays;
 - you know whether there are obvious aliases or synonyms that should be added
   to `ops/term-equivalences.json`.
+- any `.docx` forms in the same folder are excluded from the current onboarding
+  cohort.
 
 Typical examples:
 
@@ -168,6 +177,8 @@ Important rule:
 - use `--overwrite false` for normal incremental onboarding;
 - use `--overwrite true` only when reprocessing an existing category after a
   code or metadata change.
+- keep `.docx` forms out of onboarding globs and out of answer expectations;
+  the MVP ingests only PDFs.
 
 ### 6.2.1 Example: ingest only the `choque simple` transversal cohort
 

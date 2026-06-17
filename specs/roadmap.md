@@ -1102,6 +1102,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `mvp-current-category-acceptance-smoke-automation`
 - `rag-cli-command-adapter-and-request-lifecycle-seam-extraction`
 - `roadmap-operational-rollup-status-sync`
+- `docx-mvp-exclusion-policy`
 - `eps-pac-asegurabilidad-policy-family-recovery`
 - `soat-tariff-table-label-recovery`
 
@@ -1124,13 +1125,16 @@ Operational category rollup:
 - `SOAT` onboarding + coverage alignment: completed
 - `VIAJES` onboarding + baseline retrieval: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: completed
-- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
+- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; `.docx` Word forms are excluded from the MVP ingestion and answer surface)
 
 Implementation note:
 
 - This rollup is now synchronized with the later operational category posture
   already documented in the roadmap, so it should no longer be used to infer
   stale open work for `MUEVETE LIBRE` or `movilidad-suscripcion`.
+- `.docx` Word forms are not a deferred MVP corpus feature; they are
+  intentionally excluded from ingestion and from answer evidence/response
+  outputs.
 
 Completed slice index:
 
@@ -1217,7 +1221,7 @@ Operational category rollup:
 - `MUEVETE LIBRE` onboarding + coverage hardening: completed
 - `SOAT` onboarding + coverage alignment: completed
 - `movilidad-suscripcion` onboarding + retrieval hardening: completed
-- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
+- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; `.docx` Word forms are excluded from the MVP ingestion and answer surface)
 
 Completed slice index:
 
@@ -1415,7 +1419,7 @@ Operational category rollup:
 - `movilidad-suscripcion` onboarding + retrieval hardening: completed
 - `MUEVETE LIBRE` onboarding + coverage hardening: completed
 - `SOAT` onboarding + coverage alignment: completed
-- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; only unsupported `.docx` files remain deferred)
+- `EPS/PAC` follow-on cohort onboarding: completed (all PAC PDF cohorts onboarded; `.docx` Word forms are excluded from the MVP ingestion and answer surface)
 
 Completed slice index:
 
