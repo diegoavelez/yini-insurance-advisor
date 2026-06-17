@@ -1100,6 +1100,7 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `choque-simple-intent-evidence-routing-recovery`
 - `mvp-current-category-acceptance-matrix`
 - `mvp-current-category-acceptance-smoke-automation`
+- `rag-cli-command-adapter-and-request-lifecycle-seam-extraction`
 - `eps-pac-asegurabilidad-policy-family-recovery`
 - `soat-tariff-table-label-recovery`
 
@@ -1572,12 +1573,15 @@ Implementation note:
     related warmup command support surfaces behind a dedicated `rag` seam
     while keeping retrieval/answer orchestration and top-level CLI dispatch in
     `rag.ingestion.py`.
-  The next documented post-onboarding refactor candidate is
-  `rag-cli-command-adapter-and-request-lifecycle-seam-extraction`, covering
-  request-id-aware seam invocation, simple warmup/retrieval/answer command
-  adapters, shared `RetrievalQuery` construction from CLI args, and top-level
-  CLI request lifecycle logging/dispatch while keeping parser definitions and
-  lower-level runtime/retrieval helpers in `rag.ingestion.py`.
+  - `rag-cli-command-adapter-and-request-lifecycle-seam-extraction`, which
+    moved request-id-aware seam invocation, simple warmup/retrieval/answer
+    command adapters, shared `RetrievalQuery` construction from CLI args, and
+    top-level CLI request lifecycle logging/dispatch behind
+    `rag/cli_runtime.py` while intentionally keeping parser definitions and
+    lower-level runtime/retrieval helpers in `rag.ingestion.py`.
+- No further post-onboarding CLI refactor candidate is promoted ahead of
+  direct MVP blockers yet; parser definitions and lower-level helpers remain in
+  `rag.ingestion.py` intentionally after this extraction.
 - The manual `mvp-current-category-acceptance-matrix` execution focus is now
   closed: the currently onboarded corpus has live category-acceptance
   evidence, and `mvp-current-category-acceptance-smoke-automation` adds a

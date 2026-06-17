@@ -3,6 +3,7 @@
 ## 2026-06-18
 
 - Automate the current MVP category-acceptance matrix by adding typed acceptance-smoke contracts, a committed `data/eval/mvp-acceptance-smokes.json` dataset, a deterministic evaluation runner that validates retrieval and answer evidence against expected document families, focused dataset/runner regression coverage, and roadmap traceability that closes the manual-only acceptance pass.
+- Extract the post-onboarding CLI adapter and request-lifecycle seam by moving shared `RetrievalQuery` construction, thin warmup/retrieval/answer command adapters, optional `request_id` invocation fallback, and top-level CLI request logging/dispatch into `rag/cli_runtime.py`, while keeping parser definitions and lower-level ingestion/retrieval helpers in `rag/ingestion.py` and locking the behavior with focused lifecycle regression coverage.
 
 ## 2026-06-15
 

@@ -38,6 +38,7 @@ from ops.observability import (
     log_timed_event,
 )
 from rag import (
+    cli_runtime,
     evidence_selection,
     ingestion_artifacts,
     ingestion_batch,
@@ -460,14 +461,12 @@ def groq_backend_is_available() -> bool:
 def call_with_optional_request_id(function, *args, request_id: str | None = None, **kwargs):
     """Call a seam with request_id when supported, otherwise retry without it."""
 
-    if request_id is None:
-        return function(*args, **kwargs)
-    try:
-        return function(*args, request_id=request_id, **kwargs)
-    except TypeError as exc:
-        if "request_id" not in str(exc):
-            raise
-        return function(*args, **kwargs)
+    return cli_runtime.call_with_optional_request_id(
+        function,
+        *args,
+        request_id=request_id,
+        **kwargs,
+    )
 
 
 def ensure_groq_backend_available() -> None:
@@ -1211,37 +1210,22 @@ def run_ingestion(args: argparse.Namespace) -> int:
 def run_docling_warmup(args: argparse.Namespace) -> int:
     """Warm up Docling locally by allowing model/assets download on one sample PDF."""
 
-    sample_pdf = Path(args.sample_pdf)
-    if not sample_pdf.exists() or not sample_pdf.is_file():
-        print(f"Sample PDF does not exist: {sample_pdf}", file=sys.stderr)
-        return 2
-
-    ensure_pdf_conversion_backend_available(backend="docling")
-    markdown = convert_pdf_to_markdown_with_docling(
-        sample_pdf,
-        startup_timeout_seconds=args.docling_startup_timeout_seconds,
+    return cli_runtime.run_docling_warmup_command(
+        args,
+        ensure_pdf_conversion_backend_available_fn=ensure_pdf_conversion_backend_available,
+        convert_pdf_to_markdown_with_docling_fn=convert_pdf_to_markdown_with_docling,
     )
-    if not markdown.strip():
-        print("Docling warm-up did not produce markdown output.", file=sys.stderr)
-        return 1
-    print(
-        f"Docling warm-up succeeded for {sample_pdf.name}. "
-        "Required assets should now be cached locally."
-    )
-    return 0
 
 
 def run_embedding_warmup() -> int:
     """Warm up embedding-model assets locally by allowing one networked load."""
 
-    settings = validate_embedding_settings(get_settings())
-    ensure_embedding_backend_available(settings)
-    load_sentence_transformer(settings.embedding_model, local_files_only=False)
-    print(
-        f"Embedding warm-up succeeded for {settings.embedding_model}. "
-        "Required assets should now be cached locally."
+    return cli_runtime.run_embedding_warmup_command(
+        get_settings_fn=get_settings,
+        validate_embedding_settings_fn=validate_embedding_settings,
+        ensure_embedding_backend_available_fn=ensure_embedding_backend_available,
+        load_sentence_transformer_fn=load_sentence_transformer,
     )
-    return 0
 
 
 def run_embedding_generation(args: argparse.Namespace) -> int:
@@ -1359,19 +1343,12 @@ def run_qdrant_indexing(args: argparse.Namespace) -> int:
 def run_retrieval(args: argparse.Namespace, *, request_id: str | None = None) -> int:
     """Execute the first retrieval pipeline over indexed Qdrant data."""
 
-    retrieval_query = RetrievalQuery(
-        query=args.query,
-        top_k=args.top_k if args.top_k is not None else get_settings().top_k,
-        filters={
-            "document_type": args.document_type,
-            "product": args.product,
-            "document_name": args.document_name,
-            "version": args.version,
-        },
+    return cli_runtime.run_retrieval_command(
+        args,
+        request_id=request_id,
+        default_top_k=get_settings().top_k,
+        retrieve_ranked_chunks_fn=retrieve_ranked_chunks,
     )
-    result = retrieve_ranked_chunks(retrieval_query, request_id=request_id)
-    print(result.model_dump_json(indent=2))
-    return 0
 
 
 def run_grounded_answer_generation(
@@ -1381,91 +1358,35 @@ def run_grounded_answer_generation(
 ) -> int:
     """Execute the first grounded answer-generation workflow."""
 
-    retrieval_query = RetrievalQuery(
-        query=args.query,
-        top_k=args.top_k if args.top_k is not None else get_settings().top_k,
-        filters={
-            "document_type": args.document_type,
-            "product": args.product,
-            "document_name": args.document_name,
-            "version": args.version,
-        },
+    return cli_runtime.run_grounded_answer_command(
+        args,
+        request_id=request_id,
+        default_top_k=get_settings().top_k,
+        generate_grounded_answer_fn=generate_grounded_answer,
     )
-    result = generate_grounded_answer(retrieval_query, request_id=request_id)
-    print(result.model_dump_json(indent=2))
-    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint for the current offline ingestion, embedding, and indexing pipeline."""
 
-    settings = get_settings()
-    configure_logging(settings.log_level)
-    log_startup_diagnostics(RAG_LOGGER, settings, runtime_surface="cli")
-
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    request_id = generate_request_id("cli")
-    log_event(
-        RAG_LOGGER,
-        event_type="request_started",
-        request_id=request_id,
+    return cli_runtime.run_cli_request(
+        argv,
+        build_parser_fn=build_parser,
+        get_settings_fn=get_settings,
+        configure_logging_fn=configure_logging,
+        log_startup_diagnostics_fn=log_startup_diagnostics,
+        logger=RAG_LOGGER,
+        generate_request_id_fn=generate_request_id,
+        log_event_fn=log_event,
+        run_ingestion_fn=run_ingestion,
+        run_docling_warmup_fn=run_docling_warmup,
+        run_embedding_warmup_fn=run_embedding_warmup,
+        run_embedding_generation_fn=run_embedding_generation,
+        run_qdrant_indexing_fn=run_qdrant_indexing,
+        run_retrieval_fn=run_retrieval,
+        run_grounded_answer_generation_fn=run_grounded_answer_generation,
         runtime_surface="cli",
-        command=args.command,
     )
-
-    try:
-        if args.command == "ingest-pdfs":
-            exit_code = run_ingestion(args)
-        elif args.command == "warmup-docling-assets":
-            exit_code = run_docling_warmup(args)
-        elif args.command == "warmup-embedding-assets":
-            exit_code = run_embedding_warmup()
-        elif args.command == "generate-embeddings":
-            exit_code = run_embedding_generation(args)
-        elif args.command == "index-embeddings":
-            exit_code = run_qdrant_indexing(args)
-        elif args.command == "retrieve-chunks":
-            exit_code = run_retrieval(args, request_id=request_id)
-        elif args.command == "answer-query":
-            exit_code = run_grounded_answer_generation(args, request_id=request_id)
-        else:
-            parser.error(f"Unsupported command: {args.command}")
-        if exit_code == 0:
-            log_event(
-                RAG_LOGGER,
-                event_type="request_succeeded",
-                request_id=request_id,
-                runtime_surface="cli",
-                command=args.command,
-                exit_code=exit_code,
-            )
-        else:
-            log_event(
-                RAG_LOGGER,
-                event_type="request_failed",
-                request_id=request_id,
-                level=logging.ERROR,
-                runtime_surface="cli",
-                command=args.command,
-                error_type="CommandExit",
-                error_message=f"Command exited with status {exit_code}.",
-                exit_code=exit_code,
-            )
-        return exit_code
-    except Exception as exc:
-        log_event(
-            RAG_LOGGER,
-            event_type="request_failed",
-            request_id=request_id,
-            level=logging.ERROR,
-            runtime_surface="cli",
-            command=args.command,
-            error_type=type(exc).__name__,
-            error_message=str(exc),
-        )
-        print(str(exc), file=sys.stderr)
-        return 1
 
 
 if __name__ == "__main__":
