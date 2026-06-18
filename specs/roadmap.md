@@ -1108,6 +1108,14 @@ root-cause-sized bundles rather than query-sized micro-slices.
 - `phase-15-final-test-release-baseline`
 - `eps-pac-asegurabilidad-policy-family-recovery`
 - `soat-tariff-table-label-recovery`
+- `eps-pac-60-mas-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-60-mas-policy-family-coverage-alignment`
+- `eps-pac-formularios-y-gestion-basica-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-global-web-guides-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-long-instructivos-corpus-baseline-ingestion-and-retrieval`
+- `eps-pac-policy-family-coverage-alignment`
+- `eps-pac-clausulado-tradicional-isolated-onboarding`
+- `eps-pac-canales-transaccionales-isolated-onboarding`
 
 Current implementation status:
 
@@ -1257,7 +1265,7 @@ Completed slice index:
 - `eps-pac-clausulado-tradicional-isolated-onboarding`
 - `eps-pac-canales-transaccionales-isolated-onboarding`
 
-remaining in `Phase 16`:
+- remaining in `Phase 16`:
 
 - none
 
@@ -1301,7 +1309,7 @@ completed:
 - `readme-phase-16-and-17-status-sync`
 - `external-batch-runtime-operator-flow`
 
-remaining in `Phase 17`:
+- remaining in `Phase 17`:
 
 - none
 
@@ -1517,7 +1525,7 @@ Completed slice index:
 - `eps-pac-clausulado-tradicional-isolated-onboarding`
 - `eps-pac-canales-transaccionales-isolated-onboarding`
 
-remaining in `Phase 18`:
+- remaining in `Phase 18`:
 
 - none
 
@@ -2023,7 +2031,7 @@ completed:
 - `citation-and-basis-curated-metadata-display`
 - `operator-evidence-summary-display`
 
-remaining in `Phase 19`:
+- remaining in `Phase 19`:
 
 - none
 

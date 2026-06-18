@@ -9,6 +9,7 @@
 - Add the Phase 15 evaluation report baseline by publishing a durable `docs/evaluation-report.md` artifact that inventories the committed evaluation assets, records the current deterministic local baseline and hosted-like citation smoke results, summarizes the 13 protected MVP acceptance-smoke category families, and links that artifact from the README and roadmap.
 - Close the narrow Phase 15 dead-code cleanup slice by removing the empty versioned `mcp/` placeholder package, updating the documented repository architecture so MCP points only to the implemented `core/mcp_*` seams, and recording that cleanup closure in the roadmap with a dedicated dated spec bundle.
 - Close the Phase 15 final-tests deliverable by adding the deterministic MVP release gate `make test-release`, documenting the grouped pre-release verification baseline in the README and evaluation report, and recording that release-gate closure in the roadmap with a dedicated dated spec bundle.
+- Synchronize the remaining `Phase 15` roadmap traceability gap by adding the already completed PAC slices to the `Phase 15` dated index and normalizing the `remaining in Phase 16` through `Phase 19` formatting so the roadmap is internally consistent across phases.
 
 ## 2026-06-15
 
