@@ -15,7 +15,6 @@ COPY app ./app
 COPY contracts ./contracts
 COPY core ./core
 COPY data ./data
-COPY mcp ./mcp
 COPY ops ./ops
 COPY rag ./rag
 
