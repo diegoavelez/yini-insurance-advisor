@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-19
+
+- Add a manual Hugging Face Spaces QA checklist in `docs/spaces-manual-qa-checklist.md`, with hosted smoke checks plus pass/fail question rows aligned to the 13 accepted MVP category families and their expected evidence documents.
+
 ## 2026-06-18
 
 - Compact the public Hugging Face Spaces Gradio UI by prioritizing the answer and concise key citations in the primary layout, moving review and technical metadata into collapsed accordions, and trimming default citation verbosity while preserving detailed documentary basis for advisor review.
