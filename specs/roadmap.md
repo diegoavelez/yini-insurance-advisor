@@ -2048,6 +2048,27 @@ Implementation note:
 
 ---
 
+# Post-Completion Follow-On Work
+
+All roadmap phases through `Phase 19` are complete. The next approved work, if
+it remains inside the current MVP boundary rather than expanding scope, should
+start from:
+
+- `mvp-go-live-operational-baseline`
+
+That follow-on slice should consolidate the current deterministic release gate,
+hosted smoke checks, rollback posture, and corpus-update/operator baseline into
+one explicit MVP go-live surface.
+
+Current status:
+
+- `mvp-go-live-operational-baseline` is now complete through
+  `docs/mvp-go-live.md`, which consolidates the release gate, hosted smoke,
+  rollback posture, corpus-update workflow, and shipped supported-category set
+  for the current MVP.
+
+---
+
 # Phase Ordering Rules
 
 ## Mandatory Ordering
