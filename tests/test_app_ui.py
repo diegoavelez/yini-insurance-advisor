@@ -122,14 +122,14 @@ def test_format_citations_renders_traceable_markdown() -> None:
         ]
     )
 
-    assert "Policy A" in rendered
-    assert "ruta fuente: salud/polizas/policy-a.pdf" in rendered
-    assert "tipo: policy" in rendered
-    assert "producto: health" in rendered
+    assert "**Policy A**" in rendered
+    assert "ruta fuente: salud/polizas/policy-a.pdf" not in rendered
+    assert "tipo: policy" not in rendered
+    assert "producto: health" not in rendered
     assert "sección: Eligibility" in rendered
     assert "página: 2" in rendered
     assert "cláusula: ELIG-2" in rendered
-    assert "fragmento: chunk-v2-0" in rendered
+    assert "fragmento: chunk-v2-0" not in rendered
     assert "Applicant must be over 18 years old." in rendered
 
 
@@ -145,7 +145,7 @@ def test_format_citations_omits_relative_path_when_absent() -> None:
         ]
     )
 
-    assert "Policy B" in rendered
+    assert "**Policy B**" in rendered
     assert "ruta fuente:" not in rendered
     assert "sección: Benefits" in rendered
     assert "página: 6" in rendered
@@ -172,14 +172,14 @@ def test_format_documentary_basis_renders_traceable_markdown() -> None:
         ]
     )
 
-    assert "Policy A" in rendered
+    assert "**Policy A**" in rendered
     assert "ruta fuente: salud/polizas/policy-a.pdf" in rendered
     assert "tipo: policy" in rendered
     assert "producto: health" in rendered
     assert "sección: Eligibility" in rendered
     assert "página: 2" in rendered
     assert "cláusula: ELIG-2" in rendered
-    assert "Derived from chunk chunk-v2-0" in rendered
+    assert "evidencia interna: Derived from chunk chunk-v2-0" in rendered
 
 
 def test_format_documentary_basis_omits_relative_path_when_absent() -> None:
@@ -193,7 +193,7 @@ def test_format_documentary_basis_omits_relative_path_when_absent() -> None:
         ]
     )
 
-    assert "Policy B" in rendered
+    assert "**Policy B**" in rendered
     assert "ruta fuente:" not in rendered
     assert "sección: Benefits" in rendered
     assert "página: 6" in rendered
@@ -262,9 +262,9 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
 
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
-    assert "ruta fuente: autos/polizas/auto-policy.pdf" in citations
-    assert "tipo: policy" in citations
-    assert "producto: auto" in citations
+    assert "ruta fuente: autos/polizas/auto-policy.pdf" not in citations
+    assert "tipo: policy" not in citations
+    assert "producto: auto" not in citations
     assert "Auto Policy" in documentary_basis
     assert "ruta fuente: autos/polizas/auto-policy.pdf" in documentary_basis
     assert "tipo: policy" in documentary_basis
@@ -993,13 +993,22 @@ class FakeGradioModule:
         self.current_app = FakeBlocks(**kwargs)
         return self.current_app
 
-    def Row(self):
+    def Row(self, *args, **kwargs):
         assert self.current_app is not None
         return FakeLayoutContext(self.current_app, "Row")
 
-    def Column(self):
+    def Column(self, *args, **kwargs):
         assert self.current_app is not None
         return FakeLayoutContext(self.current_app, "Column")
+
+    def Accordion(self, *args, **kwargs):
+        assert self.current_app is not None
+        component_kwargs = dict(kwargs)
+        if args:
+            component_kwargs["label"] = args[0]
+        component = FakeComponent("Accordion", component_kwargs)
+        self.current_app.children.append(component)
+        return FakeLayoutContext(self.current_app, "Accordion")
 
     def Textbox(self, *args, **kwargs):
         if args:
@@ -1058,8 +1067,10 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Calidad de la respuesta" in component_labels
     assert "Estado de error" in component_labels
     assert "Estado de carga" in component_labels
-    assert "Citas" in component_labels
+    assert "Citas clave" in component_labels
     assert "Base documental" in component_labels
+    assert "Detalles de revisión" in component_labels
+    assert "Diagnóstico técnico" in component_labels
 
     submit_button = next(
         component for component in app.children if component.kind == "Button"

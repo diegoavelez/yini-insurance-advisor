@@ -117,28 +117,20 @@ def localize_trace_item(item: str) -> str:
 
 
 def format_citations(citations: list[Citation]) -> str:
-    """Render citations into a stable markdown block for the MVP UI."""
+    """Render concise public-facing citations for the MVP UI."""
 
     if not citations:
         return "No hay citas disponibles."
 
     lines: list[str] = []
     for citation in citations:
-        parts = [citation.document_name]
-        if citation.source_pdf_relative_path:
-            parts.append(f"ruta fuente: {citation.source_pdf_relative_path}")
-        if citation.document_type:
-            parts.append(f"tipo: {citation.document_type}")
-        if citation.product:
-            parts.append(f"producto: {citation.product}")
+        parts = [f"**{citation.document_name}**"]
         if citation.section:
             parts.append(f"sección: {citation.section}")
         if citation.page is not None:
             parts.append(f"página: {citation.page}")
         if citation.clause_id:
             parts.append(f"cláusula: {citation.clause_id}")
-        if citation.chunk_id:
-            parts.append(f"fragmento: {citation.chunk_id}")
         line = "- " + " | ".join(parts)
         if citation.quote:
             line += f"\n  > {citation.quote}"
@@ -147,14 +139,14 @@ def format_citations(citations: list[Citation]) -> str:
 
 
 def format_documentary_basis(documentary_basis: list[DocumentaryBasisItem]) -> str:
-    """Render documentary basis into a stable markdown block for the MVP UI."""
+    """Render compact documentary basis for the review details panel."""
 
     if not documentary_basis:
         return "No hay base documental disponible."
 
     lines: list[str] = []
     for basis_item in documentary_basis:
-        parts = [basis_item.document_name]
+        parts = [f"**{basis_item.document_name}**"]
         if basis_item.source_pdf_relative_path:
             parts.append(f"ruta fuente: {basis_item.source_pdf_relative_path}")
         if basis_item.document_type:
@@ -169,7 +161,7 @@ def format_documentary_basis(documentary_basis: list[DocumentaryBasisItem]) -> s
             parts.append(f"cláusula: {basis_item.clause_id}")
         line = "- " + " | ".join(parts)
         if basis_item.note:
-            line += f"\n  > {basis_item.note}"
+            line += f"\n  > evidencia interna: {basis_item.note}"
         lines.append(line)
     return "\n".join(lines)
 
@@ -730,30 +722,36 @@ def build_gradio_app(
         submit_button = gr.Button("Generar borrador de respuesta")
 
         with gr.Row():
-            with gr.Column():
+            with gr.Column(scale=3):
                 answer_output = gr.Markdown(label="Respuesta sugerida")
-                status_output = gr.Textbox(label="Estado de revisión")
-            with gr.Column():
-                confidence_output = gr.Textbox(label="Confianza")
-                limitations_output = gr.Markdown(label="Limitaciones para revisión")
-                trace_output = gr.Textbox(label="Resumen de trazabilidad")
-                support_output = gr.Markdown(label="Contexto de soporte")
-                debug_output = gr.Markdown(label="Metadatos de depuración")
+                citations_output = gr.Markdown(label="Citas clave")
+            with gr.Column(scale=2):
+                status_output = gr.Textbox(label="Estado de revisión", interactive=False)
+                confidence_output = gr.Textbox(label="Confianza", interactive=False)
                 answer_quality_output = gr.Textbox(
                     label="Calidad de la respuesta",
                     value="Calidad de la respuesta — Calidad estándar del borrador.",
+                    interactive=False,
                 )
-                error_output = gr.Textbox(
-                    label="Estado de error",
-                    value=format_error_state(error_kind=None),
-                )
-                loading_output = gr.Textbox(
-                    label="Estado de carga",
-                    value=format_loading_state(is_loading=False),
-                )
+                limitations_output = gr.Markdown(label="Limitaciones para revisión")
 
-        citations_output = gr.Markdown(label="Citas")
-        documentary_basis_output = gr.Markdown(label="Base documental")
+        with gr.Accordion("Detalles de revisión", open=False):
+            trace_output = gr.Textbox(label="Resumen de trazabilidad", interactive=False)
+            documentary_basis_output = gr.Markdown(label="Base documental")
+            support_output = gr.Markdown(label="Contexto de soporte")
+
+        with gr.Accordion("Diagnóstico técnico", open=False):
+            debug_output = gr.Markdown(label="Metadatos de depuración")
+            error_output = gr.Textbox(
+                label="Estado de error",
+                value=format_error_state(error_kind=None),
+                interactive=False,
+            )
+            loading_output = gr.Textbox(
+                label="Estado de carga",
+                value=format_loading_state(is_loading=False),
+                interactive=False,
+            )
 
         submit_button.click(
             fn=handler,
