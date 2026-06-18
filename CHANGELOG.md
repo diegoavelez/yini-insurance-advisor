@@ -12,6 +12,7 @@
 - Synchronize the remaining `Phase 15` roadmap traceability gap by adding the already completed PAC slices to the `Phase 15` dated index and normalizing the `remaining in Phase 16` through `Phase 19` formatting so the roadmap is internally consistent across phases.
 - Add the explicit MVP go-live operational baseline by publishing `docs/mvp-go-live.md`, consolidating the shipped category set, release gate, hosted smoke, rollback posture, and corpus-update workflow into one operator-facing closure surface for the current MVP.
 - Fix the Hugging Face Spaces Docker build after the `mcp/` surface removal by deleting the stale `COPY mcp ./mcp` step from the root `Dockerfile`, so hosted rebuilds no longer fail on a missing path.
+- Warm the multilingual sentence-transformer assets during the Docker image build, using a stable Hugging Face cache path inside the image, so the hosted Spaces runtime can satisfy offline embedding retrieval without failing on a cold cache.
 - Fix the Hugging Face Spaces Docker build after the `mcp/` surface removal by deleting the stale `COPY mcp ./mcp` step from the root `Dockerfile`, so hosted rebuilds no longer fail on a missing path.
 
 ## 2026-06-15

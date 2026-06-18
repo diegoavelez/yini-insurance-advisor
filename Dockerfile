@@ -3,6 +3,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/app/.cache/huggingface \
     GRADIO_SERVER_NAME=0.0.0.0 \
     GRADIO_SERVER_PORT=7860 \
     GRADIO_ANALYTICS_ENABLED=False
@@ -18,7 +19,10 @@ COPY data ./data
 COPY ops ./ops
 COPY rag ./rag
 
-RUN pip install --upgrade pip && pip install .
+RUN mkdir -p /app/.cache/huggingface \
+    && pip install --upgrade pip \
+    && pip install . \
+    && python -m rag.ingestion warmup-embedding-assets
 
 EXPOSE 7860
 
