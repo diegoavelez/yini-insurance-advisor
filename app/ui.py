@@ -140,6 +140,21 @@ APP_CSS = """
   box-shadow: 0 12px 36px -24px rgba(92, 103, 128, 0.85);
 }
 
+.yini-example-button button {
+  min-height: 42px;
+  border-radius: 999px !important;
+  border: 1px solid rgba(129, 178, 255, 0.22) !important;
+  background: rgba(104, 174, 255, 0.08) !important;
+  color: #dceafe !important;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+.yini-example-button button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
 .yini-primary-button button:active {
   transform: translateY(1px) scale(0.99);
 }
@@ -322,6 +337,32 @@ DEFAULT_DEGRADED_READINESS_MESSAGE = (
 DEFAULT_PUBLIC_RUNTIME_FAILURE_STATUS = (
     "No se pudo generar el borrador para revisión. Inténtalo de nuevo en unos minutos."
 )
+INITIAL_ANSWER_MESSAGE = (
+    "Escribe una pregunta del asesor para generar un borrador fundamentado con "
+    "evidencia recuperada del corpus."
+)
+INITIAL_CITATIONS_MESSAGE = (
+    "Las citas clave aparecerán aquí cuando el sistema recupere evidencia relevante."
+)
+INITIAL_DOCUMENTARY_BASIS_MESSAGE = (
+    "La base documental extendida aparecerá aquí cuando el borrador cite documentos concretos."
+)
+INITIAL_REVIEW_STATUS_MESSAGE = "Aún no se ha generado un borrador para revisión."
+INITIAL_CONFIDENCE_MESSAGE = "Pendiente"
+INITIAL_ANSWER_QUALITY_MESSAGE = (
+    "Calidad de la respuesta — Pendiente. Genera un borrador para evaluar su soporte."
+)
+INITIAL_LIMITATIONS_MESSAGE = (
+    "Las limitaciones para revisión se mostrarán aquí cuando exista un borrador."
+)
+INITIAL_TRACE_MESSAGE = "La trazabilidad de la consulta aparecerá aquí después de la primera ejecución."
+INITIAL_SUPPORT_MESSAGE = (
+    "El contexto de soporte quedará disponible cuando la solicitud genere un resultado."
+)
+INITIAL_DEBUG_MESSAGE = (
+    "Los metadatos de depuración se poblarán después de procesar la primera consulta."
+)
+INITIAL_LOADING_MESSAGE = "Esperando una consulta para generar el borrador."
 UI_LOGGER = logging.getLogger("yini.ui")
 APP_LOGGER = logging.getLogger("yini.app")
 SAFE_TRACE_ITEM_PATTERN = re.compile(r"^[a-z0-9_:-]{1,40}$")
@@ -455,14 +496,30 @@ def render_shell_header(readiness_message: str) -> str:
 def render_example_query_strip() -> str:
     """Render compact example prompts to orient the MVP user."""
 
-    examples = [
-        "Coberturas y exclusiones",
-        "Procedimientos operativos",
-        "Requisitos y asegurabilidad",
-        "Tarifas y comparativos",
-    ]
-    chips = "".join(f'<span class="yini-chip">{example}</span>' for example in examples)
+    chips = "".join(
+        f'<span class="yini-chip">{label}</span>' for label, _query in build_example_queries()
+    )
     return f'<div class="yini-example-strip">{chips}</div>'
+
+
+def build_example_queries() -> list[tuple[str, str]]:
+    """Return the curated quick-start example prompts for the UI."""
+
+    return [
+        ("Coberturas", "¿Qué cubre el SOAT?"),
+        ("Procedimientos", "¿Cuál es el procedimiento de atención del choque simple?"),
+        ("Asegurabilidad", "¿Qué condiciones de asegurabilidad tiene PAC 60 Más?"),
+        ("Tarifas", "¿Cuáles son las tarifas SOAT 2026?"),
+    ]
+
+
+def build_query_prefill_handler(example_query: str):
+    """Return a tiny handler that pre-fills the main query input."""
+
+    def prefill_query() -> str:
+        return example_query
+
+    return prefill_query
 
 
 def format_documentary_basis(documentary_basis: list[DocumentaryBasisItem]) -> str:
@@ -1034,6 +1091,17 @@ def build_gradio_app(
             elem_classes=["yini-query-input", "yini-composer"],
         )
         gr.HTML(render_example_query_strip())
+        with gr.Row():
+            for example_label, example_query in build_example_queries():
+                example_button = gr.Button(
+                    example_label,
+                    elem_classes=["yini-example-button"],
+                )
+                example_button.click(
+                    fn=build_query_prefill_handler(example_query),
+                    outputs=[query_input],
+                    show_progress="hidden",
+                )
         submit_button = gr.Button(
             "Generar borrador de respuesta",
             elem_classes=["yini-primary-button"],
@@ -1055,12 +1123,14 @@ def build_gradio_app(
                 answer_output = gr.Markdown(
                     label="Respuesta sugerida",
                     show_label=False,
+                    value=INITIAL_ANSWER_MESSAGE,
                     elem_classes=["yini-answer-block"],
                 )
                 gr.Markdown("### Citas clave")
                 citations_output = gr.Markdown(
                     label="Citas clave",
                     show_label=False,
+                    value=INITIAL_CITATIONS_MESSAGE,
                     elem_classes=["yini-citations-block"],
                 )
             with gr.Column(scale=4, elem_classes=["yini-review-column"]):
@@ -1078,25 +1148,28 @@ def build_gradio_app(
                 status_output = gr.Markdown(
                     label="Estado de revisión",
                     show_label=False,
+                    value=INITIAL_REVIEW_STATUS_MESSAGE,
                     elem_classes=["yini-status-card"],
                 )
                 gr.Markdown("#### Confianza")
                 confidence_output = gr.Markdown(
                     label="Confianza",
                     show_label=False,
+                    value=INITIAL_CONFIDENCE_MESSAGE,
                     elem_classes=["yini-confidence-card"],
                 )
                 gr.Markdown("#### Calidad de la respuesta")
                 answer_quality_output = gr.Markdown(
                     label="Calidad de la respuesta",
                     show_label=False,
-                    value="Calidad de la respuesta — Calidad estándar del borrador.",
+                    value=INITIAL_ANSWER_QUALITY_MESSAGE,
                     elem_classes=["yini-quality-card"],
                 )
                 gr.Markdown("#### Limitaciones para revisión")
                 limitations_output = gr.Markdown(
                     label="Limitaciones para revisión",
                     show_label=False,
+                    value=INITIAL_LIMITATIONS_MESSAGE,
                     elem_classes=["yini-limitations-card"],
                 )
 
@@ -1112,6 +1185,7 @@ def build_gradio_app(
             documentary_basis_output = gr.Markdown(
                 label="Base documental",
                 show_label=False,
+                value=INITIAL_DOCUMENTARY_BASIS_MESSAGE,
                 elem_classes=["yini-documentary-block"],
             )
 
@@ -1124,12 +1198,14 @@ def build_gradio_app(
             trace_output = gr.Markdown(
                 label="Resumen de trazabilidad",
                 show_label=False,
+                value=INITIAL_TRACE_MESSAGE,
                 elem_classes=["yini-trace-card"],
             )
             gr.Markdown("### Contexto de soporte")
             support_output = gr.Markdown(
                 label="Contexto de soporte",
                 show_label=False,
+                value=INITIAL_SUPPORT_MESSAGE,
                 elem_classes=["yini-support-card"],
             )
 
@@ -1142,6 +1218,7 @@ def build_gradio_app(
             debug_output = gr.Markdown(
                 label="Metadatos de depuración",
                 show_label=False,
+                value=INITIAL_DEBUG_MESSAGE,
                 elem_classes=["yini-debug-card"],
             )
             gr.Markdown("### Estado de error")
@@ -1155,7 +1232,7 @@ def build_gradio_app(
             loading_output = gr.Markdown(
                 label="Estado de carga",
                 show_label=False,
-                value=format_loading_state(is_loading=False),
+                value=INITIAL_LOADING_MESSAGE,
                 elem_classes=["yini-loading-card"],
             )
 

@@ -5,6 +5,7 @@
 - Redesign the public Gradio review workspace in Hugging Face Spaces into a clearer advisor-review surface with a branded shell, prompt composer, primary answer workspace, evidence accordion, and compact side-panel review states while preserving the current backend contract and observability seams.
 - Compact `Citas clave` into numbered evidence previews and harden wide-table rendering with stronger horizontal-scroll affordances, non-wrapping numeric cells, and wider leading columns so hosted tariff and comparison tables stay readable without shrinking the font.
 - Sanitize public readiness and runtime failure copy so hosted users no longer see raw backend error details, localize the public confidence state into Spanish labels, and surface `Citas clave` inline below the answer while keeping extended documentary evidence inside a secondary accordion for advisor review.
+- Replace the inert example chips with real quick-start buttons that prefill curated Spanish advisor questions, and populate the initial answer/review/evidence panels with guidance copy so the Spaces UI no longer appears empty before the first query.
 
 ## 2026-06-20
 

@@ -1118,7 +1118,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Detalles de revisión" in component_labels
     assert "Diagnóstico técnico" in component_labels
     assert any("Asistente de revisión fundamentada" in value for value in html_values)
-    assert any("Coberturas y exclusiones" in value for value in html_values)
+    assert any("Coberturas" in value for value in html_values)
     assert "#### Estado de revisión" in markdown_values
     assert "#### Confianza" in markdown_values
     assert "#### Calidad de la respuesta" in markdown_values
@@ -1147,12 +1147,35 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert ".yini-answer-block table" in app.kwargs["css"]
     assert ".yini-shell" in app.kwargs["css"]
     assert ".yini-example-strip" in app.kwargs["css"]
+    assert ".yini-example-button button" in app.kwargs["css"]
     assert "white-space: nowrap;" in app.kwargs["css"]
     assert "min-width: 14rem;" in app.kwargs["css"]
     assert "scrollbar-width: thin;" in app.kwargs["css"]
 
+    example_buttons = [
+        component
+        for component in app.children
+        if component.kind == "Button"
+        and component.kwargs.get("value")
+        in {"Coberturas", "Procedimientos", "Asegurabilidad", "Tarifas"}
+    ]
+    assert len(example_buttons) == 4
+    for example_button in example_buttons:
+        example_click_call = example_button.click_calls[0]
+        assert example_click_call["show_progress"] == "hidden"
+
+    prefill_handler = next(
+        component
+        for component in example_buttons
+        if component.kwargs.get("value") == "Coberturas"
+    ).click_calls[0]["fn"]
+    assert prefill_handler() == "¿Qué cubre el SOAT?"
+
     submit_button = next(
-        component for component in app.children if component.kind == "Button"
+        component
+        for component in app.children
+        if component.kind == "Button"
+        and component.kwargs.get("value") == "Generar borrador de respuesta"
     )
     assert submit_button.kwargs["elem_classes"] == ["yini-primary-button"]
     click_call = submit_button.click_calls[0]
@@ -1166,6 +1189,37 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert loading_update[8] == ""
     assert loading_update[9] == "No hay errores activos."
     assert loading_update[10] == "Generando borrador de respuesta..."
+
+    initial_answer_output = next(
+        component
+        for component in app.children
+        if component.kind == "Markdown"
+        and component.kwargs.get("label") == "Respuesta sugerida"
+    )
+    assert (
+        initial_answer_output.kwargs["value"]
+        == "Escribe una pregunta del asesor para generar un borrador fundamentado con evidencia recuperada del corpus."
+    )
+    initial_status_output = next(
+        component
+        for component in app.children
+        if component.kind == "Markdown"
+        and component.kwargs.get("label") == "Estado de revisión"
+    )
+    assert (
+        initial_status_output.kwargs["value"]
+        == "Aún no se ha generado un borrador para revisión."
+    )
+    initial_loading_output = next(
+        component
+        for component in app.children
+        if component.kind == "Markdown"
+        and component.kwargs.get("label") == "Estado de carga"
+    )
+    assert (
+        initial_loading_output.kwargs["value"]
+        == "Esperando una consulta para generar el borrador."
+    )
 
     (
         answer,
