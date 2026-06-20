@@ -123,7 +123,7 @@ def test_format_citations_renders_traceable_markdown() -> None:
         ]
     )
 
-    assert "**Policy A**" in rendered
+    assert "1. **Policy A**" in rendered
     assert "ruta fuente: salud/polizas/policy-a.pdf" not in rendered
     assert "tipo: policy" not in rendered
     assert "producto: health" not in rendered
@@ -131,6 +131,7 @@ def test_format_citations_renders_traceable_markdown() -> None:
     assert "página: 2" in rendered
     assert "cláusula: ELIG-2" in rendered
     assert "fragmento: chunk-v2-0" not in rendered
+    assert "Vista previa:" in rendered
     assert "Applicant must be over 18 years old." in rendered
 
 
@@ -146,10 +147,26 @@ def test_format_citations_omits_relative_path_when_absent() -> None:
         ]
     )
 
-    assert "**Policy B**" in rendered
+    assert "1. **Policy B**" in rendered
     assert "ruta fuente:" not in rendered
     assert "sección: Benefits" in rendered
     assert "página: 6" in rendered
+
+
+def test_format_citations_truncates_long_quote_previews() -> None:
+    rendered = format_citations(
+        [
+            Citation(
+                document_name="Policy C",
+                section="Limits",
+                page=9,
+                quote=("very long evidence " * 30).strip(),
+            )
+        ]
+    )
+
+    assert "Vista previa:" in rendered
+    assert "..." in rendered
 
 
 def test_format_limitations_handles_empty_and_non_empty_lists() -> None:
@@ -1027,8 +1044,17 @@ class FakeGradioModule:
         self.current_app.children.append(component)
         return component
 
-    def Button(self, value):
-        component = FakeComponent("Button", {"value": value})
+    def HTML(self, *args, **kwargs):
+        if args:
+            kwargs["value"] = args[0]
+        component = FakeComponent("HTML", kwargs)
+        assert self.current_app is not None
+        self.current_app.children.append(component)
+        return component
+
+    def Button(self, value, **kwargs):
+        component_kwargs = {"value": value, **kwargs}
+        component = FakeComponent("Button", component_kwargs)
         assert self.current_app is not None
         self.current_app.children.append(component)
         return component
@@ -1057,13 +1083,17 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
         for component in app.children
         if "label" in component.kwargs
     ]
+    html_values = [
+        component.kwargs.get("value")
+        for component in app.children
+        if component.kind == "HTML" and "value" in component.kwargs
+    ]
     markdown_values = [
         component.kwargs.get("value")
         for component in app.children
         if component.kind == "Markdown" and "value" in component.kwargs
     ]
     assert "Pregunta del asesor" in component_labels
-    assert "Estado del servicio" in component_labels
     assert "Respuesta sugerida" in component_labels
     assert "Estado de revisión" in component_labels
     assert "Confianza" in component_labels
@@ -1076,13 +1106,21 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Estado de carga" in component_labels
     assert "Citas clave" in component_labels
     assert "Base documental" in component_labels
+    assert "Citas clave y evidencia" in component_labels
     assert "Detalles de revisión" in component_labels
     assert "Diagnóstico técnico" in component_labels
-    assert "### Respuesta sugerida" in markdown_values
+    assert any("Asistente de revisión fundamentada" in value for value in html_values)
+    assert any("Coberturas y exclusiones" in value for value in html_values)
+    assert "#### Estado de revisión" in markdown_values
+    assert "#### Confianza" in markdown_values
+    assert "#### Calidad de la respuesta" in markdown_values
+    assert "#### Limitaciones para revisión" in markdown_values
     assert "### Citas clave" in markdown_values
-    assert "### Limitaciones para revisión" in markdown_values
     assert "### Base documental" in markdown_values
+    assert "### Resumen de trazabilidad" in markdown_values
     assert "### Contexto de soporte" in markdown_values
+    assert "### Estado de error" in markdown_values
+    assert "### Estado de carga" in markdown_values
     assert "### Metadatos de depuración" in markdown_values
     answer_markdown = next(
         component
@@ -1099,11 +1137,16 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert answer_markdown.kwargs["elem_classes"] == ["yini-answer-block"]
     assert documentary_markdown.kwargs["elem_classes"] == ["yini-documentary-block"]
     assert ".yini-answer-block table" in app.kwargs["css"]
+    assert ".yini-shell" in app.kwargs["css"]
+    assert ".yini-example-strip" in app.kwargs["css"]
     assert "white-space: nowrap;" in app.kwargs["css"]
+    assert "min-width: 14rem;" in app.kwargs["css"]
+    assert "scrollbar-width: thin;" in app.kwargs["css"]
 
     submit_button = next(
         component for component in app.children if component.kind == "Button"
     )
+    assert submit_button.kwargs["elem_classes"] == ["yini-primary-button"]
     click_call = submit_button.click_calls[0]
     assert click_call["show_progress"] == "full"
     handler = click_call["fn"]

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-06-21
+
+- Redesign the public Gradio review workspace in Hugging Face Spaces into a clearer advisor-review surface with a branded shell, prompt composer, primary answer workspace, evidence accordion, and compact side-panel review states while preserving the current backend contract and observability seams.
+- Compact `Citas clave` into numbered evidence previews and harden wide-table rendering with stronger horizontal-scroll affordances, non-wrapping numeric cells, and wider leading columns so hosted tariff and comparison tables stay readable without shrinking the font.
+
 ## 2026-06-20
 
 - Improve hosted Spaces readability for wide answer tables by adding scoped horizontal-scroll styling to the Gradio markdown answer/documentary surfaces, preserving the current font size while preventing numeric tariff cells from wrapping awkwardly.

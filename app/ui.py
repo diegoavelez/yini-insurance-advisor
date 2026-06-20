@@ -35,29 +35,281 @@ APP_DESCRIPTION = (
     "Las respuestas son borradores y deben mantenerse vinculadas a evidencia citada."
 )
 APP_CSS = """
+.gradio-container {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  padding: 24px 24px 64px !important;
+  background:
+    radial-gradient(circle at top, rgba(27, 36, 54, 0.35), transparent 32%),
+    linear-gradient(180deg, #0f1115 0%, #12161d 100%);
+  color: #f5f7fa;
+}
+
+.yini-shell {
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 24px 80px -40px rgba(0, 0, 0, 0.75);
+  margin-bottom: 20px;
+}
+
+.yini-shell-kicker {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8ba3c7;
+}
+
+.yini-shell h1 {
+  margin: 0;
+  font-size: 2.75rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #f8fafc;
+}
+
+.yini-shell p {
+  margin: 14px 0 0;
+  max-width: 72ch;
+  line-height: 1.65;
+  color: #c9d3df;
+}
+
+.yini-shell-status {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.yini-shell-status-label,
+.yini-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(104, 174, 255, 0.24);
+  background: rgba(104, 174, 255, 0.1);
+  color: #dceafe;
+  font-size: 0.9rem;
+}
+
+.yini-shell-status-copy {
+  color: #e6edf6;
+  font-size: 0.95rem;
+}
+
+.yini-composer,
+.yini-main-surface,
+.yini-side-surface,
+.yini-evidence-surface,
+.yini-detail-surface,
+.yini-tech-surface {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 18px 60px -36px rgba(0, 0, 0, 0.72);
+}
+
+.yini-composer {
+  padding: 8px 8px 0;
+  margin-bottom: 18px;
+}
+
+.yini-query-input textarea {
+  min-height: 132px !important;
+  border-radius: 18px !important;
+  background: rgba(10, 13, 18, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  box-shadow: none !important;
+}
+
+.yini-primary-button button {
+  min-height: 56px;
+  border-radius: 18px !important;
+  border: 1px solid rgba(129, 178, 255, 0.3) !important;
+  background: linear-gradient(180deg, #5c6780 0%, #51596d 100%) !important;
+  color: #f8fafc !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 12px 36px -24px rgba(92, 103, 128, 0.85);
+}
+
+.yini-primary-button button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.yini-example-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 4px 16px;
+}
+
+.yini-section-title {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f5f7fa;
+}
+
+.yini-section-subtitle {
+  margin: 0 0 14px;
+  color: #aeb9c7;
+  font-size: 0.92rem;
+}
+
 .yini-answer-block,
-.yini-documentary-block {
+.yini-documentary-block,
+.yini-citations-block {
   overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 159, 184, 0.75) rgba(255, 255, 255, 0.06);
+}
+
+.yini-answer-block,
+.yini-citations-block,
+.yini-documentary-block,
+.yini-status-card,
+.yini-confidence-card,
+.yini-quality-card,
+.yini-limitations-card,
+.yini-trace-card,
+.yini-support-card,
+.yini-debug-card,
+.yini-error-card,
+.yini-loading-card {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  background: rgba(8, 11, 17, 0.66);
+  padding: 16px 18px;
+}
+
+.yini-answer-block h1,
+.yini-answer-block h2,
+.yini-answer-block h3,
+.yini-answer-block h4,
+.yini-citations-block h1,
+.yini-citations-block h2,
+.yini-citations-block h3,
+.yini-documentary-block h1,
+.yini-documentary-block h2,
+.yini-documentary-block h3 {
+  letter-spacing: -0.03em;
 }
 
 .yini-answer-block table,
-.yini-documentary-block table {
+.yini-documentary-block table,
+.yini-citations-block table {
   display: block;
   width: max-content;
-  min-width: 100%;
-  max-width: 100%;
+  min-width: max-content;
+  max-width: none;
   overflow-x: auto;
   overflow-y: hidden;
+  table-layout: auto;
   border-collapse: collapse;
 }
 
 .yini-answer-block th,
 .yini-answer-block td,
 .yini-documentary-block th,
-.yini-documentary-block td {
+.yini-documentary-block td,
+.yini-citations-block th,
+.yini-citations-block td {
   white-space: nowrap;
+  overflow-wrap: normal;
   word-break: normal;
+  hyphens: none;
   font-variant-numeric: tabular-nums;
+  min-width: 7.5rem;
+  vertical-align: top;
+}
+
+.yini-answer-block th:first-child,
+.yini-answer-block td:first-child,
+.yini-documentary-block th:first-child,
+.yini-documentary-block td:first-child,
+.yini-citations-block th:first-child,
+.yini-citations-block td:first-child {
+  min-width: 14rem;
+}
+
+.yini-answer-block th p,
+.yini-answer-block td p,
+.yini-documentary-block th p,
+.yini-documentary-block td p,
+.yini-citations-block th p,
+.yini-citations-block td p {
+  margin: 0;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.yini-answer-block::-webkit-scrollbar,
+.yini-documentary-block::-webkit-scrollbar,
+.yini-citations-block::-webkit-scrollbar {
+  height: 10px;
+}
+
+.yini-answer-block::-webkit-scrollbar-track,
+.yini-documentary-block::-webkit-scrollbar-track,
+.yini-citations-block::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+}
+
+.yini-answer-block::-webkit-scrollbar-thumb,
+.yini-documentary-block::-webkit-scrollbar-thumb,
+.yini-citations-block::-webkit-scrollbar-thumb {
+  background: rgba(143, 160, 183, 0.8);
+  border-radius: 999px;
+}
+
+.yini-table-hint {
+  margin: 10px 0 14px;
+  color: #8fa0b7;
+  font-size: 0.86rem;
+}
+
+.yini-accordion .label-wrap,
+.yini-accordion button,
+.yini-accordion {
+  border-radius: 18px !important;
+}
+
+.yini-accordion {
+  margin-top: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.yini-review-column > .wrap,
+.yini-answer-column > .wrap {
+  gap: 14px;
+}
+
+@media (max-width: 767px) {
+  .gradio-container {
+    padding: 16px 16px 40px !important;
+  }
+
+  .yini-shell {
+    padding: 22px 18px;
+    border-radius: 22px;
+  }
+
+  .yini-shell h1 {
+    font-size: 2.2rem;
+  }
 }
 """
 DEFAULT_ERROR_MESSAGE = "No es posible procesar la consulta en este momento."
@@ -148,8 +400,14 @@ def format_citations(citations: list[Citation]) -> str:
     if not citations:
         return "No hay citas disponibles."
 
+    def compact_quote_preview(quote: str) -> str:
+        normalized_quote = " ".join(quote.split())
+        if len(normalized_quote) <= 220:
+            return normalized_quote
+        return normalized_quote[:217].rstrip() + "..."
+
     lines: list[str] = []
-    for citation in citations:
+    for index, citation in enumerate(citations, start=1):
         parts = [f"**{citation.document_name}**"]
         if citation.section:
             parts.append(f"sección: {citation.section}")
@@ -157,11 +415,40 @@ def format_citations(citations: list[Citation]) -> str:
             parts.append(f"página: {citation.page}")
         if citation.clause_id:
             parts.append(f"cláusula: {citation.clause_id}")
-        line = "- " + " | ".join(parts)
+        line = f"{index}. " + " | ".join(parts)
         if citation.quote:
-            line += f"\n  > {citation.quote}"
+            line += f"\n   Vista previa: {compact_quote_preview(citation.quote)}"
         lines.append(line)
     return "\n".join(lines)
+
+
+def render_shell_header(readiness_message: str) -> str:
+    """Render the branded shell header for the Gradio MVP."""
+
+    return (
+        '<section class="yini-shell">'
+        '<p class="yini-shell-kicker">Asistente de revisión fundamentada</p>'
+        f"<h1>{APP_TITLE}</h1>"
+        f"<p>{APP_DESCRIPTION}</p>"
+        '<div class="yini-shell-status">'
+        '<span class="yini-shell-status-label">Estado del servicio</span>'
+        f'<span class="yini-shell-status-copy">{readiness_message}</span>'
+        "</div>"
+        "</section>"
+    )
+
+
+def render_example_query_strip() -> str:
+    """Render compact example prompts to orient the MVP user."""
+
+    examples = [
+        "Coberturas y exclusiones",
+        "Procedimientos operativos",
+        "Requisitos y asegurabilidad",
+        "Tarifas y comparativos",
+    ]
+    chips = "".join(f'<span class="yini-chip">{example}</span>' for example in examples)
+    return f'<div class="yini-example-strip">{chips}</div>'
 
 
 def format_documentary_basis(documentary_basis: list[DocumentaryBasisItem]) -> str:
@@ -736,59 +1023,138 @@ def build_gradio_app(
         grounded_answer_fn=grounded_answer_fn,
     )
     with gr.Blocks(title=APP_TITLE, css=APP_CSS) as app:
-        gr.Markdown(f"# {APP_TITLE}")
-        gr.Markdown(APP_DESCRIPTION)
-        gr.Markdown(readiness_message, label="Estado del servicio")
+        gr.HTML(render_shell_header(readiness_message))
 
         query_input = gr.Textbox(
             label="Pregunta del asesor",
             lines=3,
             placeholder="Pregunta por coberturas, exclusiones, procedimientos o requisitos.",
+            elem_classes=["yini-query-input", "yini-composer"],
         )
-        submit_button = gr.Button("Generar borrador de respuesta")
+        gr.HTML(render_example_query_strip())
+        submit_button = gr.Button(
+            "Generar borrador de respuesta",
+            elem_classes=["yini-primary-button"],
+        )
 
         with gr.Row():
-            with gr.Column(scale=3):
-                gr.Markdown("### Respuesta sugerida")
+            with gr.Column(scale=8, elem_classes=["yini-answer-column"]):
+                gr.HTML(
+                    (
+                        '<div class="yini-main-surface">'
+                        '<p class="yini-section-title">Respuesta sugerida</p>'
+                        '<p class="yini-section-subtitle">'
+                        "Borrador fundamentado para revisión del asesor. "
+                        "Si la salida incluye tablas anchas, desplázalas horizontalmente."
+                        "</p>"
+                        "</div>"
+                    )
+                )
                 answer_output = gr.Markdown(
                     label="Respuesta sugerida",
+                    show_label=False,
                     elem_classes=["yini-answer-block"],
                 )
-                gr.Markdown("### Citas clave")
-                citations_output = gr.Markdown(label="Citas clave")
-            with gr.Column(scale=2):
-                status_output = gr.Textbox(label="Estado de revisión", interactive=False)
-                confidence_output = gr.Textbox(label="Confianza", interactive=False)
-                answer_quality_output = gr.Textbox(
-                    label="Calidad de la respuesta",
-                    value="Calidad de la respuesta — Calidad estándar del borrador.",
-                    interactive=False,
+            with gr.Column(scale=4, elem_classes=["yini-review-column"]):
+                gr.HTML(
+                    (
+                        '<div class="yini-side-surface">'
+                        '<p class="yini-section-title">Panel de revisión</p>'
+                        '<p class="yini-section-subtitle">'
+                        "Evalúa estado, confianza y limitaciones antes de reutilizar el borrador."
+                        "</p>"
+                        "</div>"
+                    )
                 )
-                gr.Markdown("### Limitaciones para revisión")
-                limitations_output = gr.Markdown(label="Limitaciones para revisión")
+                gr.Markdown("#### Estado de revisión")
+                status_output = gr.Markdown(
+                    label="Estado de revisión",
+                    show_label=False,
+                    elem_classes=["yini-status-card"],
+                )
+                gr.Markdown("#### Confianza")
+                confidence_output = gr.Markdown(
+                    label="Confianza",
+                    show_label=False,
+                    elem_classes=["yini-confidence-card"],
+                )
+                gr.Markdown("#### Calidad de la respuesta")
+                answer_quality_output = gr.Markdown(
+                    label="Calidad de la respuesta",
+                    show_label=False,
+                    value="Calidad de la respuesta — Calidad estándar del borrador.",
+                    elem_classes=["yini-quality-card"],
+                )
+                gr.Markdown("#### Limitaciones para revisión")
+                limitations_output = gr.Markdown(
+                    label="Limitaciones para revisión",
+                    show_label=False,
+                    elem_classes=["yini-limitations-card"],
+                )
 
-        with gr.Accordion("Detalles de revisión", open=False):
-            trace_output = gr.Textbox(label="Resumen de trazabilidad", interactive=False)
+        with gr.Accordion(
+            "Citas clave y evidencia",
+            open=False,
+            elem_classes=["yini-accordion"],
+        ):
+            gr.HTML(
+                '<p class="yini-table-hint">Usa esta sección para contrastar la respuesta con la evidencia recuperada.</p>'
+            )
+            gr.Markdown("### Citas clave")
+            citations_output = gr.Markdown(
+                label="Citas clave",
+                show_label=False,
+                elem_classes=["yini-citations-block"],
+            )
             gr.Markdown("### Base documental")
             documentary_basis_output = gr.Markdown(
                 label="Base documental",
+                show_label=False,
                 elem_classes=["yini-documentary-block"],
             )
-            gr.Markdown("### Contexto de soporte")
-            support_output = gr.Markdown(label="Contexto de soporte")
 
-        with gr.Accordion("Diagnóstico técnico", open=False):
-            gr.Markdown("### Metadatos de depuración")
-            debug_output = gr.Markdown(label="Metadatos de depuración")
-            error_output = gr.Textbox(
-                label="Estado de error",
-                value=format_error_state(error_kind=None),
-                interactive=False,
+        with gr.Accordion(
+            "Detalles de revisión",
+            open=False,
+            elem_classes=["yini-accordion"],
+        ):
+            gr.Markdown("### Resumen de trazabilidad")
+            trace_output = gr.Markdown(
+                label="Resumen de trazabilidad",
+                show_label=False,
+                elem_classes=["yini-trace-card"],
             )
-            loading_output = gr.Textbox(
+            gr.Markdown("### Contexto de soporte")
+            support_output = gr.Markdown(
+                label="Contexto de soporte",
+                show_label=False,
+                elem_classes=["yini-support-card"],
+            )
+
+        with gr.Accordion(
+            "Diagnóstico técnico",
+            open=False,
+            elem_classes=["yini-accordion"],
+        ):
+            gr.Markdown("### Metadatos de depuración")
+            debug_output = gr.Markdown(
+                label="Metadatos de depuración",
+                show_label=False,
+                elem_classes=["yini-debug-card"],
+            )
+            gr.Markdown("### Estado de error")
+            error_output = gr.Markdown(
+                label="Estado de error",
+                show_label=False,
+                value=format_error_state(error_kind=None),
+                elem_classes=["yini-error-card"],
+            )
+            gr.Markdown("### Estado de carga")
+            loading_output = gr.Markdown(
                 label="Estado de carga",
+                show_label=False,
                 value=format_loading_state(is_loading=False),
-                interactive=False,
+                elem_classes=["yini-loading-card"],
             )
 
         submit_button.click(
