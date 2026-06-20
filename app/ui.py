@@ -723,7 +723,9 @@ def build_gradio_app(
 
         with gr.Row():
             with gr.Column(scale=3):
+                gr.Markdown("### Respuesta sugerida")
                 answer_output = gr.Markdown(label="Respuesta sugerida")
+                gr.Markdown("### Citas clave")
                 citations_output = gr.Markdown(label="Citas clave")
             with gr.Column(scale=2):
                 status_output = gr.Textbox(label="Estado de revisión", interactive=False)
@@ -733,14 +735,18 @@ def build_gradio_app(
                     value="Calidad de la respuesta — Calidad estándar del borrador.",
                     interactive=False,
                 )
+                gr.Markdown("### Limitaciones para revisión")
                 limitations_output = gr.Markdown(label="Limitaciones para revisión")
 
         with gr.Accordion("Detalles de revisión", open=False):
             trace_output = gr.Textbox(label="Resumen de trazabilidad", interactive=False)
+            gr.Markdown("### Base documental")
             documentary_basis_output = gr.Markdown(label="Base documental")
+            gr.Markdown("### Contexto de soporte")
             support_output = gr.Markdown(label="Contexto de soporte")
 
         with gr.Accordion("Diagnóstico técnico", open=False):
+            gr.Markdown("### Metadatos de depuración")
             debug_output = gr.Markdown(label="Metadatos de depuración")
             error_output = gr.Textbox(
                 label="Estado de error",

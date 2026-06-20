@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-20
+
+- Add visible Gradio section headings for the public Spaces answer, key citations, review details, and technical metadata surfaces, and realign the manual Spaces QA checklist plus UI layout test coverage to the actual hosted rendering behavior.
+
 ## 2026-06-19
 
 - Add a manual Hugging Face Spaces QA checklist in `docs/spaces-manual-qa-checklist.md`, with hosted smoke checks plus pass/fail question rows aligned to the 13 accepted MVP category families and their expected evidence documents.

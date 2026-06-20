@@ -1055,6 +1055,11 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
         for component in app.children
         if "label" in component.kwargs
     ]
+    markdown_values = [
+        component.kwargs.get("value")
+        for component in app.children
+        if component.kind == "Markdown" and "value" in component.kwargs
+    ]
     assert "Pregunta del asesor" in component_labels
     assert "Estado del servicio" in component_labels
     assert "Respuesta sugerida" in component_labels
@@ -1071,6 +1076,12 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Base documental" in component_labels
     assert "Detalles de revisión" in component_labels
     assert "Diagnóstico técnico" in component_labels
+    assert "### Respuesta sugerida" in markdown_values
+    assert "### Citas clave" in markdown_values
+    assert "### Limitaciones para revisión" in markdown_values
+    assert "### Base documental" in markdown_values
+    assert "### Contexto de soporte" in markdown_values
+    assert "### Metadatos de depuración" in markdown_values
 
     submit_button = next(
         component for component in app.children if component.kind == "Button"
