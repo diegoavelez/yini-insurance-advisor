@@ -1709,6 +1709,12 @@ Implementation note:
   coverage queries now stay inside `clausulado-bicis y patinetas.pdf`, and the
   deductible smoke query again ranks `pv bicis y patinetas v2.pdf` first after
   removing the over-broad `seguro` trigger from the coverage-only routing rule.
+- 2026-06-20: hosted manual Space QA reopened the bicicletas/patinetas
+  deductible query; the public UI path lacked local chunk-artifact support and
+  drifted outside `pv bicis y patinetas v2.pdf`, so
+  `hosted-manual-bicis-deductible-and-choque-procedure-retrieval-recovery`
+  now adds a deterministic hosted-safe guide-family routing rule for the
+  deductible intent before the row can be treated as stable again.
 - 2026-06-15: `MOVILIDAD/VIAJES` now passes its acceptance row after
   `viajes-coverage-section-priority-recovery`; national and international
   coverage smokes stay inside their intended clausulado families and now
@@ -1726,6 +1732,11 @@ Implementation note:
   procedure intent is anchored on `proceso atencion choque simple v2.pdf` with
   `circular choque simple.pdf` support instead of over-prioritizing the photo
   guide.
+- 2026-06-20: hosted manual Space QA reopened the choque simple procedure
+  query; the public UI path drifted back to the photo guide family, so
+  `hosted-manual-bicis-deductible-and-choque-procedure-retrieval-recovery`
+  now adds deterministic hosted-safe procedure-family routing to
+  `EN EVENTOS DE CHOQUES` before the row can be treated as stable again.
 - 2026-06-15: `MOVILIDAD/PV` now passes its acceptance row; live retrieval for
   `¿Qué beneficios incluye la propuesta de valor de movilidad?` stayed fully
   inside the `PROPUESTA DE VALOR MOVILIDAD` evidence family, and the grounded

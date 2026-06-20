@@ -366,6 +366,43 @@
   "query_filter_rules": [
     {
       "all_of": [
+        "deducible"
+      ],
+      "any_of": [
+        "bicicleta",
+        "bicicletas",
+        "bici",
+        "bicis",
+        "patineta",
+        "patinetas"
+      ],
+      "filters": {
+        "product": "movilidad",
+        "document_type": "guide",
+        "document_name": "pv bicis y patinetas v2"
+      }
+    },
+    {
+      "all_of": [
+        "choque simple"
+      ],
+      "any_of": [
+        "procedimiento",
+        "atención",
+        "atencion",
+        "qué debo hacer",
+        "que debo hacer",
+        "pasos",
+        "instrucciones"
+      ],
+      "filters": {
+        "product": "movilidad",
+        "document_type": "guide",
+        "document_name": "EN EVENTOS DE CHOQUES"
+      }
+    },
+    {
+      "all_of": [
         "choque simple"
       ],
       "any_of": [

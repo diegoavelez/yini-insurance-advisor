@@ -2,6 +2,7 @@
 
 ## 2026-06-20
 
+- Recover the hosted manual MVP regressions for bicicletas/patinetas deductible and choque simple procedure by adding deterministic term-equivalence routing rules for the intended guide families, adding hosted-style retrieval regressions, and reopening the roadmap plus acceptance-matrix rows as `fragile-pass` until Spaces is revalidated.
 - Add visible Gradio section headings for the public Spaces answer, key citations, review details, and technical metadata surfaces, and realign the manual Spaces QA checklist plus UI layout test coverage to the actual hosted rendering behavior.
 
 ## 2026-06-19

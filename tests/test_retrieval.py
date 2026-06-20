@@ -1459,6 +1459,19 @@ def test_repository_choque_simple_photo_query_normalizes_to_photo_guide_family()
     assert normalized_query.filters.document_name == "¿Cómo tomar fotos y videos?"
 
 
+def test_repository_choque_simple_procedure_hosted_query_injects_process_guide_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cuál es el procedimiento de atención del choque simple?",
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name == "EN EVENTOS DE CHOQUES"
+
+
 def test_normalize_retrieval_query_applies_financing_guide_document_family_rule() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(
@@ -1922,7 +1935,7 @@ def test_repository_bicicletas_patinetas_coverage_query_normalizes_to_policy_fam
     assert normalized_query.filters.document_name == "SEGURO DE BICICLETA"
 
 
-def test_repository_bicicletas_patinetas_deductible_query_does_not_inject_policy_family() -> None:
+def test_repository_bicicletas_patinetas_deductible_query_normalizes_to_pv_guide_family() -> None:
     normalized_query = normalize_retrieval_query_with_term_equivalences(
         RetrievalQuery(
             query="¿Cuál es el deducible del seguro de bicicletas y patinetas?",
@@ -1933,7 +1946,20 @@ def test_repository_bicicletas_patinetas_deductible_query_does_not_inject_policy
 
     assert normalized_query.filters.product == "movilidad"
     assert normalized_query.filters.document_type == "guide"
-    assert normalized_query.filters.document_name is None
+    assert normalized_query.filters.document_name == "pv bicis y patinetas v2"
+
+
+def test_repository_bicicletas_patinetas_deductible_hosted_query_injects_guide_family() -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(
+            query="¿Cuál es el deducible del seguro de bicicletas y patinetas?",
+        ),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    assert normalized_query.filters.product == "movilidad"
+    assert normalized_query.filters.document_type == "guide"
+    assert normalized_query.filters.document_name == "pv bicis y patinetas v2"
 
 
 def test_repository_autos_basico_pt_coverage_query_appends_recall_terms(
