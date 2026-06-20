@@ -287,7 +287,7 @@ def test_render_grounded_result_maps_typed_response_fields() -> None:
     assert "ruta fuente: autos/polizas/auto-policy.pdf" in documentary_basis
     assert "tipo: policy" in documentary_basis
     assert "producto: auto" in documentary_basis
-    assert confidence == "HIGH"
+    assert confidence == "Alta"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "consulta_recibida" in trace_summary
     assert "borrador_fundamentado_generado" in trace_summary
@@ -331,7 +331,7 @@ def test_run_query_returns_successful_grounded_output() -> None:
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert "Auto Policy" in documentary_basis
-    assert confidence == "HIGH"
+    assert confidence == "Alta"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "citas:1" in trace_summary
     assert "ID de solicitud: ui-" in support_context
@@ -371,7 +371,7 @@ def test_run_query_returns_scope_refusal_without_backend_call() -> None:
     assert "no puedo responder esa solicitud" in answer.lower()
     assert citations == "No hay citas disponibles."
     assert documentary_basis == "No hay base documental disponible."
-    assert confidence == "LOW"
+    assert confidence == "Baja"
     assert "fuera del alcance soportado de documentos de seguros" in limitations
     assert "fundamentacion:limitada" in trace_summary
     assert "Resultado de soporte: rechazo por alcance no soportado" in support_context
@@ -404,7 +404,7 @@ def test_run_query_accepts_spanish_supported_scope_queries() -> None:
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert "Auto Policy" in documentary_basis
-    assert confidence == "HIGH"
+    assert confidence == "Alta"
     assert "consulta_recibida" in trace_summary
     assert "Resultado de soporte: borrador fundamentado listo" in support_context
     assert answer_quality_state == "Calidad de la respuesta — Calidad estándar del borrador."
@@ -439,7 +439,7 @@ def test_run_query_accepts_spanish_arl_scope_queries() -> None:
     assert "Ley 1562 de 2012" in answer
     assert "Auto Policy" in citations
     assert "Auto Policy" in documentary_basis
-    assert confidence == "HIGH"
+    assert confidence == "Alta"
     assert "consulta_recibida" in trace_summary
     assert "Resultado de soporte: borrador fundamentado listo" in support_context
     assert "Resultado de depuración: borrador fundamentado listo" in debug_metadata
@@ -477,7 +477,7 @@ def test_run_query_returns_prompt_injection_refusal_without_backend_call() -> No
     assert "no puedo seguir instrucciones" in answer.lower()
     assert citations == "No hay citas disponibles."
     assert documentary_basis == "No hay base documental disponible."
-    assert confidence == "LOW"
+    assert confidence == "Baja"
     assert "guardrail de prompt injection" in limitations.lower()
     assert "fundamentacion:limitada" in trace_summary
     assert "Resultado de soporte: rechazo por guardrail de prompt" in support_context
@@ -517,7 +517,7 @@ def test_run_query_rejects_spanish_prompt_injection_without_backend_call() -> No
     assert "no puedo seguir instrucciones" in answer.lower()
     assert citations == "No hay citas disponibles."
     assert documentary_basis == "No hay base documental disponible."
-    assert confidence == "LOW"
+    assert confidence == "Baja"
     assert "guardrail de prompt injection" in limitations.lower()
     assert "Resultado de soporte: rechazo por guardrail de prompt" in support_context
     assert "Resultado de depuración: rechazo por guardrail de prompt" in debug_metadata
@@ -547,7 +547,7 @@ def test_run_query_emits_scope_refusal_event(caplog: pytest.LogCaptureFixture) -
     )
 
     assert "no puedo responder esa solicitud" in answer.lower()
-    assert confidence == "LOW"
+    assert confidence == "Baja"
     assert trace_summary
     assert support_context
     assert debug_metadata
@@ -586,7 +586,7 @@ def test_run_query_emits_prompt_injection_guardrail_event(
     )
 
     assert "no puedo seguir instrucciones" in answer.lower()
-    assert confidence == "LOW"
+    assert confidence == "Baja"
     assert trace_summary
     assert support_context
     assert debug_metadata
@@ -683,7 +683,7 @@ def test_run_query_distinguishes_insufficient_evidence_from_runtime_failure() ->
 
     assert "do not have enough grounded evidence" in answer
     assert "Auto Policy" in documentary_basis
-    assert confidence == "LOW"
+    assert confidence == "Baja"
     assert "insufficient" in limitations.lower()
     assert "fundamentacion:limitada" in trace_summary
     assert "Resultado de soporte: borrador con evidencia limitada" in support_context
@@ -740,8 +740,8 @@ def test_run_query_surfaces_runtime_failures_as_explicit_errors() -> None:
         == "Error de ejecución — No es posible procesar la consulta en este momento. "
         "Inténtalo de nuevo."
     )
-    assert "No es posible procesar la consulta en este momento." in status
-    assert "backend offline" in status
+    assert status == "No se pudo generar el borrador para revisión. Inténtalo de nuevo en unos minutos."
+    assert "backend offline" not in status
 
 
 def test_format_trace_summary_prefers_explicit_trace_summary_when_present() -> None:
@@ -894,7 +894,11 @@ def test_format_readiness_state_renders_ready_and_degraded_messages() -> None:
     )
     assert (
         format_readiness_state(status="degraded", detail="qdrant-client is unavailable.")
-        == "Estado del servicio — Degradado. qdrant-client is unavailable."
+        == (
+            "Estado del servicio — Degradado. Algunas dependencias de ejecución no "
+            "están disponibles temporalmente. La generación del borrador puede "
+            "fallar hasta que el servicio se restablezca."
+        )
     )
 
 
@@ -958,7 +962,11 @@ def test_build_demo_readiness_message_returns_degraded_when_readiness_fails() ->
         ),
     )
 
-    assert rendered == "Estado del servicio — Degradado. qdrant-client is unavailable."
+    assert rendered == (
+        "Estado del servicio — Degradado. Algunas dependencias de ejecución no "
+        "están disponibles temporalmente. La generación del borrador puede "
+        "fallar hasta que el servicio se restablezca."
+    )
 
 
 @dataclass
@@ -1106,7 +1114,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Estado de carga" in component_labels
     assert "Citas clave" in component_labels
     assert "Base documental" in component_labels
-    assert "Citas clave y evidencia" in component_labels
+    assert "Base documental y evidencia extendida" in component_labels
     assert "Detalles de revisión" in component_labels
     assert "Diagnóstico técnico" in component_labels
     assert any("Asistente de revisión fundamentada" in value for value in html_values)
@@ -1176,7 +1184,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "Coverage applies" in answer
     assert "Auto Policy" in citations
     assert "Auto Policy" in documentary_basis
-    assert confidence == "HIGH"
+    assert confidence == "Alta"
     assert "La revisión del asesor sigue siendo obligatoria." in limitations
     assert "consulta_recibida" in trace_summary
     assert "ID de solicitud: ui-" in support_context

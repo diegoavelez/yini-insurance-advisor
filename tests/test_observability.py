@@ -129,7 +129,7 @@ def test_ui_run_query_emits_correlated_success_events(caplog: pytest.LogCaptureF
     )
 
     assert "Coverage applies" in answer
-    assert confidence == "HIGH"
+    assert confidence == "Alta"
     assert trace_summary
     assert support_context
     assert debug_metadata

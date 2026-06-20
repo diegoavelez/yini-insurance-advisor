@@ -314,6 +314,14 @@ APP_CSS = """
 """
 DEFAULT_ERROR_MESSAGE = "No es posible procesar la consulta en este momento."
 DEFAULT_LOADING_MESSAGE = "Generando borrador de respuesta..."
+DEFAULT_DEGRADED_READINESS_MESSAGE = (
+    "Estado del servicio — Degradado. Algunas dependencias de ejecución no están "
+    "disponibles temporalmente. La generación del borrador puede fallar hasta que "
+    "el servicio se restablezca."
+)
+DEFAULT_PUBLIC_RUNTIME_FAILURE_STATUS = (
+    "No se pudo generar el borrador para revisión. Inténtalo de nuevo en unos minutos."
+)
 UI_LOGGER = logging.getLogger("yini.ui")
 APP_LOGGER = logging.getLogger("yini.app")
 SAFE_TRACE_ITEM_PATTERN = re.compile(r"^[a-z0-9_:-]{1,40}$")
@@ -392,6 +400,12 @@ def localize_trace_item(item: str) -> str:
         confidence = item.split(":", 1)[1]
         return f"confianza:{CONFIDENCE_TRANSLATIONS.get(confidence, confidence)}"
     return item
+
+
+def format_confidence_display(confidence: str) -> str:
+    """Render a localized public confidence label for the review UI."""
+
+    return CONFIDENCE_TRANSLATIONS.get(confidence.lower(), confidence).capitalize()
 
 
 def format_citations(citations: list[Citation]) -> str:
@@ -659,16 +673,7 @@ def format_readiness_state(*, status: str, detail: str | None = None) -> str:
     if status == "ready":
         return "Estado del servicio — Listo para generar borradores fundamentados."
     if status == "degraded":
-        return (
-            "Estado del servicio — Degradado. "
-            + (
-                detail
-                or (
-                    "Las dependencias de ejecución requeridas no están disponibles. "
-                    "La generación del borrador puede fallar hasta que el servicio se restablezca."
-                )
-            )
-        )
+        return DEFAULT_DEGRADED_READINESS_MESSAGE
     return detail or "Estado del servicio — Desconocido."
 
 
@@ -719,11 +724,8 @@ def build_demo_readiness_message(
     builder = readiness_status_builder or build_readiness_status
     try:
         builder(settings, runtime_surface="gradio_ui")
-    except Exception as exc:
-        return format_readiness_state(
-            status="degraded",
-            detail=str(exc),
-        )
+    except Exception:
+        return format_readiness_state(status="degraded")
     return format_readiness_state(status="ready")
 
 
@@ -851,7 +853,7 @@ def run_query(
                 error_kind="runtime",
                 detail="No es posible procesar la consulta en este momento. Inténtalo de nuevo.",
             ),
-            f"{DEFAULT_ERROR_MESSAGE} Error: {exc}",
+            DEFAULT_PUBLIC_RUNTIME_FAILURE_STATUS,
         )
 
     log_event(
@@ -888,7 +890,7 @@ def render_grounded_result(
     answer = localize_public_text(response.suggested_answer)
     citations = format_citations(response.citations)
     documentary_basis = format_documentary_basis(response.documentary_basis)
-    confidence = response.confidence.upper()
+    confidence = format_confidence_display(response.confidence)
     limitations = format_limitations(response.limitations)
     trace_summary = format_trace_summary(result)
     support_context = format_support_context(
@@ -1055,6 +1057,12 @@ def build_gradio_app(
                     show_label=False,
                     elem_classes=["yini-answer-block"],
                 )
+                gr.Markdown("### Citas clave")
+                citations_output = gr.Markdown(
+                    label="Citas clave",
+                    show_label=False,
+                    elem_classes=["yini-citations-block"],
+                )
             with gr.Column(scale=4, elem_classes=["yini-review-column"]):
                 gr.HTML(
                     (
@@ -1093,18 +1101,12 @@ def build_gradio_app(
                 )
 
         with gr.Accordion(
-            "Citas clave y evidencia",
+            "Base documental y evidencia extendida",
             open=False,
             elem_classes=["yini-accordion"],
         ):
             gr.HTML(
                 '<p class="yini-table-hint">Usa esta sección para contrastar la respuesta con la evidencia recuperada.</p>'
-            )
-            gr.Markdown("### Citas clave")
-            citations_output = gr.Markdown(
-                label="Citas clave",
-                show_label=False,
-                elem_classes=["yini-citations-block"],
             )
             gr.Markdown("### Base documental")
             documentary_basis_output = gr.Markdown(
