@@ -1737,6 +1737,11 @@ Implementation note:
   `hosted-manual-bicis-deductible-and-choque-procedure-retrieval-recovery`
   now adds deterministic hosted-safe procedure-family routing to
   `EN EVENTOS DE CHOQUES` before the row can be treated as stable again.
+- 2026-06-20: hosted manual Space QA also exposed a wide-table readability gap
+  in the SOAT tariff response; `spaces-wide-table-scroll-and-readability` now
+  scopes horizontal-scroll table styling to the public answer/documentary
+  Markdown surfaces so numeric tariff cells remain readable without shrinking
+  the font.
 - 2026-06-15: `MOVILIDAD/PV` now passes its acceptance row; live retrieval for
   `¿Qué beneficios incluye la propuesta de valor de movilidad?` stayed fully
   inside the `PROPUESTA DE VALOR MOVILIDAD` evidence family, and the grounded

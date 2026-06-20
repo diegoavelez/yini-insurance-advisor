@@ -34,6 +34,32 @@ APP_DESCRIPTION = (
     "Asistente fundamentado sobre documentos de seguros para revisión del asesor. "
     "Las respuestas son borradores y deben mantenerse vinculadas a evidencia citada."
 )
+APP_CSS = """
+.yini-answer-block,
+.yini-documentary-block {
+  overflow-x: auto;
+}
+
+.yini-answer-block table,
+.yini-documentary-block table {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-collapse: collapse;
+}
+
+.yini-answer-block th,
+.yini-answer-block td,
+.yini-documentary-block th,
+.yini-documentary-block td {
+  white-space: nowrap;
+  word-break: normal;
+  font-variant-numeric: tabular-nums;
+}
+"""
 DEFAULT_ERROR_MESSAGE = "No es posible procesar la consulta en este momento."
 DEFAULT_LOADING_MESSAGE = "Generando borrador de respuesta..."
 UI_LOGGER = logging.getLogger("yini.ui")
@@ -709,7 +735,7 @@ def build_gradio_app(
         settings=resolved_settings,
         grounded_answer_fn=grounded_answer_fn,
     )
-    with gr.Blocks(title=APP_TITLE) as app:
+    with gr.Blocks(title=APP_TITLE, css=APP_CSS) as app:
         gr.Markdown(f"# {APP_TITLE}")
         gr.Markdown(APP_DESCRIPTION)
         gr.Markdown(readiness_message, label="Estado del servicio")
@@ -724,7 +750,10 @@ def build_gradio_app(
         with gr.Row():
             with gr.Column(scale=3):
                 gr.Markdown("### Respuesta sugerida")
-                answer_output = gr.Markdown(label="Respuesta sugerida")
+                answer_output = gr.Markdown(
+                    label="Respuesta sugerida",
+                    elem_classes=["yini-answer-block"],
+                )
                 gr.Markdown("### Citas clave")
                 citations_output = gr.Markdown(label="Citas clave")
             with gr.Column(scale=2):
@@ -741,7 +770,10 @@ def build_gradio_app(
         with gr.Accordion("Detalles de revisión", open=False):
             trace_output = gr.Textbox(label="Resumen de trazabilidad", interactive=False)
             gr.Markdown("### Base documental")
-            documentary_basis_output = gr.Markdown(label="Base documental")
+            documentary_basis_output = gr.Markdown(
+                label="Base documental",
+                elem_classes=["yini-documentary-block"],
+            )
             gr.Markdown("### Contexto de soporte")
             support_output = gr.Markdown(label="Contexto de soporte")
 

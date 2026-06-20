@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.ui import (
+    APP_CSS,
     APP_DESCRIPTION,
     APP_TITLE,
     build_demo_readiness_message,
@@ -1046,6 +1047,7 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     )
 
     assert app.kwargs["title"] == APP_TITLE
+    assert app.kwargs["css"] == APP_CSS
     assert app.title == APP_TITLE
     assert app.description == APP_DESCRIPTION
     assert app.flagging_mode == "never"
@@ -1082,6 +1084,22 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "### Base documental" in markdown_values
     assert "### Contexto de soporte" in markdown_values
     assert "### Metadatos de depuración" in markdown_values
+    answer_markdown = next(
+        component
+        for component in app.children
+        if component.kind == "Markdown"
+        and component.kwargs.get("label") == "Respuesta sugerida"
+    )
+    documentary_markdown = next(
+        component
+        for component in app.children
+        if component.kind == "Markdown"
+        and component.kwargs.get("label") == "Base documental"
+    )
+    assert answer_markdown.kwargs["elem_classes"] == ["yini-answer-block"]
+    assert documentary_markdown.kwargs["elem_classes"] == ["yini-documentary-block"]
+    assert ".yini-answer-block table" in app.kwargs["css"]
+    assert "white-space: nowrap;" in app.kwargs["css"]
 
     submit_button = next(
         component for component in app.children if component.kind == "Button"
