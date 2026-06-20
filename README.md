@@ -121,6 +121,10 @@ Minimal operator procedure:
 5. Confirm the Space serves the app on port `7860`, matching `app_port` in the
    root `README.md`.
 
+Current deployed Space:
+
+- page URL: `https://huggingface.co/spaces/Diegoavelez/Yini-insurance-advisor`
+
 Notes:
 
 - The Space runtime uses the root `Dockerfile` as the authoritative build
@@ -273,27 +277,34 @@ Current hosted smoke expectations:
 
 - the Space should serve the app on port `7860`
 - the public UI should render the current demo surfaces, including:
-  - `Service Readiness`
-  - `Answer Quality`
-  - `Error State`
+  - `Estado del servicio`
+  - `Respuesta sugerida`
+  - `Citas clave`
+  - `Estado de revisión`
+  - `Confianza`
+  - `Calidad de la respuesta`
+  - `Estado de error`
 - the hosted readiness surface is expected to report:
-  - `Service Readiness — Ready for grounded draft generation.`
+  - `Estado del servicio — Listo para generar borradores fundamentados.`
 - a benign in-scope query is expected to keep:
-  - `Answer Quality — Standard draft quality.`
-  - `No active errors.`
-  - `This response is a draft for advisor review.`
+  - `Calidad de la respuesta — Calidad estándar del borrador.`
+  - `No hay errores activos.`
+  - `Se requiere revisión del asesor antes del uso externo.`
 
 Minimum operator checks after deploy/rebuild:
 
 1. Open the hosted Space and confirm the app loads successfully.
 2. Confirm the page renders the current demo UI sections, especially:
-   - `Service Readiness`
-   - `Answer Quality`
-   - `Error State`
+   - `Estado del servicio`
+   - `Respuesta sugerida`
+   - `Citas clave`
+   - `Estado de revisión`
+   - `Diagnóstico técnico`
 3. Confirm the readiness surface reports the ready state rather than a degraded
    runtime message.
 4. Submit one benign in-scope insurance-document query and confirm:
    - the response returns as a draft;
+   - `Citas clave` points to the expected document family;
    - no active error state is shown;
    - answer quality remains the standard draft state.
 
@@ -317,17 +328,18 @@ python -m app.ui
 The UI exposes:
 
 - advisor question input
+- quick-start example buttons for common query types
 - suggested grounded answer
-- citations
-- confidence
-- limitations
-- status / advisor-review messaging
+- visible `Citas clave`
+- review panel with `Estado de revisión`, `Confianza`, `Calidad de la respuesta`
+- extended `Base documental y evidencia extendida`
+- technical/support diagnostics in collapsed accordions
 
 User-visible failure behavior:
 
 - blank input returns an explicit prompt to enter a question
 - insufficient evidence remains a typed low-confidence response
-- retrieval or generation failures surface as explicit UI errors
+- retrieval or generation failures surface as explicit UI errors without exposing raw backend exception text in the public status surfaces
 
 ## Ingestion CLI
 
