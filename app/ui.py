@@ -183,9 +183,11 @@ APP_CSS = """
 .yini-answer-block,
 .yini-documentary-block,
 .yini-citations-block {
+  position: relative;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 8px;
+  scrollbar-gutter: stable both-edges;
   scrollbar-width: thin;
   scrollbar-color: rgba(140, 159, 184, 0.75) rgba(255, 255, 255, 0.06);
 }
@@ -256,6 +258,25 @@ APP_CSS = """
 .yini-citations-block th:first-child,
 .yini-citations-block td:first-child {
   min-width: 14rem;
+  position: sticky;
+  left: 0;
+  background: rgba(8, 11, 17, 0.96);
+  background-clip: padding-box;
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.08),
+    10px 0 18px -16px rgba(0, 0, 0, 0.9);
+}
+
+.yini-answer-block th:first-child,
+.yini-documentary-block th:first-child,
+.yini-citations-block th:first-child {
+  z-index: 3;
+}
+
+.yini-answer-block td:first-child,
+.yini-documentary-block td:first-child,
+.yini-citations-block td:first-child {
+  z-index: 2;
 }
 
 .yini-answer-block th p,
@@ -291,8 +312,17 @@ APP_CSS = """
 
 .yini-table-hint {
   margin: 10px 0 14px;
-  color: #8fa0b7;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(129, 178, 255, 0.18);
+  background: rgba(104, 174, 255, 0.06);
+  color: #c8d6e8;
   font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.yini-evidence-accordion {
+  margin-top: 8px;
 }
 
 .yini-accordion .label-wrap,
@@ -1120,19 +1150,39 @@ def build_gradio_app(
                         "</div>"
                     )
                 )
+                gr.HTML(
+                    (
+                        '<p class="yini-table-hint">'
+                        "Si la respuesta incluye una tabla ancha, desplázala horizontalmente. "
+                        "La primera columna permanece fija para conservar el contexto."
+                        "</p>"
+                    )
+                )
                 answer_output = gr.Markdown(
                     label="Respuesta sugerida",
                     show_label=False,
                     value=INITIAL_ANSWER_MESSAGE,
                     elem_classes=["yini-answer-block"],
                 )
-                gr.Markdown("### Citas clave")
-                citations_output = gr.Markdown(
-                    label="Citas clave",
-                    show_label=False,
-                    value=INITIAL_CITATIONS_MESSAGE,
-                    elem_classes=["yini-citations-block"],
-                )
+                with gr.Accordion(
+                    "Citas clave",
+                    open=False,
+                    elem_classes=["yini-accordion", "yini-evidence-accordion"],
+                ):
+                    gr.HTML(
+                        (
+                            '<p class="yini-table-hint">'
+                            "Ábrela para validar la familia documental recuperada y revisar "
+                            "evidencia puntual sin recargar la vista principal."
+                            "</p>"
+                        )
+                    )
+                    citations_output = gr.Markdown(
+                        label="Citas clave",
+                        show_label=False,
+                        value=INITIAL_CITATIONS_MESSAGE,
+                        elem_classes=["yini-citations-block"],
+                    )
             with gr.Column(scale=4, elem_classes=["yini-review-column"]):
                 gr.HTML(
                     (
@@ -1179,7 +1229,7 @@ def build_gradio_app(
             elem_classes=["yini-accordion"],
         ):
             gr.HTML(
-                '<p class="yini-table-hint">Usa esta sección para contrastar la respuesta con la evidencia recuperada.</p>'
+                '<p class="yini-table-hint">Usa esta sección para contrastar la respuesta con la evidencia recuperada. Si aparece una tabla ancha, desplázala horizontalmente; la primera columna permanece fija para mantener el contexto.</p>'
             )
             gr.Markdown("### Base documental")
             documentary_basis_output = gr.Markdown(

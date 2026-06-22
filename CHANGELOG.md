@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-22
+
+- Refine the hosted Hugging Face Spaces review layout by moving `Citas clave` into a compact collapsed accordion beneath `Respuesta sugerida`, adding stronger wide-table affordances with reserved scrollbar gutter space and a sticky first column, and syncing the manual QA checklist, README, roadmap traceability, focused UI regression coverage, and the dated spec bundle for that UI-only slice.
+
 ## 2026-06-21
 
 - Redesign the public Gradio review workspace in Hugging Face Spaces into a clearer advisor-review surface with a branded shell, prompt composer, primary answer workspace, evidence accordion, and compact side-panel review states while preserving the current backend contract and observability seams.

@@ -1123,13 +1123,23 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "#### Confianza" in markdown_values
     assert "#### Calidad de la respuesta" in markdown_values
     assert "#### Limitaciones para revisión" in markdown_values
-    assert "### Citas clave" in markdown_values
     assert "### Base documental" in markdown_values
     assert "### Resumen de trazabilidad" in markdown_values
     assert "### Contexto de soporte" in markdown_values
     assert "### Estado de error" in markdown_values
     assert "### Estado de carga" in markdown_values
     assert "### Metadatos de depuración" in markdown_values
+    citations_accordion = next(
+        component
+        for component in app.children
+        if component.kind == "Accordion"
+        and component.kwargs.get("label") == "Citas clave"
+    )
+    assert citations_accordion.kwargs["open"] is False
+    assert citations_accordion.kwargs["elem_classes"] == [
+        "yini-accordion",
+        "yini-evidence-accordion",
+    ]
     answer_markdown = next(
         component
         for component in app.children
@@ -1151,6 +1161,12 @@ def test_build_gradio_app_creates_expected_blocks_layout() -> None:
     assert "white-space: nowrap;" in app.kwargs["css"]
     assert "min-width: 14rem;" in app.kwargs["css"]
     assert "scrollbar-width: thin;" in app.kwargs["css"]
+    assert "scrollbar-gutter: stable both-edges;" in app.kwargs["css"]
+    assert "position: sticky;" in app.kwargs["css"]
+    assert any(
+        "La primera columna permanece fija para conservar el contexto." in value
+        for value in html_values
+    )
 
     example_buttons = [
         component

@@ -2082,6 +2082,15 @@ Current status:
   `docs/mvp-go-live.md`, which consolidates the release gate, hosted smoke,
   rollback posture, corpus-update workflow, and shipped supported-category set
   for the current MVP.
+- `spaces-citation-accordion-and-wide-table-usability` is now complete:
+  - the public Gradio UI now keeps `Respuesta sugerida` as the primary visible
+    answer surface while moving `Citas clave` into a compact collapsed
+    accordion directly below it;
+  - hosted answer/evidence tables now expose a stronger horizontal-scroll
+    affordance with reserved scrollbar gutter space where supported and a
+    sticky first column, preserving readability without shrinking the font;
+  - the slice stays UI-only and preserves the current backend response
+    contracts.
 
 ---
 

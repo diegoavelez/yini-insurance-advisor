@@ -279,7 +279,7 @@ Current hosted smoke expectations:
 - the public UI should render the current demo surfaces, including:
   - `Estado del servicio`
   - `Respuesta sugerida`
-  - `Citas clave`
+  - acordeón `Citas clave`
   - `Estado de revisión`
   - `Confianza`
   - `Calidad de la respuesta`
@@ -297,7 +297,7 @@ Minimum operator checks after deploy/rebuild:
 2. Confirm the page renders the current demo UI sections, especially:
    - `Estado del servicio`
    - `Respuesta sugerida`
-   - `Citas clave`
+   - acordeón `Citas clave`
    - `Estado de revisión`
    - `Diagnóstico técnico`
 3. Confirm the readiness surface reports the ready state rather than a degraded
@@ -330,7 +330,7 @@ The UI exposes:
 - advisor question input
 - quick-start example buttons for common query types
 - suggested grounded answer
-- visible `Citas clave`
+- compact `Citas clave` accordion under the answer surface
 - review panel with `Estado de revisión`, `Confianza`, `Calidad de la respuesta`
 - extended `Base documental y evidencia extendida`
 - technical/support diagnostics in collapsed accordions

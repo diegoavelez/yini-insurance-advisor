@@ -10,7 +10,7 @@ Usa esta tabla para validar manualmente el Space público después de un deploy 
    - la app responde sin error;
    - `Estado de revisión` sigue indicando borrador para revisión del asesor;
    - `Calidad de la respuesta` no cae a un estado inesperado;
-   - el bloque principal separa visualmente `Respuesta sugerida` y `Citas clave`;
+   - el bloque principal separa visualmente `Respuesta sugerida` y el acordeón `Citas clave`;
    - `Citas clave` y, cuando aplique, `Base documental` apuntan a la familia documental esperada.
 4. Marca `Fail` si hay error, deriva a una familia documental incorrecta o la respuesta no corresponde a la intención.
 5. Usa `Notas` para registrar drift de evidencia, citas ruidosas o respuestas incompletas.
@@ -28,7 +28,7 @@ Usa esta tabla para validar manualmente el Space público después de un deploy 
 | --- | --- | --- | --- | --- | --- |
 | `space-ui-001` | Carga | La app carga correctamente en el navegador. | [ ] | [ ] | |
 | `space-ui-002` | Estado | `Estado del servicio` muestra estado listo. | [ ] | [ ] | |
-| `space-ui-003` | Layout | La UI muestra encabezados visibles para `Respuesta sugerida` y `Citas clave`, además de `Detalles de revisión` y `Diagnóstico técnico`. | [ ] | [ ] | |
+| `space-ui-003` | Layout | La UI muestra un encabezado visible para `Respuesta sugerida`, un acordeón visible de `Citas clave`, además de `Detalles de revisión` y `Diagnóstico técnico`. | [ ] | [ ] | |
 | `space-ui-004` | Error | Antes de preguntar, `Estado de error` no muestra fallo activo. | [ ] | [ ] | |
 
 ## Preguntas manuales por familia aceptada del MVP
