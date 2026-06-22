@@ -243,7 +243,7 @@ def test_hosted_request_smoke_path_runs_without_crashing() -> None:
     assert "Coverage applies" in answer
     assert citations == "No hay citas disponibles."
     assert documentary_basis == "No hay base documental disponible."
-    assert confidence == "HIGH"
+    assert confidence == "Alta"
     assert limitations == "No se registraron limitaciones adicionales."
     assert "consulta_recibida" in trace_summary
     assert "ID de solicitud: ui-" in support_context
