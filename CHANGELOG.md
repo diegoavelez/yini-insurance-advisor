@@ -4,6 +4,7 @@
 
 - Refine the hosted Hugging Face Spaces review layout by moving `Citas clave` into a compact collapsed accordion beneath `Respuesta sugerida`, adding stronger wide-table affordances with reserved scrollbar gutter space and a sticky first column, and syncing the manual QA checklist, README, roadmap traceability, focused UI regression coverage, and the dated spec bundle for that UI-only slice.
 - Align the hosted smoke expectation with the Spanish public UI confidence label so `make test-release` passes again after the public review-surface localization work.
+- Translate the public `README.md` to Spanish, add a compatibility `requirements.txt` exported from the runtime dependency set in `pyproject.toml`, and document a concrete local Docker reproduction flow with `docker build` and `docker run` commands.
 
 ## 2026-06-21
 
