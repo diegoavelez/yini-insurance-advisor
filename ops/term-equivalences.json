@@ -510,6 +510,91 @@
     },
     {
       "all_of": [
+        "deducible"
+      ],
+      "any_of": [
+        "pequeños choques",
+        "pequenos choques",
+        "vidrios",
+        "llantas",
+        "rayones",
+        "hundidos"
+      ],
+      "filters": {
+        "product": "auto",
+        "document_type": "policy",
+        "document_name": "SEGURO DE AUTOS"
+      }
+    },
+    {
+      "all_of": [
+        "deducible"
+      ],
+      "any_of": [
+        "autos",
+        "auto",
+        "vehiculo",
+        "vehículo",
+        "vehiculos",
+        "vehículos",
+        "carro",
+        "carros"
+      ],
+      "filters": {
+        "product": "auto",
+        "document_type": "policy",
+        "document_name": "SEGURO DE AUTOS"
+      }
+    },
+    {
+      "all_of": [
+        "deducible",
+        "pequeños eventos"
+      ],
+      "any_of": [
+        "motos",
+        "moto",
+        "motocicleta",
+        "motocicletas"
+      ],
+      "filters": {
+        "product": "moto",
+        "document_type": "guide",
+        "document_name": "¿Le diste un pequeño golpe al carro de adelante?"
+      }
+    },
+    {
+      "all_of": [
+        "deducible"
+      ],
+      "any_of": [
+        "motos",
+        "moto",
+        "motocicleta",
+        "motocicletas"
+      ],
+      "filters": {
+        "product": "moto",
+        "document_type": "policy",
+        "document_name": "PLAN MOTOS SURA"
+      }
+    },
+    {
+      "all_of": [
+        "deducible"
+      ],
+      "any_of": [
+        "muevete libre",
+        "muévete libre"
+      ],
+      "filters": {
+        "product": "muevete libre",
+        "document_type": "policy",
+        "document_name": "PLAN MUÉVETE LIBRE"
+      }
+    },
+    {
+      "all_of": [
         "propuesta de valor",
         "movilidad"
       ],

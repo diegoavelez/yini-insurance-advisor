@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,7 +22,10 @@ from rag.ingestion import (
     normalize_retrieval_query_with_term_equivalences,
     retrieve_ranked_chunks,
 )
-from rag.term_equivalences import load_term_equivalences
+from rag.term_equivalences import load_term_equivalences, normalize_equivalence_text
+
+
+MOVILIDAD_DEDUCTIBLES_QA_PATH = Path("data/eval/movilidad-deductibles-qa.json")
 
 
 class FakeQdrantRetrievalClient:
@@ -116,12 +120,65 @@ def make_hit(
     )
 
 
+def load_movilidad_deductibles_qa_cases() -> list[dict[str, object]]:
+    payload = json.loads(MOVILIDAD_DEDUCTIBLES_QA_PATH.read_text(encoding="utf-8"))
+    return payload["cases"]
+
+
+def combined_chunk_text(chunk_files: list[str]) -> str:
+    text_parts: list[str] = []
+    for chunk_file in chunk_files:
+        payload = json.loads(Path(chunk_file).read_text(encoding="utf-8"))
+        text_parts.extend(chunk["text"] for chunk in payload["chunks"])
+    return "\n".join(text_parts)
+
+
 def test_parser_builds_retrieval_command() -> None:
     args = build_parser().parse_args(["retrieve-chunks", "--query", "coverage"])
 
     assert args.command == "retrieve-chunks"
     assert args.query == "coverage"
     assert args.top_k is None
+
+
+@pytest.mark.parametrize(
+    "case",
+    load_movilidad_deductibles_qa_cases(),
+    ids=lambda case: case["case_id"],
+)
+def test_movilidad_deductibles_qa_cases_normalize_to_expected_filters(
+    case: dict[str, object],
+) -> None:
+    normalized_query = normalize_retrieval_query_with_term_equivalences(
+        RetrievalQuery(query=str(case["prompt"])),
+        term_equivalences=load_term_equivalences(Path("ops/term-equivalences.json")),
+    )
+
+    expected_filters = case["expected_filters"]
+    assert isinstance(expected_filters, dict)
+    for field_name, expected_value in expected_filters.items():
+        assert getattr(normalized_query.filters, field_name) == expected_value
+
+
+@pytest.mark.parametrize(
+    "case",
+    load_movilidad_deductibles_qa_cases(),
+    ids=lambda case: case["case_id"],
+)
+def test_movilidad_deductibles_qa_expected_terms_exist_in_local_chunks(
+    case: dict[str, object],
+) -> None:
+    chunk_files = case["expected_chunk_files"]
+    expected_terms = case["expected_answer_terms"]
+    assert isinstance(chunk_files, list)
+    assert isinstance(expected_terms, list)
+
+    chunk_surface = normalize_equivalence_text(
+        combined_chunk_text([str(chunk_file) for chunk_file in chunk_files])
+    )
+
+    for expected_term in expected_terms:
+        assert normalize_equivalence_text(str(expected_term)) in chunk_surface
 
 
 def test_normalize_retrieval_query_applies_soat_coverage_document_type_rule() -> None:

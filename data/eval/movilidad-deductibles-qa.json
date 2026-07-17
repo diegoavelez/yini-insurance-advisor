@@ -1,0 +1,164 @@
+{
+  "version": "2026-07-03-movilidad-deductibles-qa-v1",
+  "cases": [
+    {
+      "case_id": "movilidad-autos-general-deducible",
+      "prompt": "¿Qué es el deducible en el seguro de autos y cómo se calcula?",
+      "expected_filters": {
+        "product": "auto",
+        "document_type": "policy",
+        "document_name": "SEGURO DE AUTOS"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__autos__clausulado-seguro-de-autos.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "carátula",
+        "salarios mínimos",
+        "mayor valor",
+        "daños a terceros"
+      ]
+    },
+    {
+      "case_id": "movilidad-autos-vehiculos-general-deducible",
+      "prompt": "¿Qué es el deducible en el seguro de vehículos y cómo se calcula?",
+      "expected_filters": {
+        "product": "auto",
+        "document_type": "policy",
+        "document_name": "SEGURO DE AUTOS"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__autos__clausulado-seguro-de-autos.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "carátula",
+        "salarios mínimos",
+        "mayor valor",
+        "daños a terceros"
+      ]
+    },
+    {
+      "case_id": "movilidad-autos-basico-pt-deducibles",
+      "prompt": "¿Qué deducibles aplican para pérdida total daños y hurto en Autos Básico PT?",
+      "expected_filters": {
+        "product": "auto",
+        "document_type": "guide",
+        "document_name": "Plan Autos Básico Pérdidas Totales"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__autos__generalidades-plan-autos-basico-pt-v2.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "0%",
+        "10%",
+        "15%",
+        "20%"
+      ]
+    },
+    {
+      "case_id": "movilidad-autos-asistencias-deducibles",
+      "prompt": "¿Qué deducible tienen pequeños choques, vidrios, llantas y rayones?",
+      "expected_filters": {
+        "product": "auto",
+        "document_type": "policy",
+        "document_name": "SEGURO DE AUTOS"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__autos__clausulado-seguro-de-autos.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "Pequeños choques",
+        "$ 150.000",
+        "Vidrios",
+        "Llantas estalladas",
+        "NOAPLICA",
+        "Rayones y hundidos leves",
+        "$ 90.000"
+      ]
+    },
+    {
+      "case_id": "movilidad-motos-general-deducible",
+      "prompt": "¿Qué es el deducible en el plan motos y quién lo asume?",
+      "expected_filters": {
+        "product": "moto",
+        "document_type": "policy",
+        "document_name": "PLAN MOTOS SURA"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__motos__clausulado-plan-motos.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "carátula",
+        "salarios mínimos",
+        "mayor valor"
+      ]
+    },
+    {
+      "case_id": "movilidad-motos-pequenos-eventos-deducible",
+      "prompt": "¿Las asistencias de pequeños eventos para motos tienen deducible?",
+      "expected_filters": {
+        "product": "moto",
+        "document_type": "guide",
+        "document_name": "¿Le diste un pequeño golpe al carro de adelante?"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__motos__ayudaventas-asistencia-pequenos-eventos-motos.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "sin deducible",
+        "Olvídate de los deducibles",
+        "pequeños eventos"
+      ]
+    },
+    {
+      "case_id": "movilidad-bicicletas-patinetas-deducible",
+      "prompt": "¿Cuál es el deducible del seguro de bicicletas y patinetas?",
+      "expected_filters": {
+        "product": "movilidad",
+        "document_type": "guide",
+        "document_name": "pv bicis y patinetas v2"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__bicicletas-y-patinetas__pv-bicis-y-patinetas-v2.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "$0",
+        "15% min 1 SMLMV",
+        "A partir de las 48 horas"
+      ]
+    },
+    {
+      "case_id": "movilidad-utilitarios-pesados-deducible",
+      "prompt": "¿Cómo aplica el deducible en el plan utilitarios y pesados?",
+      "expected_filters": {
+        "product": "utilitarios y pesados",
+        "document_type": "policy",
+        "document_name": "SEGURO DE AUTOS PLAN UTILITARIOS Y PESADOS"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__utilitario-y-pesados__clausulado-plan-utilitarios-y-pesados.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "carátula",
+        "salarios mínimos",
+        "daños a terceros"
+      ]
+    },
+    {
+      "case_id": "movilidad-muevete-libre-deducible",
+      "prompt": "¿Cómo aplica el deducible en Muévete Libre?",
+      "expected_filters": {
+        "product": "muevete libre",
+        "document_type": "policy",
+        "document_name": "PLAN MUÉVETE LIBRE"
+      },
+      "expected_chunk_files": [
+        "data/processed/chunks/movilidad__muevete-libre__clausulado-muevete-libre-v2.chunks.json"
+      ],
+      "expected_answer_terms": [
+        "carátula",
+        "menos el deducible pactado"
+      ]
+    }
+  ]
+}
