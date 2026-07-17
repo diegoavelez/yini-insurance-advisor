@@ -2,6 +2,22 @@
 
 These rules apply to every task unless explicitly overridden.
 
+## Repository Governance
+
+- `docs/operations/master-control.md` defines the permanent coordination and
+  authorization model for this repository.
+- `docs/operations/execution-state.md` is the canonical compact record of the
+  current stage, active work, evidence, blockers, and next decision.
+- `docs/agents/executor-workflow.md` defines the required handoff and return
+  contract for bounded executor tasks.
+- Planning, implementation, commit, push, provider-backed execution,
+  deployment, and external actions are separate authorities. Do not infer one
+  authority from another.
+- Treat Graphify as secondary context. Live Git state, accepted specs, and
+  current operational documents take precedence.
+- Stop fail-closed on Git drift, foreign changes, sensitive-data risk,
+  conflicting truth sources, or material scope ambiguity.
+
 ## Core Behavior
 
 - Think before coding.
