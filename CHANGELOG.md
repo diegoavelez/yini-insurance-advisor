@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-08-27
+
+- Add the requirements, plan, and validation bundle for the narrow autos deductible evidence-prioritization and confidence-remediation correction, without implementing the correction.
+- Adopt the accepted repository-local AgentOps policy `1.4` workflow with the `provider-eval` profile, linked to the existing master control and validated locally.
+
 ## 2026-06-22
 
 - Refine the hosted Hugging Face Spaces review layout by moving `Citas clave` into a compact collapsed accordion beneath `Respuesta sugerida`, adding stronger wide-table affordances with reserved scrollbar gutter space and a sticky first column, and syncing the manual QA checklist, README, roadmap traceability, focused UI regression coverage, and the dated spec bundle for that UI-only slice.

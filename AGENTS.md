@@ -1,3 +1,15 @@
+<!-- agentops-engineering:start -->
+## AgentOps Engineering Workflow
+
+- Read `docs/agents/agentops-workflow.md` for this repository's profile, truth sources, validation commands, and local gate conventions.
+- Apply AgentOps policy `1.4` with repository profile `provider-eval`.
+- Read the installed `agentops-engineering` plugin resource `references/OPERATING-MODEL.md`; it is the canonical universal contract and this marker does not copy it.
+- Routine delegation applies the Operating Model directly. CompactHandoff is optional and explicit; when it is relevant, `skills/handoff/SKILL.md` owns its specialized contract.
+- A task, gate, handoff, acceptance, or receipt creates no standing authority and never auto-advances another action or evidence rung.
+- Use only invented, public, or explicitly authorized data and report only the evidence rung actually reached.
+- At an accepted feature boundary, follow this repository's feature-close convention before starting another feature.
+<!-- agentops-engineering:end -->
+
 # AGENTS.md
 
 These rules apply to every task unless explicitly overridden.
