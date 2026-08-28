@@ -16,19 +16,24 @@ These rules apply to every task unless explicitly overridden.
 
 ## Repository Governance
 
-- `docs/operations/master-control.md` defines the permanent coordination and
-  authorization model for this repository.
-- `docs/operations/execution-state.md` is the canonical compact record of the
-  current stage, active work, evidence, blockers, and next decision.
-- `docs/agents/executor-workflow.md` defines the required handoff and return
-  contract for bounded executor tasks.
-- Planning, implementation, commit, push, provider-backed execution,
-  deployment, and external actions are separate authorities. Do not infer one
-  authority from another.
-- Treat Graphify as secondary context. Live Git state, accepted specs, and
-  current operational documents take precedence.
-- Stop fail-closed on Git drift, foreign changes, sensitive-data risk,
-  conflicting truth sources, or material scope ambiguity.
+- `docs/operations/master-control.md` defines a strictly read-only control
+  tower. It orients, classifies, prepares visible tasks and handoffs, receives
+  receipts, and proposes owner decisions; it performs no lifecycle action.
+- `docs/operations/execution-state.md` owns current semantic work, accepted
+  evidence, risks, blockers, and the next owner decision. Git exclusively owns
+  live branch, `HEAD`, index, worktree, refs, remotes, and divergence facts.
+- `docs/agents/executor-workflow.md` owns visible-task boundaries, the manual
+  Yini routing directive, compact gate cadence, and executor returns.
+- Implementation, correction, independent review, Git, provider, deployment,
+  pilot, production, and external actions require fresh visible tasks and
+  separately named authorities. Internal subagents never replace them.
+- `docs/operations/metrics-contract.md` owns metric definitions;
+  `docs/operations/receipt-policy.md` and
+  `docs/operations/receipts/index.md` own the local receipt projection and
+  prospective index. Universal policy remains in the installed plugin.
+- Treat Graphify as secondary context. Stop fail-closed on drift, foreign
+  changes, sensitive-data risk, truth conflict, unavailable required routing,
+  or material scope ambiguity.
 
 ## Core Behavior
 
@@ -44,6 +49,9 @@ These rules apply to every task unless explicitly overridden.
 ## Spec-Driven Development
 
 - Specs are the source of truth for non-trivial work.
+- Use Level 0 for tiny mechanical changes, Level 1 for small operational
+  slices, Level 2 for technical or transversal contracts, and Level 3 for
+  service or production workflows. Repository specs may promote depth.
 - Do not implement undocumented behavior.
 - Map implementation to acceptance criteria.
 - If specs conflict with code, stop and explain the conflict.

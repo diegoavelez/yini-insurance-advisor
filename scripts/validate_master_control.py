@@ -5,50 +5,120 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import re
 
 REQUIRED_FILES = (
     "AGENTS.md",
+    "CHANGELOG.md",
     "docs/operations/master-control.md",
     "docs/operations/execution-state.md",
     "docs/agents/executor-workflow.md",
+    "docs/operations/metrics-contract.md",
+    "docs/operations/receipt-policy.md",
+    "docs/operations/receipts/index.md",
+    "docs/adr/0001-read-only-master-control-topology.md",
     "scripts/validate_master_control.py",
+    "tests/test_validate_master_control.py",
 )
 
 REQUIRED_MARKERS = {
     "AGENTS.md": (
         "## Repository Governance",
+        "strictly read-only",
         "docs/operations/master-control.md",
         "docs/operations/execution-state.md",
         "docs/agents/executor-workflow.md",
-        "separate authorities",
         "Stop fail-closed",
     ),
+    "CHANGELOG.md": (
+        "governance",
+    ),
     "docs/operations/master-control.md": (
+        "strictly read-only control tower",
+        "## Pointer-Based Registers",
         "## Truth Sources",
-        "## Master Thread Responsibilities",
-        "## Separate Authorities",
-        "## Required Preflight",
-        "## Evidence Standard",
+        "## Reasoning-Necessity Dispatch",
+        "## Manual Yini Routing",
+        "## Gate Cadence",
+        "## No-Action Authority",
         "## Strategic Stops",
-        "Authorization for a local commit does not authorize a push.",
     ),
     "docs/operations/execution-state.md": (
-        "state schema: `yini-master-control-v1`",
-        "## Current Stage",
+        "state schema: `yini-governance-v2`",
+        "## Current Semantic Stage",
         "## Active Work",
         "## Evidence Available",
         "## Evidence Ceiling",
-        "## Blockers and Unknowns",
-        "## Next Decision",
+        "## Risks and Blockers",
+        "## Next Owner Decision",
     ),
     "docs/agents/executor-workflow.md": (
+        "## Visible Task Topology",
+        "## Internal Subagents",
         "## Handoff Contract",
+        "## Manual Yini Routing",
+        "## Compact Gate Cadence",
         "## Execution Rules",
         "## Return Contract",
         "## Review and Acceptance",
-        "stop and return the",
+        "gpt-5.6-luna",
+        "gpt-5.6-terra",
+        "gpt-5.6-sol",
+        "Silent substitution is forbidden.",
+    ),
+    "docs/operations/metrics-contract.md": (
+        "## Ownership",
+        "## Definition Schema",
+        "## Metric Semantics",
+        "## Evidence Ceiling",
+        "## Change Control",
+        "## No Baseline or Savings Claim",
+    ),
+    "docs/operations/receipt-policy.md": (
+        "references/receipt-policy.md",
+        "## Provider-Eval Routing",
+        "## Local Projection",
+        "## Sensitive Evidence",
+        "## No Historical Backfill",
+    ),
+    "docs/operations/receipts/index.md": (
+        "## Scope",
+        "## Entries",
+        "No entries.",
+    ),
+    "docs/adr/0001-read-only-master-control-topology.md": (
+        "strictly read-only",
+        "fresh visible task",
     ),
 }
+
+FORBIDDEN_MASTER_DUTY = re.compile(
+    r"^\s*(?:[-*]\s*)?master control\s+"
+    r"(?:must\s+(?!(?:not|never)\b))?"
+    r"(?:validates?|implements?|corrects?|reviews?|runs?|invokes?|stages?|"
+    r"commits?|pushes?|publishes?|deploys?|accesses?|executes?|performs?)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+TRANSIENT_GIT_FACT = re.compile(
+    r"^\s*-\s*(?:canonical branch|canonical .*tracking|local tracking state|"
+    r"head|index|worktree|refs?|remotes?|divergence|tracking|upstream|"
+    r"git common-dir|git dir|detached head|current branch)\s*:"
+    r"|^\s*(?:current\s+(?:head|branch)\s+is\b"
+    r"|\|\s*current\s+(?:head|branch)\s*\|)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+SILENT_ROUTING_SUBSTITUTION = re.compile(
+    r"(?:use any available model|fallback to (?:an? )?(?:available|other) model|"
+    r"^(?!\s*(?:[-*]\s*)?do not silently substitute\b).*?\bsilently substitute\b)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+CURRENT_EVIDENCE_OVERCLAIM = re.compile(
+    r"^\s*-\s*current evidence ceiling:\s*rung\s+[3-8]\b",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,8 +127,28 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _line_number(text: str, match: re.Match[str]) -> int:
+    return text.count("\n", 0, match.start()) + 1
+
+
+def _contains_required_marker(text: str, marker: str) -> bool:
+    parts = re.split(r"(\s+)", marker)
+    pattern_parts: list[str] = []
+    for part in parts:
+        if not part:
+            continue
+        if part.isspace():
+            pattern_parts.append(r"\s+")
+            continue
+
+        pattern_parts.append(re.escape(part))
+
+    return re.search("".join(pattern_parts), text) is not None
+
+
 def validate(repo: Path) -> list[str]:
     errors: list[str] = []
+    loaded_text: dict[str, str] = {}
     for relative_path in REQUIRED_FILES:
         path = repo / relative_path
         if not path.is_file():
@@ -66,9 +156,44 @@ def validate(repo: Path) -> list[str]:
             continue
 
         text = path.read_text(encoding="utf-8")
+        loaded_text[relative_path] = text
         for marker in REQUIRED_MARKERS.get(relative_path, ()):
-            if marker not in text:
+            if not _contains_required_marker(text, marker):
                 errors.append(f"missing marker in {relative_path}: {marker}")
+
+    master_path = "docs/operations/master-control.md"
+    master_text = loaded_text.get(master_path, "")
+    master_match = FORBIDDEN_MASTER_DUTY.search(master_text)
+    if master_match:
+        errors.append(
+            "forbidden executable master duty: "
+            f"{master_path}:{_line_number(master_text, master_match)}"
+        )
+
+    state_path = "docs/operations/execution-state.md"
+    state_text = loaded_text.get(state_path, "")
+    transient_match = TRANSIENT_GIT_FACT.search(state_text)
+    if transient_match:
+        errors.append(
+            "transient Git fact in execution state: "
+            f"{state_path}:{_line_number(state_text, transient_match)}"
+        )
+
+    workflow_path = "docs/agents/executor-workflow.md"
+    workflow_text = loaded_text.get(workflow_path, "")
+    substitution_match = SILENT_ROUTING_SUBSTITUTION.search(workflow_text)
+    if substitution_match:
+        errors.append(
+            "silent routing substitution: "
+            f"{workflow_path}:{_line_number(workflow_text, substitution_match)}"
+        )
+
+    overclaim_match = CURRENT_EVIDENCE_OVERCLAIM.search(state_text)
+    if overclaim_match:
+        errors.append(
+            "current evidence overclaim: "
+            f"{state_path}:{_line_number(state_text, overclaim_match)}"
+        )
     return errors
 
 
@@ -81,7 +206,7 @@ def main() -> int:
             print(f"master_control_validation=FAIL error={error}")
         return 1
 
-    print("master_control_validation=PASS schema=yini-master-control-v1")
+    print("master_control_validation=PASS schema=yini-governance-v2")
     return 0
 
 
