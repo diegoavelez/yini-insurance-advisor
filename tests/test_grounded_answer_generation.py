@@ -63,6 +63,32 @@ def make_retrieval_result() -> DocumentRetrievalResult:
     )
 
 
+def make_autos_deductible_chunk(
+    *,
+    chunk_id: str,
+    text: str,
+    section: str,
+    score: float,
+) -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id=chunk_id,
+        source_pdf_id="movilidad__autos__clausulado-seguro-de-autos",
+        source_pdf_relative_path="MOVILIDAD/AUTOS/clausulado seguro de autos.pdf",
+        chunk_schema_version="v2",
+        chunk_index=1,
+        text=text,
+        document_name="SEGURO DE AUTOS",
+        document_version=None,
+        document_type="policy",
+        product="auto",
+        page=12,
+        section=section,
+        section_path=["SEGURO DE AUTOS", section],
+        clause_id=None,
+        score=score,
+    )
+
+
 def test_parser_builds_answer_query_command() -> None:
     args = build_parser().parse_args(["answer-query", "--query", "What is covered?"])
 
@@ -188,6 +214,229 @@ def test_generate_grounded_answer_returns_typed_response_with_citations(
     assert result.response.documentary_basis[0].document_type == "policy"
     assert result.response.documentary_basis[0].product == "health"
     assert result.verification.confidence == "high"
+
+
+def test_generate_grounded_answer_leads_with_direct_autos_deductible_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_prompt: dict[str, str] = {}
+
+    def complete(prompt: str, settings: Settings) -> str:
+        captured_prompt["value"] = prompt
+        return "El deducible se calcula según la carátula y el mayor valor aplicable."
+
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            make_autos_deductible_chunk(
+                chunk_id="autos:lateral",
+                text="La cobertura de daños a terceros puede tener un deducible.",
+                section="Daños a terceros",
+                score=0.99,
+            ),
+            make_autos_deductible_chunk(
+                chunk_id="autos:direct",
+                text=(
+                    "El deducible es el valor a cargo del asegurado indicado en la "
+                    "carátula. Se calcula como porcentaje o salarios mínimos y se aplica "
+                    "el mayor valor."
+                ),
+                section="Deducible",
+                score=0.60,
+            ),
+            make_autos_deductible_chunk(
+                chunk_id="autos:direct-calculation",
+                text=(
+                    "El deducible se calcula como un porcentaje del valor de la pérdida "
+                    "o como el monto indicado en la carátula."
+                ),
+                section="Deducible",
+                score=0.55,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(
+            query="¿Qué es el deducible en el seguro de autos y cómo se calcula?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=complete,
+    )
+
+    assert captured_prompt["value"].index("autos:direct") < captured_prompt["value"].index(
+        "autos:direct-calculation"
+    )
+    assert result.response.documentary_basis[0].note == "Derived from chunk autos:direct"
+    assert result.response.citations[0].chunk_id == "autos:direct"
+    assert result.response.confidence == "high"
+    assert result.verification.confidence == "high"
+
+
+def test_generate_grounded_answer_excludes_nonmaterial_lateral_autos_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_prompt: dict[str, str] = {}
+
+    def complete(prompt: str, settings: Settings) -> str:
+        captured_prompt["value"] = prompt
+        return "El deducible es el valor a cargo del asegurado y se calcula por pérdida."
+
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            make_autos_deductible_chunk(
+                chunk_id="autos:lateral-nonmaterial",
+                text="La cobertura de daños a terceros puede tener un deducible.",
+                section="Daños a terceros",
+                score=0.99,
+            ),
+            make_autos_deductible_chunk(
+                chunk_id="autos:direct-definition",
+                text="El deducible es el valor que queda a cargo del asegurado.",
+                section="Deducible",
+                score=0.60,
+            ),
+            make_autos_deductible_chunk(
+                chunk_id="autos:direct-calculation",
+                text=(
+                    "El deducible se calcula como porcentaje de la pérdida o como el "
+                    "monto indicado en la carátula."
+                ),
+                section="Deducible",
+                score=0.55,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(
+            query="¿Qué es el deducible en el seguro de autos y cómo se calcula?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=complete,
+    )
+
+    assert "autos:lateral-nonmaterial" not in captured_prompt["value"]
+    assert [item.note for item in result.response.documentary_basis] == [
+        "Derived from chunk autos:direct-definition",
+        "Derived from chunk autos:direct-calculation",
+    ]
+    assert [citation.chunk_id for citation in result.response.citations] == [
+        "autos:direct-definition",
+        "autos:direct-calculation",
+    ]
+    assert result.response.confidence == "high"
+    assert result.verification.confidence == "high"
+
+
+def test_generate_grounded_answer_limits_lateral_only_autos_deductible_confidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            make_autos_deductible_chunk(
+                chunk_id="autos:lateral-damage",
+                text="La cobertura de daños a terceros puede tener un deducible.",
+                section="Daños a terceros",
+                score=0.99,
+            ),
+            make_autos_deductible_chunk(
+                chunk_id="autos:lateral-assistance",
+                text="La asistencia de pequeños eventos menciona un deducible aplicable.",
+                section="Asistencias",
+                score=0.90,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(
+            query="¿Qué es el deducible en el seguro de autos y cómo se calcula?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=lambda prompt, settings: (
+            "Las coberturas recuperadas mencionan que puede aplicar un deducible."
+        ),
+    )
+
+    assert result.response.confidence == "medium"
+    assert result.verification.confidence == "medium"
+    assert any(
+        "direct" in limitation.lower() and "deducible" in limitation.lower()
+        for limitation in result.response.limitations
+    )
+
+
+def test_generate_grounded_answer_rejects_unrelated_calculation_as_direct_support(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("rag.ingestion.groq_backend_is_available", lambda: True)
+    retrieval_result = DocumentRetrievalResult(
+        chunks=[
+            make_autos_deductible_chunk(
+                chunk_id="autos:premium-calculation",
+                text=(
+                    "La prima se calcula según el riesgo. Esta cobertura tiene un "
+                    "deducible."
+                ),
+                section="Prima",
+                score=0.99,
+            ),
+            make_autos_deductible_chunk(
+                chunk_id="autos:lateral-coverage",
+                text="La cobertura de daños puede tener un deducible.",
+                section="Cobertura de daños",
+                score=0.90,
+            ),
+        ]
+    )
+
+    result = generate_grounded_answer(
+        RetrievalQuery(
+            query="¿Qué es el deducible en el seguro de autos y cómo se calcula?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            groq_api_key="secret",
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        retrieval_result=retrieval_result,
+        completion_generator=lambda prompt, settings: (
+            "La evidencia recuperada solo menciona que puede aplicar un deducible."
+        ),
+    )
+
+    assert result.response.confidence == "medium"
+    assert result.verification.confidence == "medium"
+    assert any(
+        "direct" in limitation.lower() and "deducible" in limitation.lower()
+        for limitation in result.response.limitations
+    )
 
 
 def test_generate_grounded_answer_filters_lateral_suscripcion_financing_evidence(

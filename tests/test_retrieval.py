@@ -11,6 +11,7 @@ from contracts import (
     QueryExpansionRule,
     QueryFilterRule,
     RetrievalQuery,
+    RetrievedChunk,
     TermEquivalenceSet,
 )
 from core.config import Settings
@@ -19,6 +20,7 @@ from rag.ingestion import (
     build_hybrid_recall_terms,
     build_parser,
     main,
+    merge_hybrid_retrieval_candidates,
     normalize_retrieval_query_with_term_equivalences,
     retrieve_ranked_chunks,
 )
@@ -139,6 +141,120 @@ def test_parser_builds_retrieval_command() -> None:
     assert args.command == "retrieve-chunks"
     assert args.query == "coverage"
     assert args.top_k is None
+
+
+def test_merge_hybrid_candidates_orders_fused_scores_with_stable_ties() -> None:
+    def chunk(chunk_id: str, score: float) -> RetrievedChunk:
+        return RetrievedChunk(
+            chunk_id=chunk_id,
+            text=f"Evidence for {chunk_id}",
+            document_name="SEGURO DE AUTOS",
+            score=score,
+        )
+
+    merged = merge_hybrid_retrieval_candidates(
+        [chunk("semantic-first", 0.8), chunk("semantic-second", 0.9), chunk("low", 0.7)],
+        [chunk("semantic-first", 0.5), chunk("lexical-tie", 0.9)],
+    )
+
+    assert [item.chunk_id for item in merged] == [
+        "semantic-first",
+        "semantic-second",
+        "low",
+        "lexical-tie",
+    ]
+    assert [item.chunk_id for item in merged].count("semantic-first") == 1
+    assert merged[0].score == merged[1].score == merged[3].score == 0.9
+
+
+def test_retrieve_ranked_chunks_prioritizes_direct_general_autos_deductible_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BoundedFakeQdrantRetrievalClient(FakeQdrantRetrievalClient):
+        def search(self, **kwargs: object) -> list[object]:
+            hits = super().search(**kwargs)
+            return hits[: int(kwargs["limit"])]
+
+    def autos_hit(
+        *,
+        chunk_id: str,
+        text: str,
+        section: str,
+        score: float,
+    ) -> object:
+        return SimpleNamespace(
+            payload={
+                "chunk_id": chunk_id,
+                "source_pdf_id": "movilidad__autos__clausulado-seguro-de-autos",
+                "source_pdf_relative_path": (
+                    "MOVILIDAD/AUTOS/clausulado seguro de autos.pdf"
+                ),
+                "chunk_schema_version": "v2",
+                "chunk_index": 1,
+                "text": text,
+                "document_name": "SEGURO DE AUTOS",
+                "document_version": None,
+                "document_type": "policy",
+                "product": "auto",
+                "section": section,
+                "section_path": ["SEGURO DE AUTOS", section],
+            },
+            score=score,
+        )
+
+    client = BoundedFakeQdrantRetrievalClient(
+        [
+            autos_hit(
+                chunk_id="autos:lateral-high",
+                text="La cobertura de daños a terceros puede tener un deducible.",
+                section="Daños a terceros",
+                score=0.99,
+            ),
+            autos_hit(
+                chunk_id="autos:lateral-second",
+                text="La carátula indica si aplica deducible para esta cobertura.",
+                section="Coberturas",
+                score=0.90,
+            ),
+            autos_hit(
+                chunk_id="autos:direct-definition",
+                text=(
+                    "El deducible es el valor a cargo del asegurado indicado en la "
+                    "carátula. Se calcula como un porcentaje o en salarios mínimos y "
+                    "se aplica el mayor valor entre ambos."
+                ),
+                section="Deducible",
+                score=0.60,
+            ),
+        ]
+    )
+    monkeypatch.setattr("rag.ingestion.qdrant_backend_is_available", lambda: True)
+    monkeypatch.setattr("rag.ingestion.load_local_chunk_corpus", lambda: ())
+    monkeypatch.setattr(
+        "rag.ingestion.generate_embedding_vector",
+        lambda text, settings: [0.1, 0.2],
+    )
+
+    result = retrieve_ranked_chunks(
+        RetrievalQuery(
+            query="¿Qué es el deducible en el seguro de autos y cómo se calcula?",
+            top_k=2,
+        ),
+        settings=Settings(
+            _env_file=None,
+            qdrant_url="https://example.qdrant.io",
+            qdrant_api_key="secret",
+        ),
+        client=client,
+    )
+
+    assert client.last_query is not None
+    assert client.last_query["limit"] == 8
+    assert [chunk.chunk_id for chunk in result.chunks] == [
+        "autos:direct-definition",
+        "autos:lateral-high",
+    ]
+    assert all(chunk.document_name == "SEGURO DE AUTOS" for chunk in result.chunks)
 
 
 @pytest.mark.parametrize(

@@ -59,6 +59,7 @@ OPERATIONAL_COVERAGE_OPENERS = (
     "solo podrás reclamar",
     "debes realizar",
 )
+GENERAL_AUTOS_DOCUMENT_NAME = "seguro de autos"
 
 
 def label_surface_has_explicit_coverage_section(label_surface: str) -> bool:
@@ -246,6 +247,138 @@ def query_has_choque_simple_procedure_intent(query: str) -> bool:
             "pasos",
             "instrucciones",
         )
+    )
+
+
+def query_has_general_autos_deductible_intent(query: str) -> bool:
+    """Return whether one query asks for the general autos deductible concept."""
+
+    if not query_contains_equivalent_phrase(query, "deducible"):
+        return False
+    if not any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in ("auto", "autos", "vehiculo", "vehiculos", "carro", "carros")
+    ):
+        return False
+    return any(
+        query_contains_equivalent_phrase(query, phrase)
+        for phrase in (
+            "qué es",
+            "que es",
+            "qué significa",
+            "que significa",
+            "cómo se calcula",
+            "como se calcula",
+            "calcular",
+        )
+    )
+
+
+def query_targets_general_autos_deductible_family(
+    query: str,
+    *,
+    document_name: str | None,
+) -> bool:
+    """Bind the general autos deductible intent to its normalized document family."""
+
+    return (
+        query_has_general_autos_deductible_intent(query)
+        and normalize_equivalence_text(document_name or "")
+        == GENERAL_AUTOS_DOCUMENT_NAME
+    )
+
+
+def is_general_autos_deductible_direct_support_chunk(chunk: RetrievedChunk) -> bool:
+    """Return whether one autos chunk defines or explains deductible calculation."""
+
+    if (
+        normalize_equivalence_text(chunk.document_name)
+        != GENERAL_AUTOS_DOCUMENT_NAME
+        or chunk.product != "auto"
+        or chunk.document_type != "policy"
+    ):
+        return False
+
+    label_surface = "\n".join(
+        value for value in (chunk.section, *chunk.section_path) if value
+    )
+    evidence_surface = "\n".join((label_surface, chunk.text))
+    if not query_contains_equivalent_phrase(evidence_surface, "deducible"):
+        return False
+
+    normalized_evidence = normalize_equivalence_text(evidence_surface)
+    normalized_label = normalize_equivalence_text(label_surface)
+    if any(
+        phrase in normalized_evidence
+        for phrase in (
+            "deducible es",
+            "se entiende por deducible",
+            "deducible se calcula",
+            "se calcula el deducible",
+            "calculo del deducible",
+        )
+    ):
+        return True
+    if "deducible" in normalized_label and "se calcula" in normalized_evidence:
+        return True
+    calculation_anchors = ("caratula", "salarios minimos", "mayor valor")
+    return sum(anchor in normalized_evidence for anchor in calculation_anchors) >= 2
+
+
+def prioritize_general_autos_deductible_evidence(
+    ranked_chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+    document_name: str | None,
+    top_k: int,
+) -> list[RetrievedChunk]:
+    """Lead with direct definition/calculation evidence for general autos deductible."""
+
+    chunks = list(ranked_chunks)
+    if top_k < 1:
+        return []
+    if not query_targets_general_autos_deductible_family(
+        query,
+        document_name=document_name,
+    ):
+        return chunks[:top_k]
+
+    direct_chunks = [
+        chunk for chunk in chunks if is_general_autos_deductible_direct_support_chunk(chunk)
+    ]
+    if not direct_chunks:
+        return chunks[:top_k]
+    direct_ids = {chunk.chunk_id for chunk in direct_chunks}
+    remaining_chunks = [chunk for chunk in chunks if chunk.chunk_id not in direct_ids]
+    return (direct_chunks + remaining_chunks)[:top_k]
+
+
+def build_general_autos_deductible_evidence_limitation(
+    chunks: Sequence[RetrievedChunk],
+    *,
+    query: str,
+) -> str | None:
+    """Return an explicit limitation when target evidence is only lateral."""
+
+    general_autos_document_name = next(
+        (
+            chunk.document_name
+            for chunk in chunks
+            if normalize_equivalence_text(chunk.document_name)
+            == GENERAL_AUTOS_DOCUMENT_NAME
+        ),
+        None,
+    )
+    if not query_targets_general_autos_deductible_family(
+        query,
+        document_name=general_autos_document_name,
+    ):
+        return None
+    if any(is_general_autos_deductible_direct_support_chunk(chunk) for chunk in chunks):
+        return None
+    return (
+        "Retrieved evidence mentions the deducible de autos only laterally and does not "
+        "directly define it or explain its calculation."
     )
 
 
@@ -952,9 +1085,15 @@ def build_candidate_pool_limit(
     query: str,
     top_k: int,
     matched_expansion_rules: Sequence[object],
+    document_name: str | None = None,
 ) -> int:
     """Return the Qdrant candidate-pool limit for one retrieval query."""
 
+    if query_targets_general_autos_deductible_family(
+        query,
+        document_name=document_name,
+    ):
+        return min(max(top_k * 3, top_k + 6), 20)
     if not matched_expansion_rules:
         if query_has_arl_remuneration_policy_intent(query):
             return min(max(top_k * 3, top_k + 6), 20)
@@ -976,11 +1115,22 @@ def rerank_chunks_for_query_expansion_rules(
     query: str,
     matched_expansion_rules: Sequence[object],
     top_k: int,
+    document_name: str | None = None,
 ) -> list[RetrievedChunk]:
     """Apply deterministic lexical reranking based on matched curated expansion rules."""
 
     if not matched_expansion_rules:
         ranked_chunks = list(chunks)
+        if query_targets_general_autos_deductible_family(
+            query,
+            document_name=document_name,
+        ):
+            return prioritize_general_autos_deductible_evidence(
+                ranked_chunks,
+                query=query,
+                document_name=document_name,
+                top_k=top_k,
+            )
         if query_has_arl_remuneration_policy_intent(query):
             return prioritize_arl_remuneration_policy_evidence(
                 ranked_chunks,
@@ -1063,6 +1213,16 @@ def rerank_chunks_for_query_expansion_rules(
 
     reranked_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
     ranked_chunks = [candidate[2] for candidate in reranked_candidates]
+    if query_targets_general_autos_deductible_family(
+        query,
+        document_name=document_name,
+    ):
+        return prioritize_general_autos_deductible_evidence(
+            ranked_chunks,
+            query=query,
+            document_name=document_name,
+            top_k=top_k,
+        )
     if coverage_intent:
         return diversify_explicit_coverage_sections(ranked_chunks, top_k=top_k)
     if query_has_movilidad_pv_benefit_intent(query):
@@ -1109,6 +1269,25 @@ def select_answer_evidence_chunks(
     """Return the answer-facing evidence subset for one retrieval query."""
 
     ranked_chunks = list(retrieved_chunks)
+    general_autos_document_name = next(
+        (
+            chunk.document_name
+            for chunk in ranked_chunks
+            if normalize_equivalence_text(chunk.document_name)
+            == GENERAL_AUTOS_DOCUMENT_NAME
+        ),
+        None,
+    )
+    if query_targets_general_autos_deductible_family(
+        query,
+        document_name=general_autos_document_name,
+    ):
+        direct_chunks = [
+            chunk
+            for chunk in ranked_chunks
+            if is_general_autos_deductible_direct_support_chunk(chunk)
+        ]
+        return direct_chunks or ranked_chunks
     if not query_has_movilidad_suscripcion_individual_financing_intent(query):
         return ranked_chunks
 
@@ -1218,6 +1397,25 @@ def select_citation_evidence_chunks(
     """Return the narrower citation/doc-basis subset for one answer query."""
 
     citation_chunks = list(retrieved_chunks)
+    general_autos_document_name = next(
+        (
+            chunk.document_name
+            for chunk in citation_chunks
+            if normalize_equivalence_text(chunk.document_name)
+            == GENERAL_AUTOS_DOCUMENT_NAME
+        ),
+        None,
+    )
+    if query_targets_general_autos_deductible_family(
+        query,
+        document_name=general_autos_document_name,
+    ):
+        direct_chunks = [
+            chunk
+            for chunk in citation_chunks
+            if is_general_autos_deductible_direct_support_chunk(chunk)
+        ]
+        return direct_chunks or citation_chunks
     if query_has_arl_remuneration_overview_intent(query):
         direct_remuneration_overview_chunks = [
             chunk

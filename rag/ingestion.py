@@ -224,6 +224,7 @@ def rerank_chunks_for_query_expansion_rules(
     query: str,
     matched_expansion_rules: Sequence[object],
     top_k: int,
+    document_name: str | None = None,
 ) -> list[RetrievedChunk]:
     """Apply deterministic domain-specific reranking for retrieved chunks."""
 
@@ -232,6 +233,7 @@ def rerank_chunks_for_query_expansion_rules(
         query=query,
         matched_expansion_rules=matched_expansion_rules,
         top_k=top_k,
+        document_name=document_name,
     )
 
 
@@ -777,6 +779,7 @@ def retrieve_ranked_chunks(
             query=normalized_retrieval_query.query,
             top_k=normalized_retrieval_query.top_k,
             matched_expansion_rules=matched_expansion_rules,
+            document_name=normalized_retrieval_query.filters.document_name,
         )
         hits = search_qdrant_chunks(
             client=resolved_client,
@@ -801,6 +804,7 @@ def retrieve_ranked_chunks(
                 query=retrieval_query.query,
                 matched_expansion_rules=matched_expansion_rules,
                 top_k=normalized_retrieval_query.top_k,
+                document_name=normalized_retrieval_query.filters.document_name,
             )
         )
         return result
@@ -931,9 +935,20 @@ def generate_grounded_answer(
             min_retrieval_chunks_for_high_confidence=MIN_RETRIEVAL_CHUNKS_FOR_HIGH_CONFIDENCE,
         )
 
+        evidence_limitation = (
+            evidence_selection.build_general_autos_deductible_evidence_limitation(
+                answer_evidence_chunks,
+                query=retrieval_query.query,
+            )
+        )
+        if evidence_limitation and verification.confidence == "high":
+            verification = verification.model_copy(update={"confidence": "medium"})
+
         limitations: list[str] = []
         confidence = verification.confidence
-        if confidence != "high":
+        if evidence_limitation:
+            limitations.append(evidence_limitation)
+        elif confidence != "high":
             limitations.append(
                 "Evidence is partial; advisor review is required before relying on this draft."
             )

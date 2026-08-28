@@ -333,6 +333,7 @@ def merge_hybrid_retrieval_candidates(
     merged_candidates: dict[str, RetrievedChunk] = {
         chunk.chunk_id: chunk for chunk in semantic_chunks
     }
+    semantic_chunk_ids = set(merged_candidates)
     for lexical_chunk in lexical_chunks:
         existing_chunk = merged_candidates.get(lexical_chunk.chunk_id)
         if existing_chunk is None:
@@ -341,7 +342,21 @@ def merge_hybrid_retrieval_candidates(
         merged_candidates[lexical_chunk.chunk_id] = existing_chunk.model_copy(
             update={"score": existing_chunk.score + (lexical_chunk.score * 0.2)}
         )
-    return list(merged_candidates.values())
+    semantic_candidates = sorted(
+        (
+            chunk
+            for chunk_id, chunk in merged_candidates.items()
+            if chunk_id in semantic_chunk_ids
+        ),
+        key=lambda chunk: chunk.score,
+        reverse=True,
+    )
+    lexical_only_candidates = [
+        chunk
+        for chunk_id, chunk in merged_candidates.items()
+        if chunk_id not in semantic_chunk_ids
+    ]
+    return [*semantic_candidates, *lexical_only_candidates]
 
 
 def canonicalize_filter_value(

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-28
+
+- Prioritize direct autos deductible evidence across bounded retrieval, answer selection, citations, and confidence, correct deterministic semantic-versus-lexical hybrid ordering, and add locally accepted focused and regression coverage.
+
 ## 2026-08-27
 
 - Add the requirements, plan, and validation bundle for the narrow autos deductible evidence-prioritization and confidence-remediation correction, without implementing the correction.
