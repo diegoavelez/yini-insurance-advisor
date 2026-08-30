@@ -84,7 +84,6 @@ REQUIRED_MARKERS = {
     "docs/operations/receipts/index.md": (
         "## Scope",
         "## Entries",
-        "No entries.",
     ),
     "docs/adr/0001-read-only-master-control-topology.md": (
         "strictly read-only",
@@ -120,6 +119,16 @@ CURRENT_EVIDENCE_OVERCLAIM = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+RECEIPT_INDEX_ENTRY_MARKERS = (
+    "receipt_id",
+    "date",
+    "work unit",
+    "terminal class",
+    "evidence ceiling",
+    "receipt pointer",
+    "retention/access",
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -146,6 +155,54 @@ def _contains_required_marker(text: str, marker: str) -> bool:
     return re.search("".join(pattern_parts), text) is not None
 
 
+def _receipt_index_errors(text: str) -> list[str]:
+    entries_heading = "## Entries"
+    if entries_heading not in text:
+        return []
+
+    entries_text = text.split(entries_heading, 1)[1]
+    entries_lines = entries_text.splitlines()
+    entry_starts = [
+        index
+        for index, line in enumerate(entries_lines)
+        if line.lstrip().startswith("- receipt_id:")
+    ]
+    has_empty_sentinel = any(
+        line.strip() == "No entries." for line in entries_lines
+    )
+
+    if has_empty_sentinel:
+        if entry_starts:
+            return ["empty receipt index cannot contain entries"]
+        return []
+
+    if not entry_starts:
+        return ["receipt index has no entries or empty sentinel"]
+
+    errors: list[str] = []
+    for entry_number, start in enumerate(entry_starts, start=1):
+        end = (
+            entry_starts[entry_number]
+            if entry_number < len(entry_starts)
+            else len(entries_lines)
+        )
+        fields: set[str] = set()
+        for line in entries_lines[start:end]:
+            candidate = line.lstrip()
+            if candidate.startswith("- "):
+                candidate = candidate[2:].lstrip()
+            for marker in RECEIPT_INDEX_ENTRY_MARKERS:
+                if candidate.startswith(f"{marker}:"):
+                    fields.add(marker)
+
+        for marker in RECEIPT_INDEX_ENTRY_MARKERS:
+            if marker not in fields:
+                errors.append(
+                    f"incomplete receipt index entry: {entry_number}: {marker}"
+                )
+    return errors
+
+
 def validate(repo: Path) -> list[str]:
     errors: list[str] = []
     loaded_text: dict[str, str] = {}
@@ -160,6 +217,8 @@ def validate(repo: Path) -> list[str]:
         for marker in REQUIRED_MARKERS.get(relative_path, ()):
             if not _contains_required_marker(text, marker):
                 errors.append(f"missing marker in {relative_path}: {marker}")
+        if relative_path == "docs/operations/receipts/index.md":
+            errors.extend(_receipt_index_errors(text))
 
     master_path = "docs/operations/master-control.md"
     master_text = loaded_text.get(master_path, "")

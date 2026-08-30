@@ -14,4 +14,12 @@ embed raw sensitive evidence.
 
 ## Entries
 
-No entries. Historical receipts are intentionally not backfilled.
+- receipt_id: `YINI-GOVERNANCE-STABILIZATION-PUBLICATION-2026-08-28`
+  date: `2026-08-28`
+  work unit: `YINI-GOVERNANCE-STABILIZATION`
+  terminal class: `external-publication`
+  evidence ceiling: transport observed plus local postflight only
+  receipt pointer: `docs/operations/receipts/2026-08-28-yini-governance-publication.md`
+  retention/access: `UNAVAILABLE`
+
+Historical receipts are intentionally not backfilled.

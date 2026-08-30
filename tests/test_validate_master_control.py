@@ -226,6 +226,147 @@ def test_validate_accepts_required_marker_split_by_markdown_whitespace(
     assert _errors_for(tmp_path) == []
 
 
+def test_validate_accepts_complete_prospective_receipt_entry(
+    tmp_path: Path,
+) -> None:
+    _write_contract_repository(tmp_path)
+    index_path = tmp_path / "docs/operations/receipts/index.md"
+    index_path.write_text(
+        index_path.read_text(encoding="utf-8").replace(
+            "No entries.\n",
+            "- receipt_id: `YINI-GOVERNANCE-STABILIZATION-PUBLICATION-2026-08-28`\n"
+            "  date: `2026-08-28`\n"
+            "  work unit: `YINI-GOVERNANCE-STABILIZATION`\n"
+            "  terminal class: `external-publication`\n"
+            "  evidence ceiling: transport observed plus local postflight\n"
+            "  receipt pointer: `docs/operations/receipts/publication.md`\n"
+            "  retention/access: `UNAVAILABLE`\n",
+        ),
+        encoding="utf-8",
+    )
+
+    assert _errors_for(tmp_path) == []
+
+
+def test_validate_rejects_incomplete_prospective_receipt_entry(
+    tmp_path: Path,
+) -> None:
+    _write_contract_repository(tmp_path)
+    index_path = tmp_path / "docs/operations/receipts/index.md"
+    index_path.write_text(
+        index_path.read_text(encoding="utf-8").replace(
+            "No entries.\n",
+            "- receipt_id: `incomplete`\n",
+        ),
+        encoding="utf-8",
+    )
+
+    errors = _errors_for(tmp_path)
+
+    assert any(
+        error.startswith("incomplete receipt index entry:")
+        for error in errors
+    )
+
+
+def test_validate_rejects_empty_sentinel_with_receipt_entry(
+    tmp_path: Path,
+) -> None:
+    _write_contract_repository(tmp_path)
+    index_path = tmp_path / "docs/operations/receipts/index.md"
+    index_path.write_text(
+        index_path.read_text(encoding="utf-8").replace(
+            "No entries.\n",
+            "No entries.\n\n"
+            "- receipt_id: `present`\n"
+            "  date: `2026-08-28`\n"
+            "  work unit: `YINI-GOVERNANCE-STABILIZATION`\n"
+            "  terminal class: `external-publication`\n"
+            "  evidence ceiling: local deterministic\n"
+            "  receipt pointer: `docs/operations/receipts/present.md`\n"
+            "  retention/access: `UNAVAILABLE`\n",
+        ),
+        encoding="utf-8",
+    )
+
+    assert _errors_for(tmp_path) == [
+        "empty receipt index cannot contain entries"
+    ]
+
+
+def test_validate_rejects_complementary_incomplete_receipt_entries(
+    tmp_path: Path,
+) -> None:
+    _write_contract_repository(tmp_path)
+    index_path = tmp_path / "docs/operations/receipts/index.md"
+    index_path.write_text(
+        index_path.read_text(encoding="utf-8").replace(
+            "No entries.\n",
+            "- receipt_id: `first`\n"
+            "  date: `2026-08-28`\n"
+            "  work unit: `YINI-GOVERNANCE-STABILIZATION`\n"
+            "  terminal class: `external-publication`\n\n"
+            "- receipt_id: `second`\n"
+            "  evidence ceiling: local deterministic\n"
+            "  receipt pointer: `docs/operations/receipts/second.md`\n"
+            "  retention/access: `UNAVAILABLE`\n",
+        ),
+        encoding="utf-8",
+    )
+
+    errors = _errors_for(tmp_path)
+
+    assert "incomplete receipt index entry: 1: evidence ceiling" in errors
+    assert "incomplete receipt index entry: 2: date" in errors
+
+
+def test_validate_accepts_multiple_complete_prospective_receipt_entries(
+    tmp_path: Path,
+) -> None:
+    _write_contract_repository(tmp_path)
+    index_path = tmp_path / "docs/operations/receipts/index.md"
+    index_path.write_text(
+        index_path.read_text(encoding="utf-8").replace(
+            "No entries.\n",
+            "- receipt_id: `first`\n"
+            "  date: `2026-08-28`\n"
+            "  work unit: `YINI-GOVERNANCE-STABILIZATION`\n"
+            "  terminal class: `external-publication`\n"
+            "  evidence ceiling: local deterministic\n"
+            "  receipt pointer: `docs/operations/receipts/first.md`\n"
+            "  retention/access: `UNAVAILABLE`\n\n"
+            "- receipt_id: `second`\n"
+            "  date: `2026-08-29`\n"
+            "  work unit: `YINI-GOVERNANCE-STABILIZATION`\n"
+            "  terminal class: `external-publication`\n"
+            "  evidence ceiling: local deterministic\n"
+            "  receipt pointer: `docs/operations/receipts/second.md`\n"
+            "  retention/access: `UNAVAILABLE`\n",
+        ),
+        encoding="utf-8",
+    )
+
+    assert _errors_for(tmp_path) == []
+
+
+def test_validate_rejects_entries_without_sentinel_or_receipt_id(
+    tmp_path: Path,
+) -> None:
+    _write_contract_repository(tmp_path)
+    index_path = tmp_path / "docs/operations/receipts/index.md"
+    index_path.write_text(
+        index_path.read_text(encoding="utf-8").replace(
+            "No entries.\n",
+            "No receipt has been recorded.\n",
+        ),
+        encoding="utf-8",
+    )
+
+    assert _errors_for(tmp_path) == [
+        "receipt index has no entries or empty sentinel"
+    ]
+
+
 @pytest.mark.parametrize(
     "missing_owner",
     [

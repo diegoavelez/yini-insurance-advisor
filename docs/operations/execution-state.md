@@ -3,7 +3,7 @@
 ## State Metadata
 
 - state schema: `yini-governance-v2`
-- recorded date: `2026-08-28`
+- recorded date: `2026-08-30`
 - repository profile: `provider-eval`
 - semantic owner: this document owns current work, accepted evidence, risks,
   blockers, and the next owner decision; live repository and external-system
@@ -15,9 +15,10 @@
 - roadmap: phases 0 through 19 complete
 - go-live baseline: documented in `docs/mvp-go-live.md`
 - AgentOps workflow: repository-local policy `1.4` with profile `provider-eval`
-- current work unit: `YINI-GOVERNANCE-STABILIZATION`
-- current semantic posture: owner-accepted Level 2 governance stabilization;
-  canonical freeze recorded, with Git integration still ungranted
+- current work unit: no new work unit selected; `YINI-GOVERNANCE-STABILIZATION`
+  remains the last closed work unit
+- current semantic posture: owner-accepted Level 2 governance stabilization
+  and administrative closeout; functionally closed
 
 ## Active Work
 
@@ -29,8 +30,14 @@
 - delivery status: delivered, independently reviewed, corrected, and accepted
   by the owner on `2026-08-28`; the acceptance does not publish or authorize
   Git or external action
-- external, Git, provider, deployment, pilot, production, Graphify, cleanup,
-  and successor authorities: not granted by this semantic state
+- administrative closeout status: accepted by the owner on `2026-08-30` after
+  independent `FULL` review, bounded correction of two P2 findings, and
+  `NARROW_DELTA` PASS; no successor delivery or gate is active or authorized
+  by this state
+- administrative closeout records historical transport evidence only; this
+  document owns no current Git or external-system fact and grants no action
+- provider, deployment, pilot, production, Graphify, cleanup, and successor
+  authorities are not granted by this semantic state
 
 ## Evidence Available
 
@@ -40,6 +47,13 @@
   CLI evidence; the independent `FULL` review found one P2, and the bounded
   correction closed it. The independent `NARROW_DELTA` review then reported no
   P0-P3 findings, followed by final human owner acceptance on `2026-08-28`.
+- The authorized publication produced a sanitized historical transport receipt
+  and prospective index entry; those observations do not raise this work unit's
+  evidence ceiling or become current Git or external-system facts.
+- The administrative closeout received independent `FULL` review, bounded
+  correction of two P2 findings, and `NARROW_DELTA` PASS before owner
+  acceptance on `2026-08-30`; acceptance is an authority decision and does not
+  raise the evidence ceiling.
 - The earlier autos deductible correction retains its accepted local evidence:
   focused checks `27/27`, retrieval suite `125/125`, Group D `299/299`, and no
   claim of a global Ruff PASS.
@@ -67,12 +81,10 @@
 ## Risks and Blockers
 
 - current provider and hosted health remain unobserved by this work unit
-- Git integration and every external action require separate owner grants
 - Graphify remains secondary and outside this work unit
 
 ## Next Owner Decision
 
-Decide whether to authorize exact index preparation and commit as a separately
-named Git grant, and decide separately whether to authorize push. Neither
-action is authorized by this state; provider execution, deployment, pilot,
-production, and Graphify remain separate decisions.
+Select and analyze the next roadmap slice. No successor action is authorized by
+this state; provider execution, deployment, pilot, production, Graphify, and
+other external actions remain separate owner decisions.
