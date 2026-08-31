@@ -12,11 +12,13 @@ REQUIRED_FILES = (
     "CHANGELOG.md",
     "docs/operations/master-control.md",
     "docs/operations/execution-state.md",
+    "docs/agents/agentops-workflow.md",
     "docs/agents/executor-workflow.md",
     "docs/operations/metrics-contract.md",
     "docs/operations/receipt-policy.md",
     "docs/operations/receipts/index.md",
     "docs/adr/0001-read-only-master-control-topology.md",
+    "docs/adr/0002-owner-interruption-budget-and-compacthandoff-v3.md",
     "scripts/validate_master_control.py",
     "tests/test_validate_master_control.py",
 )
@@ -40,6 +42,12 @@ REQUIRED_MARKERS = {
         "## Reasoning-Necessity Dispatch",
         "## Manual Yini Routing",
         "## Gate Cadence",
+        "## Owner Gate Budget",
+        "Owner approval gates are counted separately from executor tasks.",
+        "Level 2 with an accepted applicable spec: 3 owner approval gates.",
+        "Contingencies are reported separately from the normal gate budget.",
+        "## Grouped Decisions and Administrative Dispatch",
+        "Grouped decisions retain separately named grants and receipts.",
         "## No-Action Authority",
         "## Strategic Stops",
     ),
@@ -65,6 +73,16 @@ REQUIRED_MARKERS = {
         "gpt-5.6-terra",
         "gpt-5.6-sol",
         "Silent substitution is forbidden.",
+        "## Owner Gates and Lifecycle Bundles",
+        "## Retry and Harness Contingencies",
+        "## CompactHandoff Selection",
+        "Level 2/3 delivery to independent review requires `handoff.v3`",
+    ),
+    "docs/agents/agentops-workflow.md": (
+        'agentops_policy_version: "1.4"',
+        'profile: "provider-eval"',
+        'plugin_minimum_version: "0.11.0"',
+        "Level 2/3 delivery to independent review requires CompactHandoff v3",
     ),
     "docs/operations/metrics-contract.md": (
         "## Ownership",
@@ -88,6 +106,12 @@ REQUIRED_MARKERS = {
     "docs/adr/0001-read-only-master-control-topology.md": (
         "strictly read-only",
         "fresh visible task",
+    ),
+    "docs/adr/0002-owner-interruption-budget-and-compacthandoff-v3.md": (
+        "# ADR 0002: Owner interruption budget and selective CompactHandoff v3",
+        "Owner gate budgets count decisions, not executor tasks.",
+        "CompactHandoff v3 is selective",
+        "Required v3 verification fails closed without fallback.",
     ),
 }
 
@@ -117,6 +141,275 @@ SILENT_ROUTING_SUBSTITUTION = re.compile(
 CURRENT_EVIDENCE_OVERCLAIM = re.compile(
     r"^\s*-\s*current evidence ceiling:\s*rung\s+[3-8]\b",
     re.IGNORECASE | re.MULTILINE,
+)
+
+GATE_TASK_CONFLATION = re.compile(
+    r"owner approval gates? and executor tasks? are the same count",
+    re.IGNORECASE,
+)
+
+
+def _normalized_contract_clauses(text: str) -> list[str]:
+    clauses: list[str] = []
+    for block in re.split(r"\n\s*\n", text):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+
+        segments: list[str] = []
+        if any(line.startswith("|") for line in lines):
+            segments.extend(lines)
+        else:
+            current: list[str] = []
+            for line in lines:
+                if re.match(r"(?:[-*]|\d+\.)\s+", line) and current:
+                    segments.append(" ".join(current))
+                    current = []
+                current.append(line)
+            if current:
+                segments.append(" ".join(current))
+
+        for segment in segments:
+            normalized = re.sub(r"\s+", " ", segment.casefold()).strip()
+            clauses.extend(
+                clause.strip()
+                for clause in re.split(r"(?<=[.!?;])\s+", normalized)
+                if clause.strip()
+            )
+    return clauses
+
+
+def _match_is_negated(clause: str, match: re.Match[str]) -> bool:
+    match_tokens = re.findall(r"[a-z0-9]+", clause[match.start() : match.end()])
+    negations = {"no", "not", "never", "neither", "cannot"}
+    if negations.intersection(match_tokens):
+        return True
+
+    proposition_prefix = re.split(
+        r"(?:[,;:.!?]|\b(?:and|but|or)\b)", clause[: match.start()]
+    )[-1]
+    prefix_tokens = re.findall(r"[a-z0-9]+", proposition_prefix)
+    if negations.intersection(prefix_tokens[-3:]):
+        return True
+
+    following = re.match(r"\s*(?:no|neither)\b", clause[match.end() :])
+    return following is not None
+
+
+LEVEL_SUBJECT = re.compile(r"\blevel ([0-3])\b")
+OWNER_BUDGET = re.compile(
+    r"\b(?:3|three|4|four)\b.{0,60}?"
+    r"\bowner(?: approval)? (?:gates?|decisions?)\b"
+)
+SCOPE_BOUNDARY = re.compile(r"(?:[,;:.!?]|\b(?:and|but|or)\b)")
+
+
+def _local_predicate_is_negated(scope: str, match: re.Match[str]) -> bool:
+    """Evaluate polarity beside a predicate, never in an earlier relation."""
+    preceding = list(SCOPE_BOUNDARY.finditer(scope[: match.start()]))
+    start = preceding[-1].end() if preceding else 0
+    local_tokens = re.findall(r"[a-z0-9]+", scope[start : match.end()])
+    if {"no", "not", "never", "neither", "cannot"}.intersection(local_tokens):
+        return True
+    return re.match(r"\s*(?:no|neither)\b", scope[match.end() :]) is not None
+
+
+def _anchored_level_scopes(clause: str) -> list[tuple[int, str, str]]:
+    subjects = list(LEVEL_SUBJECT.finditer(clause))
+    scopes: list[tuple[int, str, str]] = []
+    for index, subject in enumerate(subjects):
+        next_start = subjects[index + 1].start() if index + 1 < len(subjects) else len(clause)
+        scope = clause[subject.start() : next_start]
+        preceding = list(SCOPE_BOUNDARY.finditer(clause[: subject.start()]))
+        relation_start = preceding[-1].end() if preceding else 0
+        leading_fragment = clause[relation_start : subject.start()]
+        relation_scope = scope
+        if "core budget" in leading_fragment and not LEVEL_SUBJECT.search(
+            leading_fragment
+        ):
+            relation_scope = leading_fragment + scope
+        scopes.append((int(subject.group(1)), scope, relation_scope))
+    return scopes
+
+
+def _gate_budget_errors(text: str) -> list[str]:
+    errors: list[str] = []
+    for clause in _normalized_contract_clauses(text):
+        for level, scope, relation_scope in _anchored_level_scopes(clause):
+            budget_match = OWNER_BUDGET.search(scope)
+            if budget_match and not _local_predicate_is_negated(scope, budget_match):
+                invalid_budget = (
+                    level == 0 and budget_match.group(0).split()[0] in {"3", "three"}
+                ) or (
+                    level in {1, 2}
+                    and "accepted" in scope
+                    and "spec" in scope
+                    and budget_match.group(0).split()[0] in {"4", "four"}
+                )
+                if invalid_budget:
+                    errors.append(
+                        f"invalid Level {level} owner gate budget: "
+                        "docs/operations/master-control.md"
+                    )
+
+            level_three_verb = re.search(r"\b(?:includes?|contains?)\b", relation_scope)
+            if (
+                level == 3
+                and "core budget" in relation_scope
+                and level_three_verb
+                and re.search(r"\b(?:provider|deployment|pilot|production)\b", relation_scope)
+                and not _local_predicate_is_negated(relation_scope, level_three_verb)
+            ):
+                errors.append(
+                    "invalid Level 3 external-rung budget: "
+                    "docs/operations/master-control.md"
+                )
+    return errors
+
+
+RETRY_SUBJECT = re.compile(
+    r"\b(?:first|second|third)\s+(?:attempt|invocation)\b"
+    r"|\b(?:2|two|more than one)\s+dormant(?: mechanical)? retry grants?\b"
+)
+
+
+def _anchored_retry_scopes(clause: str) -> list[str]:
+    subjects = list(RETRY_SUBJECT.finditer(clause))
+    scopes: list[str] = []
+    for index, subject in enumerate(subjects):
+        start = 0 if index == 0 else subject.start()
+        end = subjects[index + 1].start() if index + 1 < len(subjects) else len(clause)
+        scopes.append(clause[start:end])
+    return scopes
+
+
+def _has_excess_retry_cardinality(text: str) -> bool:
+    dormant_pattern = re.compile(
+        r"\b(?:2|two|more than one)\s+dormant(?: mechanical)? retry grants?\b"
+    )
+    third_subject = re.compile(r"\bthird (?:attempt|invocation)\b")
+    eligibility_predicate = re.compile(r"\b(?:eligible|allowed)\b")
+    for clause in _normalized_contract_clauses(text):
+        for scope in _anchored_retry_scopes(clause):
+            dormant_match = dormant_pattern.search(scope)
+            if dormant_match and not _local_predicate_is_negated(scope, dormant_match):
+                return True
+            third_match = third_subject.search(scope)
+            eligibility_match = eligibility_predicate.search(scope)
+            if (
+                third_match
+                and eligibility_match
+                and not _local_predicate_is_negated(scope, eligibility_match)
+            ):
+                return True
+    return False
+
+
+def _has_automatic_post_git_reconciliation(text: str) -> bool:
+    post_git_subject = re.compile(r"\bpost-git(?: documentary)? reconciliation\b")
+    automatic_action = re.compile(r"\b(?:automatic(?:ally)?|occurs?)\b")
+    unchanged_condition = re.compile(
+        r"\b(?:without (?:a )?semantic(?: state)? change"
+        r"|(?:when )?semantic state (?:does not|did not) change"
+        r"|no semantic(?: state)? change)\b"
+    )
+    for clause in _normalized_contract_clauses(text):
+        fragments = [
+            fragment.strip()
+            for fragment in re.split(r"(?:[,;:.!?]|\b(?:and|but|or)\b)", clause)
+            if fragment.strip()
+        ]
+        for index, fragment in enumerate(fragments):
+            if not post_git_subject.search(fragment):
+                continue
+
+            relation = [fragment]
+            if index and unchanged_condition.search(fragments[index - 1]):
+                relation.insert(0, fragments[index - 1])
+
+            for continuation in fragments[index + 1 :]:
+                if re.fullmatch(r"(?:exceptionally|however|otherwise)", continuation):
+                    relation.append(continuation)
+                    continue
+                if re.match(r"^it\b", continuation):
+                    relation.append(continuation)
+                    continue
+                break
+
+            scope = "; ".join(relation)
+            if not unchanged_condition.search(scope):
+                continue
+            for action_match in automatic_action.finditer(scope):
+                if not _local_predicate_is_negated(scope, action_match):
+                    return True
+    return False
+
+
+GOVERNANCE_CONTRACT_VIOLATIONS = (
+    (
+        "docs/operations/master-control.md",
+        "hidden contingency",
+        re.compile(
+            r"normal gate budgets? include no contingency gate",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "docs/operations/master-control.md",
+        "measured efficiency claim",
+        re.compile(r"gate budget proves .*efficiency improvement", re.IGNORECASE),
+    ),
+    (
+        "docs/agents/executor-workflow.md",
+        "generic retry authority",
+        re.compile(r"\bretry if needed\b", re.IGNORECASE),
+    ),
+    (
+        "docs/agents/executor-workflow.md",
+        "generic harness repair authority",
+        re.compile(r"repair the harness if needed", re.IGNORECASE),
+    ),
+    (
+        "docs/agents/executor-workflow.md",
+        "automatic harness resume",
+        re.compile(r"harness repair automatically resumes candidate work", re.IGNORECASE),
+    ),
+    (
+        "docs/agents/executor-workflow.md",
+        "handoff truth overclaim",
+        re.compile(r"CompactHandoff v3 proves manifest truth", re.IGNORECASE),
+    ),
+    (
+        "docs/operations/master-control.md",
+        "recursive administrative closeout",
+        re.compile(r"second administrative closeout is mandatory", re.IGNORECASE),
+    ),
+    (
+        "docs/agents/agentops-workflow.md",
+        "copied universal contract",
+        re.compile(r"^# AgentOps Engineering Operating Model$", re.MULTILINE),
+    ),
+)
+
+ADAPTER_FIELD_DRIFT = (
+    (
+        "adapter policy drift",
+        re.compile(
+            r'^agentops_policy_version:\s*"(?!1\.4"$)[^"]+"\s*$',
+            re.MULTILINE,
+        ),
+    ),
+    (
+        "adapter profile drift",
+        re.compile(r'^profile:\s*"(?!provider-eval"$)[^"]+"\s*$', re.MULTILINE),
+    ),
+    (
+        "adapter minimum drift",
+        re.compile(
+            r'^plugin_minimum_version:\s*"(?!0\.11\.0"$)[^"]+"\s*$',
+            re.MULTILINE,
+        ),
+    ),
 )
 
 RECEIPT_INDEX_ENTRY_MARKERS = (
@@ -203,6 +496,28 @@ def _receipt_index_errors(text: str) -> list[str]:
     return errors
 
 
+def _has_positive_handoff_authority_claim(text: str) -> bool:
+    authority_verb = re.compile(r"\bauthoriz(?:e|es)\b")
+    for clause in _normalized_contract_clauses(text):
+        if "compacthandoff v3" not in clause:
+            continue
+        for match in authority_verb.finditer(clause):
+            if not _match_is_negated(clause, match):
+                return True
+    return False
+
+
+def _has_positive_required_v3_fallback(text: str) -> bool:
+    fallback_verb = re.compile(r"\bfall(?:s)? back\b")
+    for clause in _normalized_contract_clauses(text):
+        if "required v3" not in clause:
+            continue
+        for match in fallback_verb.finditer(clause):
+            if not _match_is_negated(clause, match):
+                return True
+    return False
+
+
 def validate(repo: Path) -> list[str]:
     errors: list[str] = []
     loaded_text: dict[str, str] = {}
@@ -253,6 +568,35 @@ def validate(repo: Path) -> list[str]:
             "current evidence overclaim: "
             f"{state_path}:{_line_number(state_text, overclaim_match)}"
         )
+
+    gate_task_match = GATE_TASK_CONFLATION.search(master_text)
+    if gate_task_match:
+        errors.append("gate/task conflation: docs/operations/master-control.md")
+
+    errors.extend(_gate_budget_errors(master_text))
+
+    for relative_path, error_name, pattern in GOVERNANCE_CONTRACT_VIOLATIONS:
+        if pattern.search(loaded_text.get(relative_path, "")):
+            errors.append(f"{error_name}: {relative_path}")
+
+    if _has_excess_retry_cardinality(workflow_text):
+        errors.append("excess mechanical retry: docs/agents/executor-workflow.md")
+
+    if _has_automatic_post_git_reconciliation(master_text):
+        errors.append(
+            "automatic post-Git reconciliation: docs/operations/master-control.md"
+        )
+
+    if _has_positive_handoff_authority_claim(workflow_text):
+        errors.append("handoff authority overclaim: docs/agents/executor-workflow.md")
+    if _has_positive_required_v3_fallback(workflow_text):
+        errors.append("required v3 fallback: docs/agents/executor-workflow.md")
+
+    adapter_path = "docs/agents/agentops-workflow.md"
+    adapter_text = loaded_text.get(adapter_path, "")
+    for error_name, pattern in ADAPTER_FIELD_DRIFT:
+        if pattern.search(adapter_text):
+            errors.append(f"{error_name}: {adapter_path}")
     return errors
 
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-30
+
+- Deliver the Level 2 governance cadence and selective CompactHandoff v3 contract: distinguish owner gates from executor tasks, preserve separately named lifecycle grants inside grouped decisions, require v3 only at material candidate-bound boundaries, add ADR 0002, and extend focused deterministic validator coverage; independent review, acceptance, Git, provider, and external actions remain separate.
+
 ## 2026-08-28
 
 - Record owner acceptance of the repository-governance stabilization: preserve a strictly read-only master-control topology, semantic-only execution state, visible lifecycle-task and manual-routing contracts, prospective metrics/receipt owners, an ADR, and focused validator coverage; no Git integration, publication, or external action is claimed.

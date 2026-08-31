@@ -66,17 +66,51 @@ action grant, or successor authority.
 
 ## Compact Gate Cadence
 
-1. Read-only master orientation prepares the gate.
-2. Spec acceptance and a separately named delivery grant may share one owner
-   decision.
-3. Delivery updates all applicable canonical documents before returning.
-4. A fresh independent task reviews the complete candidate.
-5. Owner acceptance may be grouped with separately named staging, commit, and
-   push grants; each keeps its own preconditions and receipt.
-6. Provider, deployment, pilot, and production remain separate.
-7. Post-Git documentary reconciliation occurs only after a semantic change.
+The normal cadence counts owner approval gates, not executor tasks. Level 0
+normally uses two owner decisions. Level 1 or 2 with an accepted applicable
+spec normally uses three; without the required spec it uses four. Level 3 adds
+separate decisions for each provider, deployment, pilot, production, or other
+external rung. Classified findings and stops are contingency decisions, not
+hidden normal gates.
 
-Level 0 normally uses proportional delivery/review and close.
+## Owner Gates and Lifecycle Bundles
+
+Owner approval gates are not executor tasks. A grouped lifecycle decision may
+name spec acceptance plus delivery, owner-disposed correction plus conditional
+fresh review, or final acceptance plus separately named close/Git actions.
+Each named grant keeps distinct task identity, fixed point or ordered successor
+precondition, scope, stops, consumption, and receipt. Master control may
+administratively dispatch an already-authorized task but may not perform this
+executor work.
+
+## Retry and Harness Contingencies
+
+A mechanical retry bundle has exactly one primary invocation and one dormant
+retry in a separately named fresh task, eligible only for the declared
+pre-mutation invocation error after unchanged context is proven. A second
+retry, third invocation, changed invocation, unknown state, Git, provider,
+network, external, destructive, or target-changing failure is ineligible.
+
+Generic retry or harness-repair language is not authority. A harness defect is
+not a candidate finding or a retry: it requires a separately scoped repair
+decision and owner disposition afterward, and it never resumes candidate work
+automatically.
+
+## CompactHandoff Selection
+
+Use the smallest safe handoff: Level 0 and deterministic same-checkout Git
+mechanics use plain compact Markdown; Level 1 uses v3 only for a worktree,
+candidate-bound retry, long-context, or exact candidate boundary. Level 2/3
+delivery to independent review requires `handoff.v3`; Level 2/3 correction to
+`NARROW_DELTA` or renewed `FULL` requires a v3 delta handoff. New Yini issuance
+uses `handoff.v3` with `local-pointer` by default.
+
+A required v3 issue, version, manifest, or verification failure stops for
+owner disposition without fallback. CompactHandoff does not authenticate
+authority, prove manifest or Git truth, consume a grant, prevent replay,
+accept bytes, or replace independent preflight or Receipt Capsule v1. Local
+documents point to the installed handoff skill and do not copy its code,
+schemas, references, fixtures, or universal contract.
 
 ## Execution Rules
 

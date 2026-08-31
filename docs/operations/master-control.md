@@ -85,23 +85,45 @@ justifies them. They never replace a visible lifecycle task.
 
 ## Gate Cadence
 
-1. Master control performs read-only orientation and prepares the gate.
-2. The owner may decide spec acceptance and delivery authorization together
-   only when both are separately named.
-3. Delivery updates every applicable canonical document before returning its
-   complete candidate.
-4. A fresh independent task reviews the complete candidate, including canonical
-   documents.
-5. The owner decides final acceptance. Separately named staging, commit, and
-   push grants may be grouped in that decision while retaining distinct
-   preconditions, consumption, and receipts.
-6. Provider execution, deployment, pilot, and production remain separate later
-   tasks and decisions.
-7. No automatic post-Git documentary reconciliation occurs unless semantic
-   state changed. Git remains the live-fact owner.
+The cadence counts owner decisions, never executor-task volume. Each task still
+has its own identity, preconditions, scope, stops, and Receipt Capsule.
 
-Level 0 normally compresses to proportional delivery/review and close. No
-compression auto-advances a gate.
+## Owner Gate Budget
+
+Owner approval gates are counted separately from executor tasks.
+
+| SDD depth | Normal owner approval gates | Normal lifecycle |
+|---|---:|---|
+| Level 0 | 2 | proportional delivery/validation; acceptance with optional exact Git grants |
+| Level 1 or 2 with an accepted applicable spec | 3 | spec acceptance plus delivery; independent review; final acceptance with optional close/Git grants |
+| Level 1 or 2 without the required spec | 4 | specification candidate; then the accepted-spec lifecycle |
+| Level 3 | Level 2 core plus external decisions | provider, deployment, pilot, production, and other external rungs remain separate |
+
+Level 2 with an accepted applicable spec: 3 owner approval gates.
+Contingencies are reported separately from the normal gate budget. A finding,
+drift, harness defect, validation gap, unavailable route, scope change, or
+external rung therefore returns a classified owner decision; it is not hidden
+inside the target count. This budget is governance design, not measured token,
+latency, cost, quality, or productivity evidence.
+
+## Grouped Decisions and Administrative Dispatch
+
+Grouped decisions retain separately named grants and receipts. One owner
+decision may contain spec acceptance plus delivery, an owner-disposed
+correction plus conditional fresh review, or final acceptance plus separately
+named canonical-freeze, differential-review, staging, commit, and push grants.
+Every contained action retains its task identity, fixed-point or successor
+precondition, scope, stop conditions, consumption, and terminal result.
+
+Master control may administratively dispatch only already-authorized visible
+tasks. Dispatch realizes a current exact grant; it is not an additional owner
+gate and does not permit the control tower to implement, validate, review,
+accept, mutate Git, access providers, or perform external actions. An unnamed
+task, changed fixed point, failed precondition, or scope expansion returns to
+the owner.
+
+No automatic post-Git documentary reconciliation occurs unless semantic state
+changed. Git remains the live-fact owner.
 
 ## No-Action Authority
 

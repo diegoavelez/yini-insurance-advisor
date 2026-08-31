@@ -1,7 +1,7 @@
 ---
 agentops_policy_version: "1.4"
 profile: "provider-eval"
-plugin_minimum_version: "0.9.0"
+plugin_minimum_version: "0.11.0"
 ---
 
 <!-- agentops-engineering:workflow:start -->
@@ -53,6 +53,16 @@ Use Level 0 for minor changes, Level 1 for small bounded slices, Level 2 for tec
 - Zero or partial provider execution remains failed or incomplete evidence; never normalize it into readiness.
 
 These profile rules and gates are repository-local. They add no central registry, rollout ledger, adoption manifest, durable handoff archive, fleet-wide apply state, or central live-state owner.
+
+## Local Handoff Selection
+
+The installed handoff skill remains the specialized owner of CompactHandoff.
+Level 2/3 delivery to independent review requires CompactHandoff v3; a
+correction to `NARROW_DELTA` or renewed `FULL` also uses v3. New Yini issuance
+uses `handoff.v3`, `local-pointer` is the default, and required v3 issue or
+verification failure stops for owner disposition without fallback. This
+adapter points to the installed resource and does not copy plugin code,
+schemas, fixtures, or universal contract text.
 
 ## Validation
 
