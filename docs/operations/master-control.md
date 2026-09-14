@@ -57,15 +57,11 @@ points, authority, validation depth, or evidence requirements.
 
 ## Manual Yini Routing
 
-This directive is manual, Yini-specific, revocable, and non-authorizing:
-
-| Work classification | Required route |
-|---|---|
-| validated deterministic mechanics | validated mechanism, with no model when one exists |
-| Level 0 or mechanical documentation | `gpt-5.6-luna`, always reasoning `max` |
-| TDD implementation, correction, or `NARROW_DELTA` review | `gpt-5.6-terra`, reasoning `medium`; use `high` for transversal risk |
-| master orientation, architecture, public contract, trust boundary, `FULL` review, P0/P1, or material ambiguity | `gpt-5.6-sol`, reasoning `high` |
-| Sol/Terra `xhigh` or `max` | only with representative evidence or exceptional owner authorization |
+`docs/agents/executor-workflow.md` owns the single provisional, local,
+revocable, non-authorizing routing matrix. Ordinary Master Control orientation
+uses `gpt-6-astra / medium`; architecture, irreversibility, cross-repository
+implications, contradictions, and repeated substantive failures require
+`gpt-6-astra / high`. The executor matrix governs every other classification.
 
 Ambiguous classification, an unavailable required route, or an inadequate
 model/tier returns the decision to the owner. Silent substitution is forbidden.

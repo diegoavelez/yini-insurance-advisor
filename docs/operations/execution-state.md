@@ -15,12 +15,25 @@
 - roadmap: phases 0 through 19 complete
 - go-live baseline: documented in `docs/mvp-go-live.md`
 - AgentOps workflow: repository-local policy `1.4` with profile `provider-eval`
-- current work unit: `YINI-GOVERNANCE-CADENCE-AND-HANDOFF-V3`
-- current semantic posture: owner-accepted Level 2 delivery after bounded
-  corrections and final `NARROW_DELTA` review; Git close/publication was
-  authorized separately, with no commit or push observed in this state
+- current work unit: `AOPS-012-ADOPTION-001`
+- current semantic posture: reviewed local adoption; owner-directed publication
+  closeout. The evidence ceiling remains local deterministic/rung 2; owner
+  acceptance, Git, publication, provider, and external facts remain separate
+  and unobserved.
+- prospective adoption projection: independent review is observed as `FULL`
+  PASS; owner acceptance, Git, publication, provider, and external facts remain
+  separate and unobserved decisions
 
 ## Active Work
+
+- delivery objective: complete the bounded `AOPS-012-ADOPTION-001` documentary
+  adoption candidate, retaining the optional v3 transport contract and its
+  fail-closed authority and fallback protections
+- C7 local delivery: restore the compatible `required v3 fallback` validator
+  diagnostic while retaining detection for selected and grant-required v3
+  routes; independent review and every Git action remain separate
+
+### Preserved historical context: `YINI-GOVERNANCE-CADENCE-AND-HANDOFF-V3`
 
 - accepted specification:
   `specs/2026-08-30-governance-cadence-and-handoff-v3/`
@@ -34,6 +47,18 @@
   and other external actions remain separate decisions
 
 ## Evidence Available
+
+- Current `AOPS-012-ADOPTION-001` C7 local evidence: the focused validator
+  suite passed `81/81` after the required-v3 compatibility correction, its
+  selected-v3 regression, and the marker failure-detail regression. This is
+  local deterministic evidence only; it is not independent review, acceptance,
+  Git, publication, provider, or external evidence.
+- Independent R1 review task
+  `01a09aeb-e773-7c81-b87a-79d98f14e417` observed a `FULL` PASS with no P0-P3
+  findings. This review result is evidence only; it does not self-accept the
+  candidate or establish Git, publication, provider, or external facts.
+
+### Preserved historical evidence: `YINI-GOVERNANCE-CADENCE-AND-HANDOFF-V3`
 
 - The owner accepted the five-file governance stabilization specification and
   separately authorized its bounded delivery.
@@ -77,8 +102,9 @@
 - The accepted autos deductible correction remains capped at rung 2 local
   deterministic evidence. Dated historical provider observations do not raise
   either current work unit's ceiling.
-- This delivery may reach at most rung 2 through focused deterministic tests,
-  the physical validator CLI, and local CompactHandoff verification.
+- This adoption delivery may reach at most rung 2 through focused deterministic
+  tests, the physical validator CLI, and the local policy validator; it does
+  not establish CompactHandoff, provider, or external evidence.
 
 ## Risks and Blockers
 
@@ -88,7 +114,10 @@
 
 ## Next Owner Decision
 
-After the separately authorized Git close/publication is observed, select and
-analyze the next roadmap slice. No successor implementation or external action
-is authorized by this state; provider execution, deployment, pilot, production,
-Graphify, and other external actions remain separate owner decisions.
+The independent R1 `FULL` review is observed as PASS with no P0-P3 findings.
+The current owner direction is `adelante procede hasta su publicación`; the
+next action for this work unit is a separately tasked Git close under that
+direction. No Git mutation, commit, push, remote readback, publication,
+provider, deployment, pilot, production, or external action has been observed
+or performed here. This state update does not auto-accept the candidate or
+start a successor task; future features remain outside this closeout.

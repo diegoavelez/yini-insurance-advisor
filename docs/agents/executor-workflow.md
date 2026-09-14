@@ -54,10 +54,11 @@ stop fail-closed.
 | Work classification | Required route |
 |---|---|
 | validated deterministic mechanics | validated mechanism, with no model when one exists |
-| Level 0 or mechanical documentation | `gpt-5.6-luna`, always reasoning `max` |
-| TDD implementation, correction, or `NARROW_DELTA` review | `gpt-5.6-terra`, reasoning `medium`; use `high` for transversal risk |
-| master orientation, architecture, public contract, trust boundary, `FULL` review, P0/P1, or material ambiguity | `gpt-5.6-sol`, reasoning `high` |
-| Sol/Terra `xhigh` or `max` | only with representative evidence or exceptional owner authorization |
+| ordinary Master Control | `gpt-6-astra / medium` |
+| architecture, irreversibility, cross-repository implications, contradictions, or repeated substantive failures | `gpt-6-astra / high` |
+| complex implementation or difficult debugging | `gpt-5.6-sol / high` |
+| bounded implementation, tests, or refactors | `gpt-5.6-terra / high` |
+| search, inventory, summaries, or verifiable mechanical documentation | `gpt-5.6-luna / max` |
 
 Ambiguous classification, unavailable routes, or inadequate model/tier returns
 to the owner. Silent substitution is forbidden. This manual, Yini-specific,
@@ -98,19 +99,17 @@ automatically.
 
 ## CompactHandoff Selection
 
-Use the smallest safe handoff: Level 0 and deterministic same-checkout Git
-mechanics use plain compact Markdown; Level 1 uses v3 only for a worktree,
-candidate-bound retry, long-context, or exact candidate boundary. Level 2/3
-delivery to independent review requires `handoff.v3`; Level 2/3 correction to
-`NARROW_DELTA` or renewed `FULL` requires a v3 delta handoff. New Yini issuance
-uses `handoff.v3` with `local-pointer` by default.
+CompactHandoff is optional and explicit. When a grant does not select v3, use
+a compact delta that states the fixed point, scope, exclusions, authority and
+evidence limits, and stop conditions. A selected v3 transport fails closed
+without fallback: an issue, version, manifest, or verification failure stops
+that action for owner disposition.
 
-A required v3 issue, version, manifest, or verification failure stops for
-owner disposition without fallback. CompactHandoff does not authenticate
-authority, prove manifest or Git truth, consume a grant, prevent replay,
-accept bytes, or replace independent preflight or Receipt Capsule v1. Local
-documents point to the installed handoff skill and do not copy its code,
-schemas, references, fixtures, or universal contract.
+CompactHandoff does not authenticate authority, prove manifest or Git truth,
+consume a grant, prevent replay, accept bytes, or replace independent
+preflight or Receipt Capsule v1. Local documents point to the installed
+handoff skill and do not copy its code, schemas, references, fixtures, or
+universal contract.
 
 ## Execution Rules
 

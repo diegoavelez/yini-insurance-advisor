@@ -117,13 +117,13 @@ Decide whether to authorize independent full review.
 ---
 agentops_policy_version: "1.4"
 profile: "provider-eval"
-plugin_minimum_version: "0.11.0"
+plugin_minimum_version: "0.9.0"
 ---
 
 # AgentOps Workflow
 
-The installed handoff skill owns CompactHandoff v3. Level 2/3 delivery to
-independent review requires CompactHandoff v3 without fallback.
+Routine delegation applies the Operating Model directly. CompactHandoff is
+optional and explicit; a selected v3 transport fails closed without fallback.
 """,
     "docs/agents/executor-workflow.md": """\
 # Executor Workflow
@@ -145,13 +145,13 @@ stops.
 
 ## Manual Yini Routing
 
-Validated deterministic mechanics use no model when a mechanism exists. Level
-0 and mechanical documentation use `gpt-5.6-luna` at `max`. TDD, correction,
-and `NARROW_DELTA` use `gpt-5.6-terra` at `medium`, or `high` for transversal
-risk. Master orientation, architecture, public contracts, trust boundaries,
-`FULL`, P0/P1, and material ambiguity use `gpt-5.6-sol` at `high`. Sol/Terra
-`xhigh` or `max` requires representative evidence or exceptional owner
-authorization. Silent substitution is forbidden.
+Validated deterministic mechanics use no model when a mechanism exists. Master
+Control uses `gpt-6-astra / medium`; architecture, irreversibility,
+cross-repository implications, contradictions, and repeated substantive
+failures use `gpt-6-astra / high`. Complex implementation and difficult
+debugging use `gpt-5.6-sol / high`; bounded implementation, tests, and
+refactors use `gpt-5.6-terra / high`; mechanical documentation uses
+`gpt-5.6-luna / max`. Silent substitution is forbidden.
 
 ## Compact Gate Cadence
 
@@ -172,9 +172,9 @@ never resumes candidate work automatically.
 
 ## CompactHandoff Selection
 
-Level 2/3 delivery to independent review requires `handoff.v3`; a required v3
-failure stops without fallback. CompactHandoff does not authenticate authority
-or prove manifest truth.
+CompactHandoff is optional and explicit. A selected v3 transport fails closed
+without fallback. CompactHandoff does not authenticate authority or prove
+manifest truth.
 
 ## Execution Rules
 
@@ -976,6 +976,35 @@ def test_validate_accepts_explicit_handoff_prohibitions(tmp_path: Path) -> None:
     assert _errors_for(tmp_path) == []
 
 
+def test_validate_accepts_selected_v3_fallback_prohibition(tmp_path: Path) -> None:
+    _write_contract_repository(tmp_path)
+    workflow_path = tmp_path / "docs/agents/executor-workflow.md"
+    workflow_path.write_text(
+        workflow_path.read_text(encoding="utf-8")
+        + "\nA selected v3 transport never falls back.\n",
+        encoding="utf-8",
+    )
+
+    assert _errors_for(tmp_path) == []
+
+
+def test_validate_accepts_selected_v3_marker_with_failure_detail(
+    tmp_path: Path,
+) -> None:
+    _write_contract_repository(tmp_path)
+    workflow_path = tmp_path / "docs/agents/executor-workflow.md"
+    workflow_path.write_text(
+        workflow_path.read_text(encoding="utf-8").replace(
+            "without fallback.",
+            "without fallback: an issue, version, manifest, or verification "
+            "failure stops that action.",
+        ),
+        encoding="utf-8",
+    )
+
+    assert _errors_for(tmp_path) == []
+
+
 def test_validate_rejects_positive_handoff_authority_and_fallback(
     tmp_path: Path,
 ) -> None:
@@ -1083,9 +1112,10 @@ def test_validate_accepts_required_v3_fallback_prohibitions(
     [
         "A required v3 issue may fall back to plain text.\n",
         "A required v3 verification will fall back to plain text.\n",
+        "A selected v3 issue may fall back to plain text.\n",
     ],
 )
-def test_validate_rejects_positive_required_v3_fallback_without_failure_word(
+def test_validate_rejects_positive_selected_or_required_v3_fallback_without_failure_word(
     tmp_path: Path,
     injected: str,
 ) -> None:
@@ -1131,6 +1161,54 @@ def test_validate_rejects_adapter_contract_drift(
     )
 
     assert expected_error in _errors_for(tmp_path)
+
+
+def test_validate_rejects_legacy_adapter_minimum(tmp_path: Path) -> None:
+    _write_contract_repository(tmp_path)
+    workflow_path = tmp_path / "docs/agents/agentops-workflow.md"
+    workflow_path.write_text(
+        workflow_path.read_text(encoding="utf-8")
+        + '\nplugin_minimum_version: "0.11.0"\n',
+        encoding="utf-8",
+    )
+
+    assert "adapter minimum drift: docs/agents/agentops-workflow.md" in _errors_for(
+        tmp_path
+    )
+
+
+def test_validate_rejects_missing_astra_high_routing_route(tmp_path: Path) -> None:
+    _write_contract_repository(tmp_path)
+    workflow_path = tmp_path / "docs/agents/executor-workflow.md"
+    workflow_text = workflow_path.read_text(encoding="utf-8")
+    assert workflow_text.count("gpt-6-astra / high") == 1
+    workflow_path.write_text(
+        workflow_text.replace("gpt-6-astra / high", "")
+        + "\nMaster Control uses `gpt-6-astra / medium`."
+        + " Architecture uses `gpt-5.6-sol / high`."
+        + " Bounded implementation uses `gpt-5.6-terra / high`."
+        + " Mechanical documentation uses `gpt-5.6-luna / max`.\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        "missing marker in docs/agents/executor-workflow.md: gpt-6-astra / high"
+        in _errors_for(tmp_path)
+    )
+
+
+def test_validate_rejects_universal_v3_requirement(tmp_path: Path) -> None:
+    _write_contract_repository(tmp_path)
+    workflow_path = tmp_path / "docs/agents/executor-workflow.md"
+    workflow_path.write_text(
+        workflow_path.read_text(encoding="utf-8")
+        + "\nCompactHandoff v3 is mandatory for every handoff.\n",
+        encoding="utf-8",
+    )
+
+    assert "universal v3 requirement: docs/agents/executor-workflow.md" in _errors_for(
+        tmp_path
+    )
 
 
 def test_physical_cli_reports_adapter_minimum_drift(tmp_path: Path) -> None:

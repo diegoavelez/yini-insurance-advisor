@@ -40,3 +40,16 @@ reduces ceremonial owner decisions only by grouping already separate grants;
 it does not measure or claim token, latency, cost, quality, or productivity
 improvement. A semantic state change, not Git completion alone, determines
 whether another documentary closeout is needed.
+
+## Prospective amendment: AOPS-012-ADOPTION-001
+
+For work authorized after this amendment, CompactHandoff is optional and
+explicit rather than selected by a mandatory routing rule. When a grant selects
+v3, its issue, version, manifest, or verification failure stops that action
+closed without fallback. A grant that does not select v3 uses a compact delta
+with its fixed point, scope, exclusions, authority and evidence limits, and
+stop conditions.
+
+This amendment preserves the historical decision, its recorded gate budget,
+and the meaning of prior candidate and receipt boundaries. It neither changes
+authority nor relaxes evidence, polarity, or fail-closed limits.

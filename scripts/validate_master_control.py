@@ -69,20 +69,23 @@ REQUIRED_MARKERS = {
         "## Execution Rules",
         "## Return Contract",
         "## Review and Acceptance",
-        "gpt-5.6-luna",
-        "gpt-5.6-terra",
-        "gpt-5.6-sol",
+        "gpt-6-astra / medium",
+        "gpt-6-astra / high",
+        "gpt-5.6-sol / high",
+        "gpt-5.6-terra / high",
+        "gpt-5.6-luna / max",
         "Silent substitution is forbidden.",
         "## Owner Gates and Lifecycle Bundles",
         "## Retry and Harness Contingencies",
         "## CompactHandoff Selection",
-        "Level 2/3 delivery to independent review requires `handoff.v3`",
+        "CompactHandoff is optional and explicit",
+        "A selected v3 transport fails closed without fallback",
     ),
     "docs/agents/agentops-workflow.md": (
         'agentops_policy_version: "1.4"',
         'profile: "provider-eval"',
-        'plugin_minimum_version: "0.11.0"',
-        "Level 2/3 delivery to independent review requires CompactHandoff v3",
+        'plugin_minimum_version: "0.9.0"',
+        "CompactHandoff is optional and explicit",
     ),
     "docs/operations/metrics-contract.md": (
         "## Ownership",
@@ -406,7 +409,7 @@ ADAPTER_FIELD_DRIFT = (
     (
         "adapter minimum drift",
         re.compile(
-            r'^plugin_minimum_version:\s*"(?!0\.11\.0"$)[^"]+"\s*$',
+            r'^plugin_minimum_version:\s*"(?!0\.9\.0"$)[^"]+"\s*$',
             re.MULTILINE,
         ),
     ),
@@ -507,14 +510,33 @@ def _has_positive_handoff_authority_claim(text: str) -> bool:
     return False
 
 
-def _has_positive_required_v3_fallback(text: str) -> bool:
+def _has_positive_selected_v3_fallback(text: str) -> bool:
     fallback_verb = re.compile(r"\bfall(?:s)? back\b")
+    v3_selection_or_grant_requirement = re.compile(
+        r"\b(?:select(?:ed|s) (?:handoff )?v3|required v3|"
+        r"grant (?:selects?|requires?) (?:handoff )?v3|"
+        r"(?:handoff )?v3 (?:is )?required by (?:a )?grant)\b"
+    )
     for clause in _normalized_contract_clauses(text):
-        if "required v3" not in clause:
+        selection_or_requirement = v3_selection_or_grant_requirement.search(clause)
+        if not selection_or_requirement or _local_predicate_is_negated(
+            clause, selection_or_requirement
+        ):
             continue
         for match in fallback_verb.finditer(clause):
             if not _match_is_negated(clause, match):
                 return True
+    return False
+
+
+def _has_universal_v3_requirement(text: str) -> bool:
+    requirement = re.compile(
+        r"\b(?:compacthandoff|handoff) v3\s+(?:is\s+)?(?:required|mandatory)\b"
+    )
+    for clause in _normalized_contract_clauses(text):
+        match = requirement.search(clause)
+        if match and not _local_predicate_is_negated(clause, match):
+            return True
     return False
 
 
@@ -589,8 +611,10 @@ def validate(repo: Path) -> list[str]:
 
     if _has_positive_handoff_authority_claim(workflow_text):
         errors.append("handoff authority overclaim: docs/agents/executor-workflow.md")
-    if _has_positive_required_v3_fallback(workflow_text):
+    if _has_positive_selected_v3_fallback(workflow_text):
         errors.append("required v3 fallback: docs/agents/executor-workflow.md")
+    if _has_universal_v3_requirement(workflow_text):
+        errors.append("universal v3 requirement: docs/agents/executor-workflow.md")
 
     adapter_path = "docs/agents/agentops-workflow.md"
     adapter_text = loaded_text.get(adapter_path, "")
