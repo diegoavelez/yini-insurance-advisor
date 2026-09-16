@@ -24,6 +24,19 @@ These rules apply to every task unless explicitly overridden.
   live branch, `HEAD`, index, worktree, refs, remotes, and divergence facts.
 - `docs/agents/executor-workflow.md` owns visible-task boundaries, the manual
   Yini routing directive, compact gate cadence, and executor returns.
+- Master control alone administratively dispatches an exact owner-authorized
+  task. An executor works in the task received: it never creates, forks,
+  hands off, or sends another task, or reselects its checkout. Reading
+  `master-control.md` does not make an executor master; a fresh visible task
+  means the received isolated task, not recursive redelegation.
+- Yini defaults to the principal checkout. A worktree requires explicit owner
+  selection and a reason; unmet isolation needs return to the owner. First
+  observe `pwd -P`, Git root, and normalized common-dir read-only with
+  `GIT_OPTIONAL_LOCKS=0`; stop on mismatch without corrective `cd` or checkout
+  creation. The executor workflow owns the detailed checkout precondition.
+- Handoffs and receipts declare role, `dispatch_owner`, physical repository,
+  absolute common-dir, and checkout precondition. These are contractual
+  controls, not demonstrated per-task tool enforcement.
 - Implementation, correction, independent review, Git, provider, deployment,
   pilot, production, and external actions require fresh visible tasks and
   separately named authorities. Internal subagents never replace them.
@@ -34,6 +47,10 @@ These rules apply to every task unless explicitly overridden.
 - Treat Graphify as secondary context. Stop fail-closed on drift, foreign
   changes, sensitive-data risk, truth conflict, unavailable required routing,
   or material scope ambiguity.
+- Explicitly inventoried and owner-permitted foreign state stays untouched;
+  it is not itself drift. Complete truncated read-only capture through
+  bounded pagination under the executor workflow; this neither repeats a
+  mutation nor renews authority. Real state changes and failures still stop.
 
 ## Core Behavior
 

@@ -72,3 +72,45 @@ outside this task and were not run here.
 H7 corrects only the temporary harness's raw-porcelain comparison. Its local
 RED-to-GREEN regression and deterministic self-test are support evidence, not
 an independent PASS or any acceptance, Git, provider, or publication evidence.
+
+## Executor role and checkout boundary
+
+R1H1 task `01a0a559-3689-73a1-b6cb-0a5044afbc0a` issued `create_thread` with
+explicit worktree/working-tree selection despite its no-delegation grant;
+only a provisional clientThreadId was observed. Keep dispatch with master,
+retain the executor role after reading master instructions, and check physical
+cwd/common-dir before work without corrective `cd`. Recover incomplete
+read-only capture by pagination, never by repeating a mutation. This is a
+contractual prevention lesson, not proven runtime enforcement or inferred
+intent; the later master-dispatched test remains pending. Evidence and limits:
+`specs/2026-09-15-executor-checkout-boundary/validation.md`. Revisit this lesson
+if observed runtime controls supersede the documented contractual boundary.
+
+## Defensive parsing for read-only tool capture
+
+R1 task `01a0a573-b12e-7422-8483-86d8836e10ec` repeated a harness pattern:
+an unconditional `JSON.parse` converted a non-JSON `read_thread` error into
+`SyntaxError: Unexpected token 'r', "read_threa"... is not valid JSON` and
+terminated the FULL review. Prevent recurrence by emitting response format,
+`isError`, and block types first; then parse inside `try/catch`, validate the
+expected `turns` or `items` shape before traversal, and classify nested
+truncation as incomplete. Plain-text errors, malformed JSON, unexpected
+shapes, and truncation are distinct non-PASS outcomes. Retire this local guard
+only when the host provides a stable typed contract plus regression coverage
+for all five classes and proves that error responses cannot bypass it.
+
+C1 adds that an array container alone is insufficient: before returning a
+complete capture, validate each `turn` record, its array `items`, and each
+item record that the later traversal consumes. Keep the positive fixture
+non-empty. Also distinguish a historical preflight that explicitly sets
+`workdir` from evidence of the caller's unmodified initial cwd; either fact
+does not prove future runtime enforcement.
+
+## Executor recipe boundary
+
+A SHA-256 digest of the physical `.git/index` file identifies those index
+bytes; it is not a Git tree OID and must never be substituted or reconstructed
+with an index/tree mutation. A source declared optional may be pruned only
+after its bounded absence/no-match is recorded and an already-authorized
+alternative is available. That pruning never invents content, replaces a
+required source, renews a grant, or turns an incomplete capture into PASS.

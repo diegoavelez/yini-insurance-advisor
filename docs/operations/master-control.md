@@ -75,6 +75,22 @@ publication, provider execution, deployment, pilot, production, and external
 actions use fresh visible tasks. Worktree selection is a separate decision and
 creates no authority.
 
+Master control alone dispatches those tasks under exact owner grants.
+Executors perform the isolated task received; they never create, fork, hand
+off, or send another task, or reselect their checkout. Reading this document
+does not convert an executor into master control, and "fresh visible task"
+does not instruct an executor to redelegate.
+
+Yini uses the principal checkout by default. A worktree requires explicit
+owner choice and a reason before dispatch. An executor that needs ungranted
+isolation returns the need to the owner. Each handoff declares role,
+`dispatch_owner`, physical repository, absolute common-dir, and checkout
+precondition; the executor returns those fields with its observed match.
+`docs/agents/executor-workflow.md` owns the physical preflight-first rule,
+stop without corrective `cd`, contractual enforcement limits, and continued
+read-only pagination for incomplete capture. Reading recovery neither creates
+a new task nor renews any mutation authority; true failures retain their stops.
+
 Internal subagents may support only at least two independent, bounded,
 non-mutating analysis workstreams when additional coverage or wall time
 justifies them. They never replace a visible lifecycle task.
