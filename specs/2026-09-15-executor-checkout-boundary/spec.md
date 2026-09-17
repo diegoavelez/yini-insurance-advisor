@@ -1,5 +1,33 @@
 # Executor and Checkout Boundary — Specification
 
+## Prospective Capture-Size Correction — 2026-09-17
+
+This owner-authorized correction addresses the recurrence of the 100-line
+rule as a terminal condition. It changes only the executor workflow, one
+prunable lesson, and the five documents in this directory. It supersedes the
+S1 capture-size wording through the dated amendment in [plan.md](plan.md#capture-size-amendment--2026-09-17),
+which remains the sole recipe/graph owner. The remaining S1 sections below
+retain their historical scope, exclusions, observations, and decisions; their
+grants are not renewed and no past STOP is reclassified as PASS.
+
+The intended behavior distinguishes complete oversize output, recoverable
+incomplete capture, and terminal state/authority/budget failures. Line count is
+a presentation target; character/token controls are configurable and do not
+prove completeness. This is a local Yini documentary correction with an
+ephemeral deterministic pagination check, not plugin installation, runtime
+enforcement, a general parser, or a new subsystem. No product, provider, Git
+mutation, acceptance, independent review, or readiness continuation is included.
+
+Done for this correction means the seven allowed documents are coherent,
+RED and the literal amended pagination checks are recorded with their limits,
+five foreign readiness files remain byte-for-byte intact, and the final
+receipt binds twelve deltas plus unchanged HEAD/index/marker. Return
+`READY_FOR_INDEPENDENT_REVIEW`; independent review and owner acceptance are
+still separate. [validation.md](validation.md#capture-size-diagnosis--2026-09-17)
+owns the sanitized diagnostic evidence and remaining risks.
+
+## Historical S1 Specification
+
 ## Status and Depth
 
 S1 documentary candidate, 2026-09-16: `READY_FOR_OWNER_SPEC_DECISION` only

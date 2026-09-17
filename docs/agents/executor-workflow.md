@@ -56,7 +56,7 @@ graph, parser, or universal contract.
 Before review, a delivery task using that plan updates the applicable canonical
 workflow and any narrowly evidenced lesson within its own allowlist. A later
 check or PASS cannot cure a failed physical preflight, fingerprint mismatch,
-or exhausted read bound. True drift, unknown mutation, write failure,
+or exhausted total read-call/page budget. True drift, unknown mutation, write failure,
 sensitive-data risk, unsafe non-capture failure, truth conflict, or material
 ambiguity remains a terminal stop and needs owner disposition; neither this
 pointer nor capture recovery authorizes a retry, repair, escalation, cleanup,
@@ -152,11 +152,21 @@ automatically.
 
 ### Recoverable Read-Only Capture
 
-Truncated or incomplete read-only output is not by itself a failed mutation,
-candidate drift, or terminal invocation error. Continue capture from the
-missing range, one source per call in pages of at most 100 lines through EOF;
-retain source/range identity and do not claim complete evidence prematurely.
-For a long individual record, page only its authorized output content.
+Prospective amendment, 2026-09-17: 100 lines is an initial pagination target,
+not a safety/acceptance invariant or a universal command/input limit. A
+complete authorized output with its expected exit does not fail solely because
+it exceeds that target. Presentation size is configurable in characters/tokens;
+source/range identity, exit semantics, and completeness are separate evidence.
+Use the sole [capture recipe and decision table](../../specs/2026-09-15-executor-checkout-boundary/plan.md#capture-size-amendment--2026-09-17)
+for retained-output pagination, including long records, and actual total budgets.
+Oversize alone does not classify an observation as facade `HARNESS_DEFECT`.
+
+Truncated or incomplete read-only output remains `INCOMPLETE` until its missing
+authorized ranges are captured within the same task's total allowance. Never
+infer completeness from a line count. This amendment does not excuse a breach
+of a historical explicit hard grant or turn a historical STOP into PASS. Future
+master handoffs must bind presentation controls separately from actual total
+budgets, rather than inventing a hard 100-line limit for every command.
 
 This is continuation of the same read-only inspection, not a retry grant,
 new task, or renewed authority. Never replay an originating mutation to

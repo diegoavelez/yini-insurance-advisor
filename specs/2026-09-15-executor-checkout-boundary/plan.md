@@ -5,6 +5,11 @@ seven-path allowlist, inspection authority, and next gate are not renewed.
 The S1 supplement below is the sole owner of the new proposed recipe and
 graph. It does not activate operational policy or authorize execution.
 
+The prospective **Capture Size Amendment — 2026-09-17** below explicitly
+revises the S1 capture guards and C3/V3 recipe rows in this candidate. Earlier
+historical scope and STOPs remain intact. Current correction authority comes
+only from the new owner grant, not from the S1 proposal or its old budgets.
+
 ## Historical Correction Plan
 
 ## Objective and Files
@@ -111,9 +116,9 @@ flowchart TD
     P -->|mismatch| S[STOP and owner disposition]
     F -->|match| C[Read-only capture]
     F -->|drift or unknown| S
-    C -->|bounded missing range or safe optional lookup or capture-format issue| C
-    C -->|required absence or unsafe failure or exhausted bound| S
-    C -->|complete| A{Named task action}
+    C -->|bounded missing range or safe optional lookup or safe capture-format issue or presentation oversize| C
+    C -->|required absence or unsafe failure or exhausted total budget| S
+    C -->|complete with expected exit regardless of line count| A{Named task action}
     A -->|delivery or authorized correction| L[Bounded delivery]
     A -->|independent review| R[FULL or qualified NARROW_DELTA]
     A -->|action not granted| S
@@ -148,9 +153,9 @@ ends at `READY_FOR_OWNER_SPEC_DECISION`, outside this future delivery graph.
 | D → P | executor or reviewer | Already received task; no cwd override | Observe physical identity | Match evidence or STOP |
 | P → F / S | executor or reviewer | All three identities match / any mismatch | Continue read-only fingerprint / return mismatch | F or terminal STOP; no corrective cd |
 | F → C / S | executor or reviewer | Exact manifest/index/ref/worktrees / drift, incomplete coverage, unknown mutation | Capture authorized sources / return classified mismatch | C or terminal STOP |
-| C → C | same task reader | Known missing range, optional absent lookup, or safe capture-format issue; bounded source and remaining allowance | Continue only missing/alternative authorized read-only capture | Incomplete until evidence is complete; no new gate or mutation retry |
-| C → S | same task reader | Required source truly absent, unsafe/unexpected non-capture failure, secret risk, or exhausted bound | Return symptom, classification and gap | Terminal STOP |
-| C → A | same task reader | Complete authorized capture, no unresolved required evidence | Check named action against current grant | No authority inferred from capture |
+| C → C | same task reader | Known missing range, optional absent lookup, safe capture-format issue or presentation oversize; bound source and remaining total allowance | Page retained content or continue only authorized read-only capture | Missing evidence stays INCOMPLETE; oversize alone is no failure; no new gate or mutation retry |
+| C → S | same task reader | Required source truly absent, unsafe/unexpected non-capture failure, secret risk, or exhausted total budget | Return symptom, classification and gap | Terminal STOP |
+| C → A | same task reader | Complete authorized capture with expected exit, no unresolved required evidence; line count is not a guard | Check named action against current grant | No authority inferred from capture |
 | A → L | delivery/correction executor | Exact delivery grant or eligible separately named C1/C2 grant | Only allowed delivery edits | Candidate; true failure → STOP |
 | L → V | delivery/correction executor | Candidate within scope | Authorized checks and canonical updates, then checks of resulting bytes | Complete frozen candidate before review |
 | V → W / S | delivery/correction executor | Checks PASS / failure or validation gap | Return candidate / classified stop | Terminal awaiting review grant or STOP |
@@ -229,12 +234,12 @@ authorized edits; foreign identities remain anchored to the original grant.
 | F7 | Inventory invocation below | Exact kind/mode/hash, absence checks, marker digest |
 | C1 | `rg --files -- <known-directory>` | Locate files only in a known authorized directory before selecting reads |
 | C2 | `rg -n -e '<bound-pattern>' -- <explicit-known-files>` | Bounded lookup; match or documented optional no-match |
-| C3 | `sed -n '<start>,<end>p' '<exact-source>'` | One source/call; at most 100 lines; continue missing ranges through EOF |
+| C3 | `sed -n '<start>,<end>p' '<exact-source>'` | One source/call; initially target 100 lines, then page retained content by the presentation size control below, including long lines; continue missing ranges through EOF |
 | C4 | `wc -l -- '<exact-source>'` | Optional read-page bound; final unterminated line must still be captured |
 | C5 | `read_thread` tool with `threadId=<authorized-id>`, `turnLimit=1`, `includeOutputs=true`, `maxOutputCharsPerItem=6500` | Conditional only if exact task evidence is required; native envelope and authorized content guarded before traversal |
 | V1 | `GIT_OPTIONAL_LOCKS=0 git diff --check -- <explicit-allowed-tracked-files>` | Whitespace check restricted to granted candidate |
 | V2 | `GIT_OPTIONAL_LOCKS=0 git diff --no-index --check -- /dev/null '<one-allowed-untracked-file>'` | One file/call; whitespace diagnostics absent |
-| V3 | `GIT_OPTIONAL_LOCKS=0 git diff -- '<one-allowed-tracked-file>'` | Optional bounded candidate diff if the grant selects it; preserve missing-range capture |
+| V3 | `GIT_OPTIONAL_LOCKS=0 git diff -- '<one-allowed-tracked-file>'` | Optional selected read-only diff: retain result/exit/source first, page retained content before emission using the amendment below; never append `head` or lose exit through a pipeline |
 | Z | Repeat P1–P3, F1–F7 against expected successor | Postflight identity, inventory and preserved-state evidence; not mutation replay |
 
 This principal-checkout recipe does not silently adapt F1 for a linked
@@ -252,8 +257,10 @@ All existing/protected rows require exact digests. Only explicitly allowed new
 candidate identities may use `None`, and only for a separately bound initial
 candidate capture; they emit `OBSERVED_NEW`, not an unchanged-fingerprint PASS.
 The next comparison must bind those actual digests in the successor manifest.
-Input lists must be complete and small enough for the granted output bound;
-otherwise STOP before invocation, without truncating the manifest.
+Input lists must be complete. Estimate capture needs against the granted total
+budget before invocation and page retained output under the amendment below;
+do not truncate the manifest or apply a 100-source-line rule to its JSON/output.
+Insufficient total allowance stops before invocation.
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python - <<'PY'
@@ -375,6 +382,123 @@ limits and authorized alternative sources before dispatch. Exhaustion, a truly
 missing required source after safe lookup, unknown state change, write failure,
 secret risk, permission escalation need, unexpected non-capture failure, or
 material conflict goes to STOP. A later PASS cannot cure a prior mismatch.
+
+## Capture Size Amendment — 2026-09-17
+
+This prospective local amendment replaces the S1 presentation hard cap of
+"at most 100 lines" in C3/S1-AC06 and aligns V3 and the graph/table above.
+The original Historical Correction Plan remains unchanged. It neither excuses
+an explicit hard grant violated in an earlier task nor retroactively resumes
+or passes its STOP. The new owner grant expressly applies these capture
+semantics from the start of this correction, with hard totals of 160 tool
+calls and 200 displayed pages, one initial edit pass and two documentary
+adjustments. No action starts with exhausted required allowance; balances do
+not survive task closure. Future tasks bind their own positive total budgets.
+
+100 lines is an initial pagination target only. It is not a safety invariant,
+acceptance criterion, universal tool input limit, source-code limit, or reason
+to reject a complete JSON manifest/command result. Presentation is controlled
+by configurable characters/tokens: this grant targets at most 100 lines and
+at most 6500 characters per displayed content fragment. Exceeding a display
+target requires bounded capture handling, not an automatic terminal failure.
+Never infer token counts from character counts. Source, exact range, native
+exit/result, and completeness must be recorded independently of display size.
+Master must bind those controls explicitly rather than invent a hard 100-line
+constraint for every future command. A separately explicit hard grant remains
+binding until changed by its owner; this amendment is no implicit override.
+
+### Capture Decision Table
+
+Classification here is manual application of the contract, not a new parser
+or runtime enforcer. Oversize alone supplies no `HARNESS_DEFECT` to the facade;
+that facade maps a classification supplied by its caller, not line counts.
+
+| Observation | Capture state and eligible handling |
+|---|---|
+| Complete authorized output, expected exit, more than 100 lines | Complete evidence after retained pages are inspected; no size failure; C → A when other evidence is complete |
+| One line exceeds 6500 characters | Split at character offsets, retain exact text and source; presentation C → C, not a state failure |
+| Truncation flag or missing range | INCOMPLETE; C → C only for bounded safe recovery within remaining total budget; exit 0 alone proves no completeness |
+| Unexpected Git/tool exit or error diagnostics | Preserve error; real non-capture failure is STOP, never promoted to PASS by pagination |
+| Identity drift, unknown/failed mutation, secret/unsafe capture, or scope conflict | STOP; no repair, escalation, cleanup, or renewed authority |
+| Required total call/page allowance exhausted | STOP with explicit gap; size recovery does not replenish budgets |
+| Missing mutation output | Never replay the mutation; retained authorized evidence or separately bound read-only observation only, otherwise return gap/STOP |
+
+### Retained Diff Capture Recipe
+
+Bind an exact authorized tracked file, command and baseline (add `HEAD` only
+when explicitly selected), source identity/fingerprint, expected exit, total
+budget and runtime output capacity before V3. Capture the read-only result in
+a retained tool buffer before emitting its content. For this runtime, the
+concrete sequence is a `tools.exec_command` call with `login:false`, exact V3
+command, and a grant-selected `max_output_tokens`, followed by
+`store("v3-result", result)` in `functions.exec`. Keep its `exit_code`,
+`chunk_id`, output and any truncation/session metadata alongside the bound
+source; never print the whole result first. If it reports a running session,
+capture its completion/exit within the same allowance before assessing it.
+The token cap can truncate capture: inspect native truncation metadata and
+warnings; a successful call or EOF of a truncated buffer proves no completion.
+
+Apply the following literal to the retained authorized output, then emit only
+the next page(s) that fit the outer tool response capacity and budget. Each
+page has zero-based, end-exclusive character offsets into the retained text;
+record its buffer/source identity and native exit separately. A line may span
+pages. This is an ephemeral presentation helper, not an executable repository
+script or a semantic classifier. No shell `| head`, pipeline masking an exit,
+discarded suffix, or fabricated missing content is eligible.
+
+```js
+function retainedCapturePages(content, maxChars = 6500, targetLines = 100) {
+  const pages = [];
+  let start = 0;
+  while (start < content.length) {
+    let end = Math.min(start + maxChars, content.length);
+    let lines = 0;
+    for (let i = start; i < end; i++) {
+      if (content[i] === "\n" && ++lines === targetLines) {
+        end = i + 1;
+        break;
+      }
+    }
+    pages.push({ start, end, content: content.slice(start, end) });
+    start = end;
+  }
+  return pages;
+}
+```
+
+Bind positive integer `maxChars` and `targetLines` before calling this helper;
+it is not an input validator. Join inspected page content and compare with the
+retained source; retain its original exit unchanged even for an error. The
+helper can preserve a truncated buffer perfectly, so equality is necessary
+but insufficient: whole-source completeness requires native completion and
+all authorized ranges, without truncation flags or unresolved gaps.
+
+If this runtime cannot retain the complete buffer, or only an incomplete
+native result is retained, mark INCOMPLETE. Continue only a missing range from
+the authorized source under the remaining total budget. A bound read-only
+re-observation is eligible only after rechecking source/fingerprint identity,
+retaining the new exit and exact ranges; changed identity stops. Do not invent
+a new source or range API, or claim recovery when the available tool cannot
+provide the missing content. Never rerun an originating mutation. A real
+command error stays an error after a complete capture.
+
+### Current Correction Verification and Scope
+
+Affected files are `docs/agents/executor-workflow.md`, `tasks/lessons.md`, and
+this directory's five Markdown files only. Starting principal `main` HEAD is
+`24aeee28207de366245167b1c3065da4cffcd172`; raw index SHA-256 is
+`d6c8c5d1f042101e9010a296f843b1678c71b828d0d578891a371f78f3250f57`.
+The five owner-bound readiness deltas remain foreign and byte-for-byte intact.
+No new file, AGENTS/master/adapter/plugin/config/runtime/CI edit is included.
+
+Execute invented ephemeral fixtures against the literal above, checking page
+concatenation, offsets and preserved native exit. Manually assess the decision
+table's error/drift/budget/mutation cases, explicitly distinguishing manual
+contract evidence from executable pagination. No app import or product test
+is permitted. Check seven-document links/coherence, exact diffs, scoped
+whitespace and twelve-delta postflight with foreign/index/HEAD/marker intact.
+Record real observations in [validation.md](validation.md#capture-size-diagnosis--2026-09-17);
+no claim of plugin change, runtime root cause or future enforcement follows.
 
 ### Forbidden Inspection Substitutions
 

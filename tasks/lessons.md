@@ -114,3 +114,21 @@ with an index/tree mutation. A source declared optional may be pruned only
 after its bounded absence/no-match is recorded and an already-authorized
 alternative is available. That pruning never invents content, replaces a
 required source, renews a grant, or turns an incomplete capture into PASS.
+
+## Capture size versus evidence completeness — 2026-09-17
+
+Readiness review `01a0aa84-dcc1-76a2-99bf-5ad15c098afe` stopped after an
+authorized diff exceeded its explicit 100-line capture grant. That historical
+STOP remains valid history. The recurring documentary mechanism combined a
+hard line cap with an unpaginated diff invocation, then supplied an externally
+chosen `HARNESS_DEFECT` classification to the facade. No runtime 100-line
+input limit was demonstrated. Future grants should use 100 lines as a starting
+presentation target, preserve exit/source/completeness independently, and page
+retained output before emission, including a single long line. The sole recipe
+and regression record are in
+[plan.md](../specs/2026-09-15-executor-checkout-boundary/plan.md#capture-size-amendment--2026-09-17)
+and [validation.md](../specs/2026-09-15-executor-checkout-boundary/validation.md#capture-size-diagnosis--2026-09-17).
+Prune this lesson when those canonical controls are stable and independent
+regression evidence covers complete oversize, incomplete recovery, real errors,
+drift, exhausted total budgets, and no mutation replay. Documentary/local
+evidence does not promise future compliance or zero failures.

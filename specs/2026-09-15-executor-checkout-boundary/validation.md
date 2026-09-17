@@ -5,6 +5,10 @@ and historical next-gate wording. They do not renew grants, resume R1, or assert
 current review/acceptance. S1 adds only static specification evidence and a
 future NOT_RUN matrix; the final S1 capsule owns its fresh checks and hashes.
 
+The dated capture-size diagnosis appended below records a new authorized
+correction and its own evidence. Historical NOT_RUN, findings and STOPs above
+that amendment retain their original meaning; none is retroactively passed.
+
 ## Historical Correction and Repair Evidence
 
 ## Acceptance Map
@@ -324,3 +328,113 @@ make, CI, install, synthetic harness, provider, corpus access, external render,
 formal review, acceptance, or Git mutation is part of S1. Required final state:
 `READY_FOR_OWNER_SPEC_DECISION`, with owner acceptance and every successor
 still unobserved and separately authorized.
+
+## Capture Size Diagnosis — 2026-09-17
+
+New diagnostic class `forensic-failure`, profile `provider-eval`:
+`FULL_REQUIRED` (this sanitized record plus the terminal Capsule).
+Retention/access policy pointer: `UNAVAILABLE`. Scope: local Yini documents
+only; no plugin/runtime/CI change, product import/test, provider, network,
+acceptance, independent review, Git mutation, or readiness resumption.
+
+### Source evidence and hypotheses
+
+One authorized `read_thread` observation of task
+`01a0aa84-dcc1-76a2-99bf-5ad15c098afe` used `turnLimit=1`,
+`includeOutputs=true`, `maxOutputCharsPerItem=6500`. The envelope was an object,
+`isError=false`, with one text block; protected JSON parsing found the expected
+turn/items containers and `page.hasMore=false`. The diagnostic selection was
+tool calls/outputs and the terminal message, not reasoning. A first displayed
+envelope-content fragment also included incidental commentary; the subsequent
+selection was explicitly filtered. No raw transcript is persisted here.
+
+The granted read-only command was
+`git diff HEAD -- docs/operations/execution-state.md specs/roadmap.md`.
+Its command record reports exit `0`. The retrieved output item is explicitly
+truncated, with `originalChars=8429`; its displayed extract does not prove
+whole historical capture. The terminal receipt reports STOP `HARNESS_DEFECT`
+because more than 100 lines from `execution-state.md` were emitted in one call.
+The same grant imposed `<=100 lines/source/call` and named that unpaginated
+diff. This correction does not replay that entire historical Git diff.
+
+The facade call supplied `Classification.HARNESS_DEFECT` as its input; it
+returned `REQUEST_EXTERNAL_HARNESS_REPAIR_DECISION`, `non_authorizing=true`.
+The installed validation-convergence contract confirms that the facade maps
+an externally selected classification and does not observe sizes or technical
+facts. The terminal source receipt and complete postflight item report unchanged
+five-file hashes/modes, HEAD/index and staging. The present task independently
+matched those five foreign identities and fixed point before editing.
+
+| Rank / hypothesis | Falsifiable prediction | Observation and limit |
+|---|---|---|
+| H1 Documentary target mistaken for technical limit | A complete 101-line fixture is rejected by the local rule without a technical input error | Exact canonical search found hard wording in workflow, S1-AC06 and C3, not a demonstrated runtime input limit. Old-condition RED reproduces the documentary mechanism only; internal intent/runtime root cause is unproven. |
+| H2 Hard capture grant plus unpaginated diff | The grant names both, and a size-only stop precedes facade advice | Confirmed by source grant, command and terminal receipt. The advisory facade did not originate the size classification. |
+| H3 Real truncation or missing capture | An item carries truncation metadata or an unresolved range | The retrieved diff item is truncated. This is separate from line count; whole historical diff completeness remains unobserved, and the prior review remains incomplete. |
+| H4 State drift or command failure | Source pre/post identities differ or the command has unexpected exit | Diff exit 0 and preserved-state source evidence contradict that explanation for the recorded size stop; fresh preflight also matched. No broader environmental guarantee follows. |
+
+Root mechanism supported here: a presentation limit was encoded as a hard
+documentary/grant condition while the permitted diff recipe did not paginate
+before emission; its breach was externally classified as a terminal harness
+defect. The fix is prospective grant/recipe clarity and retained pagination.
+Earlier explicit grant breaches, R1/H1/R2/C1/R3/G1 evidence, and this source
+task's STOP retain their original status. No runtime 100-line limit or guarantee
+of zero recurrence is claimed.
+
+### Red-capable loop and observed checks
+
+The ephemeral JavaScript RED read the old workflow phrase `pages of at most
+100 lines` and modeled precisely that line-count condition. Invented complete
+`"line\n".repeat(101)` (505 characters, expected exit 0) was rejected solely
+by count; invented `"x".repeat(6501)` passed the same condition. Both expected
+mismatches were observed. This is a reproducer for a documentary classification
+condition, not a replay of the historical host or a product test.
+
+After editing, GREEN extracted and executed the exact `retainedCapturePages`
+JavaScript fence from [plan.md](plan.md#retained-diff-capture-recipe), without
+another implementation or persistent script. It checked joined pages equal
+the original, offsets are contiguous, every fragment is at most 6500 JavaScript
+string units, and the separately retained native exit is unchanged.
+
+| Fixture | Observed local result | Evidence type |
+|---|---|---|
+| 101 complete lines / exit 0 | 505 characters, 2 pages, largest 500; exact concatenation and exit 0 retained | Executed literal pagination |
+| One 6501-character line / exit 0 | 2 pages, largest 6500; exact concatenation and exit 0 retained | Executed literal pagination |
+| Truncated synthetic source / exit 0 | First 203 of 509 characters remains incomplete; authorized synthetic remainder joins exactly to 509 | Executed literal pagination/reassembly; completeness classification manual |
+| Invented Git error / exit 128 | Error text preserved, 1 page; exit 128 unchanged; table requires STOP | Executed preservation plus manual routing; no failing live Git command |
+| Invented identity drift | Decision-table row requires STOP regardless of size | Manual contract assessment only |
+| Invented exhausted total budget | Decision-table row requires STOP with gap; no balance renewal | Manual contract assessment only |
+| Missing originating mutation output | Decision-table row forbids mutation replay; bounded retained/read-only evidence or gap/STOP | Manual contract assessment only; no mutation invoked |
+
+No classifier, facade invocation, mutation spy presented as runtime proof,
+new parser, subsystem, repository test, app import, pytest, or provider was
+needed. The helper paginates text and cannot certify source completeness,
+identity, permission, safe content, or stopping behavior. Those remain separate
+observations and manual contract judgments. These seven cases are regression
+criteria for any future independently authorized validation; the broader S1
+future matrix remains NOT_RUN in S1, unchanged by this narrower local check.
+
+### Integrity, recovery and completion boundary
+
+Fresh principal preflight used `pwd -P` with `login:false` and no workdir,
+then separate read-only root/common-dir calls. `main` and HEAD
+`24aeee28207de366245167b1c3065da4cffcd172`, empty staged delta, index SHA-256
+`d6c8c5d1f042101e9010a296f843b1678c71b828d0d578891a371f78f3250f57`, and
+all five regular `644` foreign-file identities matched the grant. Direct
+pre-edit hashes were captured for all seven initially clean tracked files.
+AGENTS, adapter and master were hashed as protected inputs.
+
+An aggregate presentation of retained workflow/plan fragments was itself
+truncated. The affected `plan.md` range `[0,6500)` was re-emitted from the same
+retained buffer; no source mutation or new authority was involved. The source
+task diff remains a known truncated extract sufficient for its recorded exit,
+not complete historical diff evidence. No historical review was resumed.
+
+Final seven-document coherence/links/diff checks, scoped `git diff --check`,
+twelve-delta manifest, foreign preservation, and HEAD/index/marker/staging
+observations belong to the terminal Capsule after the last edit. Do not
+predeclare their success or embed this file's own post-edit hash here.
+Maximum new evidence: rung 2 local deterministic pagination plus static and
+manual documentary checks. No global PASS, independent review, acceptance,
+runtime enforcement, provider health, readiness or efficiency measurement.
+Successful bounded delivery returns `READY_FOR_INDEPENDENT_REVIEW`; master
+contrasts the receipt and prepares only a separately authorized review.

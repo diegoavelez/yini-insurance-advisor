@@ -5,6 +5,12 @@ of the earlier correction. They do not authorize S1 or renew any earlier grant.
 The **S1 prospective requirements** supplement at the end owns the new spec
 candidate requirements; [spec.md](spec.md) states its documentary-only status.
 
+Prospective amendment, 2026-09-17: S1-AC06 below is revised for the current
+seven-document correction; the original phrase was "pages of at most 100
+lines". Other historical grants and checks retain their original scope. The
+dated [plan amendment](plan.md#capture-size-amendment--2026-09-17) separates
+presentation targets from hard total budgets and owns the concrete recipe.
+
 ## Historical Correction Contract
 
 ## Objective and Authority
@@ -77,7 +83,7 @@ maps future scenarios separately from S1 checks.
 | S1-AC03 | The fingerprint binds physical identity, branch/HEAD, raw index SHA-256, staged delta, exact tracked/untracked manifest with kind/mode/hash, managed marker, and registered worktrees; governed/allowed ignored/forbidden/derived partitions are explicit. |
 | S1-AC04 | A raw index digest is never replaced by a tree OID. `git write-tree`, `git read-tree`, `git update-index`, and `git hash-object -w` are prohibited strings to inspect, never commands to execute for verification. Missing index bytes stop without creating an index. |
 | S1-AC05 | Owner-permitted foreign entries are compared against their exact manifest and preserved; any unexpected path, status, mode, or hash stops. A dirty but fully inventoried candidate need not be cleaned. Counts are derived from the manifest, not hardcoded to a reusable 6M/8?? total. |
-| S1-AC06 | Output stays bounded: one source/call, pages of at most 100 lines, source/range/exit retained; `read_thread` uses one turn and 6500 characters per included output. Completeness requires captured evidence, not a terminal marker or an unexamined envelope. |
+| S1-AC06 | One authorized source per capture; 100 lines is an initial pagination target, not an acceptance/safety invariant or universal input limit. Configurable character/token presentation controls split retained output before emission, including long lines; source/range/exit and completeness are retained separately. Complete oversize with expected exit is not a size failure; incomplete output remains INCOMPLETE until bounded recovery. `read_thread` uses one turn and 6500 characters per included output, which does not prove completeness. Explicit total call/page budgets remain hard. |
 | S1-AC07 | Optional absence, expected no-match, and incomplete capture have bounded read-only continuations in the same task. Their symptom, classification, continuation, and remaining gap are recorded; no missing content or PASS is inferred. Required absence after safe lookup is a real block. |
 | S1-AC08 | Envelope type, `isError`, protected parsing, record shape, and nested truncation are checked through the existing C1 helper pointer before structured traversal. Tool errors and invalid shapes are not valid records; only authorized native output/records may support a fallback. |
 | S1-AC09 | True drift, unknown mutation, write failure, sensitive-data risk, exhausted bound, unsafe/unexpected non-capture failure, truth conflict, or material ambiguity terminates work. Read-only recovery never repeats a mutation, escalates permissions, changes refs, or renews a grant. |
@@ -109,3 +115,28 @@ The current owner's bounded exception permits safe read-only search/capture
 recovery for producing S1. Future adoption of that broader lookup rule needs
 operational materialization under a new grant. Existing workflows and all real
 failure stops remain in force; no old grant or repair budget is revived.
+
+## Capture Correction Acceptance Criteria — 2026-09-17
+
+- CAP01: Revise S1-AC06, C3/V3, graph/table capture guards, and the workflow
+  pointer coherently; keep the recipe body solely in `plan.md`.
+- CAP02: Complete authorized output above 100 lines is not a size error.
+  Oversize alone never supplies `HARNESS_DEFECT` to the advisory facade.
+  Historical explicit hard-grant breaches and STOPs are not excused.
+- CAP03: Truncation or missing ranges remain INCOMPLETE; recovery retains exact
+  source/ranges and exit within the same task and hard total allowance. If a
+  buffer is unavailable, only bound read-only re-observation with identity
+  rechecks is eligible; never replay a mutation or hide an error with a pipe.
+- CAP04: Real non-capture errors, drift, secrets/unsafe capture, unknown or
+  failed mutation, and exhausted total budgets remain terminal. No escalation,
+  renewed authority, or fabricated output is allowed.
+- CAP05: Run ephemeral invented fixtures for 101 complete lines, one line
+  above 6500 characters, truncated recovery, error exit, drift, exhausted
+  budget, and mutation replay refusal. Verify concatenation and exit retention
+  against the amended literal pagination body; semantic routing remains a
+  manual table assessment, not new classification software.
+- CAP06: Preserve the five readiness deltas; change only the seven allowed
+  tracked files; derive pre/post hashes, inspect diffs, links and coherence,
+  run scoped `git diff --check`, and retain HEAD/index/marker/staging. Return
+  twelve final delta identities and the actual checks/skips and balances,
+  without claiming review, acceptance, product behavior, or runtime enforcement.

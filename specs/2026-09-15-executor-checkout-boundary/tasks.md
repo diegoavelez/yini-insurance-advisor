@@ -1,6 +1,26 @@
 # Executor and Checkout Boundary — Tasks
 
-## Current S1: Specification Only
+## Capture-Size Correction — 2026-09-17
+
+Current bounded work is this new seven-document correction. All S1 rows below
+are historical work packages, not renewed grants. Role `executor`, dispatch
+owner `019f71d6-632c-7870-bfa2-89513fdeb85a`; principal checkout only.
+
+| Task | Completion evidence |
+|---|---|
+| CAP.1 Diagnose | Exact physical/fingerprint preflight, canonical source search, bounded source-task receipt; ranked hypotheses and old-rule RED |
+| CAP.2 Correct | S1-AC06, sole plan recipe/graph/table, workflow pointer, prunable lesson, and spec/validation coherence; seven-path allowlist |
+| CAP.3 Verify | Literal pagination fixtures plus explicitly manual stop-table assessment; source/range/exit retention, scoped whitespace/links/diffs, twelve-delta postflight |
+| CAP.4 Return | Sanitized diagnostic record and Capsule, exact final hashes, checks/skips/balances; READY_FOR_INDEPENDENT_REVIEW |
+
+Current grant permits one initial edit pass plus two in-scope documentary
+adjustments for expected inconsistencies, with hard totals of 160 calls and
+200 pages. It permits no mutation retry, escalation, subagents, dispatch,
+acceptance, Git mutation, providers, product tests, or readiness continuation.
+The [plan amendment](plan.md#capture-size-amendment--2026-09-17) owns capture
+semantics; these task rows do not duplicate its recipe or graph.
+
+## Historical S1: Specification Only
 
 Role `executor`; dispatch owner `019f71d6-632c-7870-bfa2-89513fdeb85a`;
 principal checkout; route Astra/high. This is the already-received task, not a
