@@ -8,10 +8,14 @@ self-review formally, self-accept, or inherit successor authority.
 
 ## Visible Task Topology
 
-Implementation, correction, formal or independent review, Git actions,
-publication, provider execution, deployment, pilot, production, and external
-actions use fresh visible Codex tasks. Task and worktree selection are separate;
-neither creates authority.
+Each executor objective and later independent review or lifecycle phase uses a
+fresh visible Codex task. Only an owner-selected opt-in local objective bundle
+may include scoped implementation, affected validation, and finite correction
+in that same executor task, under the installed plugin's
+`references/authority-grants.md` contract. A previously issued action-specific
+grant keeps its literal fresh-task rule. Git actions, publication, provider
+execution, deployment, pilot, production, and external actions remain separate
+authorities. Task and worktree selection create no authority.
 
 Master control is the sole administrative dispatcher under an exact owner
 grant. An executor performs the task it received; it never creates, forks,
@@ -108,15 +112,24 @@ stop fail-closed.
 |---|---|
 | validated deterministic mechanics | validated mechanism, with no model when one exists |
 | ordinary Master Control | `gpt-6-astra / medium` |
-| architecture, irreversibility, cross-repository implications, contradictions, or repeated substantive failures | `gpt-6-astra / high` |
-| complex implementation or difficult debugging | `gpt-5.6-sol / high` |
-| bounded implementation, tests, or refactors | `gpt-5.6-terra / high` |
-| search, inventory, summaries, or verifiable mechanical documentation | `gpt-5.6-luna / max` |
+| architecture, transversal decisions, material contradictions, or high-risk migrations | `gpt-6-astra / high` |
+| bounded implementation, tests, refactors, or ordinary review | `gpt-6-sol / medium` |
+| difficult debugging, complex implementation, or high-risk review | `gpt-6-sol / high` |
+| inventory, search, summaries, or verifiable mechanics | `gpt-6-luna / medium` |
+| bounded documentation with multiple relationships to reconcile | `gpt-6-luna / high` |
 
-Ambiguous classification, unavailable routes, or inadequate model/tier returns
-to the owner. Silent substitution is forbidden. This manual, Yini-specific,
-revocable directive is not a benchmark, reusable evidence, savings claim,
-action grant, or successor authority.
+This provisional, reversible, Yini-only directive records the owner's
+2026-09-24 routing decision. Verify the exact model and reasoning tier are
+available before dispatch. Do not reroute active tasks.
+`gpt-5.6-terra` is an explicit owner-selected alternative, not a mandatory
+tier; `gpt-6-luna / max` is not a default. Ambiguous classification or an
+unavailable or inadequate route returns to the owner. Escalate substantive
+semantic difficulty and repeated substantive failure, not shell, permission,
+or harness symptoms alone. SDD depth does not determine a model. Insurance
+coverage, exclusions, deductibles, and recommendations require source-grounded
+evaluation and human review, not simple summary routing. Use existing receipts
+for observed evidence; this directive is not a benchmark, savings claim,
+action grant, or successor authority. Silent substitution is forbidden.
 
 ## Compact Gate Cadence
 
@@ -139,6 +152,11 @@ executor work.
 
 ## Retry and Harness Contingencies
 
+The following legacy conditional mechanical retry applies only when that exact
+two-task mechanism is selected. It is separate from an explicitly selected
+local objective bundle; neither mechanism borrows the other's counters or
+converts an existing grant.
+
 A mechanical retry bundle has exactly one primary invocation and one dormant
 retry in a separately named fresh task, eligible only for the declared
 pre-mutation invocation error after unchanged context is proven. A second
@@ -146,9 +164,40 @@ retry, third invocation, changed invocation, unknown state, Git, provider,
 network, external, destructive, or target-changing failure is ineligible.
 
 Generic retry or harness-repair language is not authority. A harness defect is
-not a candidate finding or a retry: it requires a separately scoped repair
-decision and owner disposition afterward, and it never resumes candidate work
-automatically.
+not a candidate finding or a retry. Under the legacy mechanism it requires a
+separately scoped repair decision and owner disposition afterward, and it never
+resumes candidate work automatically.
+
+### Opt-In Local Objective Continuity
+
+The owner may expressly select the installed plugin's
+`references/authority-grants.md` local objective bundle for one fresh visible
+executor task. It names separate implementation and validation grants and binds
+the owner, work unit, executor, physical checkout/common-dir, HEAD/ref, index,
+complete relevant candidate identity, measurable completion predicate, exact
+path allowlist, mutation class, safe validator invocations, budgets, and stops.
+Before consumption, prove all bound identity and relevant tracked, untracked,
+ignored, and generated state. A mismatch expires the bundle. Each first
+mutation or validation invocation consumes its named grant; only declared
+successor steps may continue against their exact observed predecessor.
+
+Within that still-current bundle, affected checks and scoped correction may
+continue locally. Its distinct ceilings are two eligible identical-invocation
+transient retries before target mutation, one invocation/environment-only
+harness repair with unchanged oracle and governed inputs, and two executor
+semantic correction cycles after first complete candidate validation. A
+changed assertion, fixture meaning, oracle, acceptance criterion, or tested
+semantics is semantic correction, never harness repair. Run affected checks
+after edits and at most one declared final proportional local suite; a focused
+PASS on unchanged candidate needs no ceremonial broad rerun.
+
+Unknown or unrelated mutation, incomplete state coverage, deterministic repeat
+failure, unsafe test, denied permission, network, dependency acquisition, Git,
+provider or external action, sensitive data, exhausted balance, or material
+scope change stops local continuation. Terminal bundles cannot be resumed.
+Independent review, owner acceptance, Git, and external phases stay separate.
+The plugin owns the detailed transition rules; this local pointer creates no
+default or retroactive grant.
 
 ### Recoverable Read-Only Capture
 
@@ -271,8 +320,10 @@ An executor must:
 8. avoid credentials, providers, deployment, network, Git mutation, and other
    excluded actions unless separately authorized;
 9. stop on drift, undeclared foreign/generated state, sensitive-data risk,
-   conflicts, invalid routing, harness defect, unexpected non-capture failure,
-   or material ambiguity; complete recoverable read-only capture as above;
+   conflicts, invalid routing, unexpected non-capture failure, or material
+   ambiguity; a harness defect may continue only under a still-current,
+   expressly selected objective bundle after its unchanged-oracle guard passes;
+   complete recoverable read-only capture as above;
 10. avoid opening the next slice or making portfolio decisions.
 
 ## Return Contract

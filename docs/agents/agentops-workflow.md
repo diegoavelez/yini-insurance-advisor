@@ -24,6 +24,10 @@ Use this precedence:
 5. Upstream reference material.
 
 The plugin never overrides repository gates, decisions, authority, or current state.
+For an owner-selected local objective bundle, use the installed plugin's
+`references/authority-grants.md` as the detailed contract and
+`docs/agents/executor-workflow.md` as the sole local routing owner. This
+pointer does not select a bundle or grant any action by default.
 
 The current repository sources for this adapter are:
 

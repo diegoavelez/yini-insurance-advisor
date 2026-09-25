@@ -37,9 +37,13 @@ These rules apply to every task unless explicitly overridden.
 - Handoffs and receipts declare role, `dispatch_owner`, physical repository,
   absolute common-dir, and checkout precondition. These are contractual
   controls, not demonstrated per-task tool enforcement.
-- Implementation, correction, independent review, Git, provider, deployment,
-  pilot, production, and external actions require fresh visible tasks and
-  separately named authorities. Internal subagents never replace them.
+- Implementation and later lifecycle phases require fresh visible tasks and
+  separately named authorities. Only an owner-selected opt-in local objective
+  bundle may include scoped implementation, affected validation, and finite
+  correction in the same executor task under the installed plugin's
+  `references/authority-grants.md` contract. Independent review, owner
+  acceptance, Git, provider, deployment, pilot, production, and external
+  actions remain separate. Internal subagents never replace visible tasks.
 - `docs/operations/metrics-contract.md` owns metric definitions;
   `docs/operations/receipt-policy.md` and
   `docs/operations/receipts/index.md` own the local receipt projection and

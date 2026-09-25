@@ -146,12 +146,16 @@ stops.
 ## Manual Yini Routing
 
 Validated deterministic mechanics use no model when a mechanism exists. Master
-Control uses `gpt-6-astra / medium`; architecture, irreversibility,
-cross-repository implications, contradictions, and repeated substantive
-failures use `gpt-6-astra / high`. Complex implementation and difficult
-debugging use `gpt-5.6-sol / high`; bounded implementation, tests, and
-refactors use `gpt-5.6-terra / high`; mechanical documentation uses
-`gpt-5.6-luna / max`. Silent substitution is forbidden.
+Control uses `gpt-6-astra / medium`; architecture, transversal decisions,
+material contradictions, and high-risk migrations use `gpt-6-astra / high`.
+Bounded implementation, tests, refactors, and ordinary review use
+`gpt-6-sol / medium`; difficult debugging, complex implementation, and
+high-risk review use `gpt-6-sol / high`. Inventory, search, summaries, and
+verifiable mechanics use `gpt-6-luna / medium`; bounded documentation with
+multiple relationships uses `gpt-6-luna / high`. `gpt-5.6-terra` is an explicit
+alternative, not a mandatory tier; `gpt-6-luna / max` is not a default.
+Insurance coverage, exclusions, deductibles, and recommendations require
+source-grounded evaluation and human review. Silent substitution is forbidden.
 
 ## Compact Gate Cadence
 
@@ -1177,24 +1181,61 @@ def test_validate_rejects_legacy_adapter_minimum(tmp_path: Path) -> None:
     )
 
 
-def test_validate_rejects_missing_astra_high_routing_route(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "route",
+    [
+        "gpt-6-astra / medium",
+        "gpt-6-astra / high",
+        "gpt-6-sol / medium",
+        "gpt-6-sol / high",
+        "gpt-6-luna / medium",
+        "gpt-6-luna / high",
+    ],
+)
+def test_validate_rejects_missing_required_routing_route(
+    tmp_path: Path, route: str
+) -> None:
     _write_contract_repository(tmp_path)
     workflow_path = tmp_path / "docs/agents/executor-workflow.md"
     workflow_text = workflow_path.read_text(encoding="utf-8")
-    assert workflow_text.count("gpt-6-astra / high") == 1
+    assert workflow_text.count(route) == 1
     workflow_path.write_text(
-        workflow_text.replace("gpt-6-astra / high", "")
-        + "\nMaster Control uses `gpt-6-astra / medium`."
-        + " Architecture uses `gpt-5.6-sol / high`."
-        + " Bounded implementation uses `gpt-5.6-terra / high`."
-        + " Mechanical documentation uses `gpt-5.6-luna / max`.\n",
+        workflow_text.replace(route, ""),
         encoding="utf-8",
     )
 
     assert (
-        "missing marker in docs/agents/executor-workflow.md: gpt-6-astra / high"
+        f"missing marker in docs/agents/executor-workflow.md: {route}"
         in _errors_for(tmp_path)
     )
+
+
+def test_validate_rejects_legacy_only_routing_contract(tmp_path: Path) -> None:
+    _write_contract_repository(tmp_path)
+    workflow_path = tmp_path / "docs/agents/executor-workflow.md"
+    workflow_text = workflow_path.read_text(encoding="utf-8")
+    for route in (
+        "gpt-6-sol / medium",
+        "gpt-6-sol / high",
+        "gpt-6-luna / medium",
+        "gpt-6-luna / high",
+    ):
+        workflow_text = workflow_text.replace(route, "")
+    workflow_path.write_text(
+        workflow_text
+        + "\nLegacy routes: `gpt-5.6-sol / high`, `gpt-5.6-terra / high`, "
+        "and `gpt-5.6-luna / max`.\n",
+        encoding="utf-8",
+    )
+
+    errors = _errors_for(tmp_path)
+    for route in (
+        "gpt-6-sol / medium",
+        "gpt-6-sol / high",
+        "gpt-6-luna / medium",
+        "gpt-6-luna / high",
+    ):
+        assert f"missing marker in docs/agents/executor-workflow.md: {route}" in errors
 
 
 def test_validate_rejects_universal_v3_requirement(tmp_path: Path) -> None:
