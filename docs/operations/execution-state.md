@@ -3,7 +3,7 @@
 ## State Metadata
 
 - state schema: `yini-governance-v2`
-- recorded date: `2026-08-30`
+- recorded date: `2026-09-15`
 - repository profile: `provider-eval`
 - semantic owner: this document owns current work, accepted evidence, risks,
   blockers, and the next owner decision; live repository and external-system
@@ -15,23 +15,34 @@
 - roadmap: phases 0 through 19 complete
 - go-live baseline: documented in `docs/mvp-go-live.md`
 - AgentOps workflow: repository-local policy `1.4` with profile `provider-eval`
-- current work unit: `AOPS-012-ADOPTION-001`
-- current semantic posture: reviewed local adoption; owner-directed publication
-  closeout. The evidence ceiling remains local deterministic/rung 2; owner
-  acceptance, Git, publication, provider, and external facts remain separate
-  and unobserved.
-- prospective adoption projection: independent review is observed as `FULL`
-  PASS; owner acceptance, Git, publication, provider, and external facts remain
-  separate and unobserved decisions
+- current work unit: `YINI-OPERATIONAL-READINESS-001`
+- current semantic posture: Level 1 operational-readiness preparation. The
+  local command/dependency inventory is documentary context only; local gate
+  execution, provider health, hosted readiness, corpus availability, and
+  external cost/contract facts remain unobserved.
+- current evidence ceiling: at most rung 1 after documented integrity checks;
+  candidate review, owner acceptance, Git, provider, and external actions
+  remain separate.
 
 ## Active Work
 
-- delivery objective: complete the bounded `AOPS-012-ADOPTION-001` documentary
-  adoption candidate, retaining the optional v3 transport contract and its
-  fail-closed authority and fallback protections
-- C7 local delivery: restore the compatible `required v3 fallback` validator
-  diagnostic while retaining detection for selected and grant-required v3
-  routes; independent review and every Git action remain separate
+- delivery objective: prepare the bounded operational-readiness documentary
+  candidate: inventory the existing `make test-release` gate and declared
+  dependencies, state the unexecuted evidence limits, and bind only a proposed
+  external protocol.
+- excluded from this task: product tests, `make`, provider/network and corpus
+  access, application-importing validators, independent review, acceptance,
+  Git mutation, remote readback, and publication.
+- `docs/mvp-go-live.md` remains the existing go-live baseline by pointer; this
+  follow-on does not duplicate it or add product work.
+
+### Preserved historical publication: `AOPS-012-ADOPTION-001`
+
+- `PUBLISH-3` task `01a0a533-8f82-72f3-b953-56e4bef66034` recorded historical
+  transport on `2026-09-15`: `git push origin HEAD:main` exited `0` for
+  `32927fd..bc1e466`.
+- This is historical transport evidence only. It is not independent remote
+  readback, live Git ownership, provider health, or successor authority.
 
 ### Preserved historical context: `YINI-GOVERNANCE-CADENCE-AND-HANDOFF-V3`
 
@@ -48,15 +59,18 @@
 
 ## Evidence Available
 
-- Current `AOPS-012-ADOPTION-001` C7 local evidence: the focused validator
-  suite passed `81/81` after the required-v3 compatibility correction, its
-  selected-v3 regression, and the marker failure-detail regression. This is
-  local deterministic evidence only; it is not independent review, acceptance,
-  Git, publication, provider, or external evidence.
-- Independent R1 review task
-  `01a09aeb-e773-7c81-b87a-79d98f14e417` observed a `FULL` PASS with no P0-P3
-  findings. This review result is evidence only; it does not self-accept the
-  candidate or establish Git, publication, provider, or external facts.
+- Current `YINI-OPERATIONAL-READINESS-001` evidence is a static inventory of
+  `Makefile`, `pyproject.toml`, `requirements.txt`, configuration/provider
+  seams, and the test paths named by `make test-release`. The four local test
+  groups are `NOT_RUN`; no current gate result is recorded.
+- The static inspection did not demonstrate network, provider, or corpus
+  isolation. That is an evidence gap only, not a product failure or an
+  assertion that tests make network calls.
+- No Qdrant, Hugging Face, or application-query operation has been attempted.
+  The proposed external protocol is blocked until a fresh task fixes the
+  applicable contracts and costs.
+- Historical `AOPS-012-ADOPTION-001` C7 local evidence and R1 `FULL` review
+  remain historical evidence only; neither is current readiness evidence.
 
 ### Preserved historical evidence: `YINI-GOVERNANCE-CADENCE-AND-HANDOFF-V3`
 
@@ -93,31 +107,26 @@
 
 ## Evidence Ceiling
 
-- The governance documents can reach rung 1, static/schema evidence only.
-- Focused validator tests may reach rung 2 in their executor receipt after an
-  observed PASS; they cannot establish integration, provider, hosted, release,
-  deployment, pilot, production, or human acceptance.
-- Owner acceptance is an authority decision, not human/usability evidence and
-  does not raise this ceiling.
-- The accepted autos deductible correction remains capped at rung 2 local
-  deterministic evidence. Dated historical provider observations do not raise
-  either current work unit's ceiling.
-- This adoption delivery may reach at most rung 2 through focused deterministic
-  tests, the physical validator CLI, and the local policy validator; it does
-  not establish CompactHandoff, provider, or external evidence.
+- This work unit can reach at most rung 1 static/documentary evidence through
+  the authorized candidate-integrity checks.
+- The unexecuted gate cannot establish rung 2. No local, provider, hosted,
+  release, deployment, pilot, production, or human evidence is recorded here.
+- Historical local and transport evidence retains its own meaning and does not
+  raise this work unit's ceiling.
 
 ## Risks and Blockers
 
-- Graphify remains secondary and outside this work unit
-- exact Git close/publication remains unobserved; provider and hosted health
-  remain unobserved by this work unit
+- Graphify remains secondary and outside this work unit.
+- Test network/provider/corpus isolation is not demonstrated by the static
+  inspection; the scope does not classify that absence as a product defect.
+- Provider contract, cost treatment, credentials, endpoint availability, cached
+  model state, corpus state, and hosted readiness are unobserved. The benign
+  query is blocked until its potential inference spend is fixed externally.
 
 ## Next Owner Decision
 
-The independent R1 `FULL` review is observed as PASS with no P0-P3 findings.
-The current owner direction is `adelante procede hasta su publicación`; the
-next action for this work unit is a separately tasked Git close under that
-direction. No Git mutation, commit, push, remote readback, publication,
-provider, deployment, pilot, production, or external action has been observed
-or performed here. This state update does not auto-accept the candidate or
-start a successor task; future features remain outside this closeout.
+After documentary verification, send the exact five-path candidate to the
+already authorized independent documentary review. A review PASS would still
+require owner disposition before any local-gate execution or separately
+authorized external stage. No Git, provider, deployment, pilot, production, or
+external action is authorized by this state update.

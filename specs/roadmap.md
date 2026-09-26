@@ -2091,6 +2091,12 @@ Current status:
     sticky first column, preserving readability without shrinking the font;
   - the slice stays UI-only and preserves the current backend response
     contracts.
+- `operational-readiness` is the current documentation-only follow-on
+  (`YINI-OPERATIONAL-READINESS-001`): it inventories the existing
+  `make test-release` gate and declared provider seams, records all local gate
+  groups as unexecuted, and proposes a separately authorized external protocol.
+  It adds no product feature, does not duplicate `docs/mvp-go-live.md`, and
+  does not assert current provider, hosted, corpus, or release health.
 
 ---
 
