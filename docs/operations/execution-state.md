@@ -3,7 +3,7 @@
 ## State Metadata
 
 - state schema: `yini-governance-v2`
-- recorded date: `2026-09-15`
+- recorded date: `2026-10-03`
 - repository profile: `provider-eval`
 - semantic owner: this document owns current work, accepted evidence, risks,
   blockers, and the next owner decision; live repository and external-system
@@ -15,26 +15,73 @@
 - roadmap: phases 0 through 19 complete
 - go-live baseline: documented in `docs/mvp-go-live.md`
 - AgentOps workflow: repository-local policy `1.4` with profile `provider-eval`
-- current work unit: `YINI-OPERATIONAL-READINESS-001`
-- current semantic posture: Level 1 operational-readiness preparation. The
-  local command/dependency inventory is documentary context only; local gate
-  execution, provider health, hosted readiness, corpus availability, and
-  external cost/contract facts remain unobserved.
-- current evidence ceiling: at most rung 1 after documented integrity checks;
-  candidate review, owner acceptance, Git, provider, and external actions
-  remain separate.
+- current work unit: `YINI-W3-ADOPTION-1`, the inactive four-path v3
+  coverage-selection adoption candidate; the F1–F3 publication-package
+  closeout remains separately pending
+- current semantic posture: received O1 owner acceptance after independent
+  FULL PASS; F1 mechanism, controlled read-only integration and adoption
+  accepted; F2-O owner-accepted on `2026-10-02`; F3's exact reviewed candidate
+  owner-accepted on `2026-10-02` after independent NARROW_DELTA_PASS. The
+  original application and later correction deviations remain retained
+  failures, not conformant executions; acceptance does not cure them. This
+  freeze records that accepted state and a provisional 23-path publication
+  intent, excluding `tasks/lessons.md`. W-I1's exact implementation candidate
+  was owner-accepted after W-R1 `FULL_PASS` with no P0–P3 findings or validation
+  gaps. Its recorded local checks were 94 observer tests and 88 routing tests,
+  both passing; the routing validation gap is closed. W-O1 adds only a
+  prospective v3 coverage-selection pointer and remains inactive until its
+  own independent review and owner acceptance. The separate freeze received
+  `NARROW_DELTA_PASS`; routing received full static review, with its runtime
+  validation gap subsequently closed by W-R1. Final package acceptance remains
+  pending.
+- current evidence ceiling: C1 at rung 2 local deterministic; O1 and F2-O at
+  rung 1 static/documentary; received F1 integration at rung 3. F3 acceptance
+  and this freeze remain rung 1 static/documentary; acceptance does not raise
+  the evidence ceiling. Git and external phases retain distinct authority.
 
 ## Active Work
 
-- delivery objective: prepare the bounded operational-readiness documentary
-  candidate: inventory the existing `make test-release` gate and declared
-  dependencies, state the unexecuted evidence limits, and bind only a proposed
-  external protocol.
-- excluded from this task: product tests, `make`, provider/network and corpus
-  access, application-importing validators, independent review, acceptance,
-  Git mutation, remote readback, and publication.
-- `docs/mvp-go-live.md` remains the existing go-live baseline by pointer; this
-  follow-on does not duplicate it or add product work.
+- delivery objective: prepare the four-path W-O1 coverage-selection adoption
+  candidate and preserve the completed F1–F3 freeze/routing assessments and
+  their separate final package-acceptance gate.
+  The [executor workflow](../agents/executor-workflow.md#deterministic-preflight-and-bounded-recovery)
+  solely owns v1/v2/v3 coverage selection and publication pointers. The new v3
+  clause is inactive until its own review and owner acceptance; accepted
+  F2-O's v1 transport pointer and current v1/v2 selection remain in force.
+- F3's five-path candidate was applied once and is owner-accepted after
+  independent review. Retain the original application STOP, unauthorized
+  syntax repair, correction STOP_CONTROL_DEVIATION and PATH-Python deviations
+  as failures; no later evidence converts them to conformant executions.
+  The owner's prior LF disposition remains protected, and its earlier
+  SPACE-preserving oracle remains failed.
+- The separate F1–F3 prospective package intent is 23 of the 24 inventoried
+  rows, excluding `tasks/lessons.md`. The owner approved whole-file
+  publication of the five staged-preflight documents as historical/proposed
+  documentation. That publication decision does not itself accept W-O1
+  adoption or authorize Git. W01–W10 implementation was separately
+  owner-accepted through W-I1 after W-R1. The completed freeze/routing
+  assessments and closed routing validation gap are retained; final owner
+  package acceptance remains pending.
+- W-I1 implementation acceptance is received through the owner dispatch.
+  W-R1 `FULL_PASS` and its validation evidence are recorded in the supplied
+  review report
+  `/private/tmp/yini-w3-independent-review-20261003.md` (SHA-256
+  `fc1fd0ad5e0164fc9d1486952e01a4ea66ab348c81a4df98aa8441d9221cf5de`). The
+  report records 94 passing observer tests and 88 passing routing tests;
+  neither is live v3 integration or provider evidence.
+- Next gate: fresh independent documentary review of the exact four-path
+  W-O1 candidate, then owner disposition and the separate final F1–F3 package
+  decision. Completed freeze/routing assessments need no repeat merely for
+  closeout; F4 remains pending. Stage, commit,
+  push and remote readback need their own exact task-bound grants.
+
+### Pending product work: `YINI-OPERATIONAL-READINESS-001`
+
+The operational-readiness documentary follow-on remains pending. Its existing
+command/dependency inventory and proposed external protocol do not establish
+local gate execution, provider health, hosted readiness, corpus availability
+or cost/contract facts. `docs/mvp-go-live.md` remains the existing baseline by
+pointer; O1 adds no product work and does not duplicate that runbook.
 
 ### Preserved historical publication: `AOPS-012-ADOPTION-001`
 
@@ -59,7 +106,26 @@
 
 ## Evidence Available
 
-- Current `YINI-OPERATIONAL-READINESS-001` evidence is a static inventory of
+- The owner accepted exact C1 bytes after R2 task
+  `01a0ef6a-e917-7a03-8986-338baca1a20c` returned `NARROW_DELTA PASS` with
+  no P0–P3 findings. The accepted
+  [C1 record](../../specs/2026-09-29-staged-preflight-and-publication/validation.md#r1-findings-and-c1-correction--2026-09-29)
+  reports 69 local deterministic tests (44 v1, 25 v2), exit 0, and preserves
+  the earlier findings and correction history. This is received accepted
+  evidence, not a suite rerun or review performed by O1.
+- Received O1 acceptance is transmitted by audit
+  `01a0f475-4599-7aa0-ad68-83b0286d722f`, final item
+  `msg_03cd4fae84e8eb02016abd8ff1bd3087d19738ea1521fbf6eb`, identifying native
+  review postflight `exec-b1ed1961-f902-4224-908a-e494f71ad020`, exit 0 FULL PASS.
+  The full review thread ID is unavailable; no new review was performed here.
+- F1 mechanism and controlled read-only integration are received accepted
+  evidence, with adoption completed through F2-O. F2 closeout
+  `01a0fa40-d198-7660-931b-2098c8e564b4` was independently reviewed in
+  `01a0fa4b-f939-7f60-8824-2ba4e88d8d69`, final item
+  `msg_0b9887e0920c9938016abf0e666a6887d182b6233d6996c91b`,
+  NARROW_DELTA_PASS with no P0–P3 findings or gaps; owner acceptance was
+  received for `2026-10-02`. These are provenance pointers, not rerun evidence.
+- Pending `YINI-OPERATIONAL-READINESS-001` evidence is a static inventory of
   `Makefile`, `pyproject.toml`, `requirements.txt`, configuration/provider
   seams, and the test paths named by `make test-release`. The four local test
   groups are `NOT_RUN`; no current gate result is recorded.
@@ -71,6 +137,18 @@
   applicable contracts and costs.
 - Historical `AOPS-012-ADOPTION-001` C7 local evidence and R1 `FULL` review
   remain historical evidence only; neither is current readiness evidence.
+
+- W-I1 implementation acceptance and W-R1 `FULL_PASS` are received evidence;
+  W-O1 selection is still an inactive candidate pending its own review and
+  owner acceptance. The recorded 94 observer and 88 routing test passes are
+  rung 2 local deterministic evidence only. Live v3 integration, provider or
+  external readiness remains unobserved.
+- The separate freeze/routing report
+  `/private/tmp/yini-final-review-20261003.md` records A `NARROW_DELTA_PASS`
+  and B `FULL_STATIC_REVIEW_COMPLETE_WITH_VALIDATION_GAP`. W-R1 subsequently
+  closed B's runtime-validation gap against unchanged routing identities;
+  it does not rewrite that historical terminal result. Final package
+  acceptance and W-O1 documentary review/acceptance remain separate gates.
 
 ### Preserved historical evidence: `YINI-GOVERNANCE-CADENCE-AND-HANDOFF-V3`
 
@@ -107,15 +185,36 @@
 
 ## Evidence Ceiling
 
-- This work unit can reach at most rung 1 static/documentary evidence through
-  the authorized candidate-integrity checks.
-- The unexecuted gate cannot establish rung 2. No local, provider, hosted,
-  release, deployment, pilot, production, or human evidence is recorded here.
-- Historical local and transport evidence retains its own meaning and does not
-  raise this work unit's ceiling.
+- C1 reaches rung 2 through accepted local deterministic observer tests. Its
+  documentary publication scenarios do not demonstrate runtime permission
+  enforcement or live staged-v2 integration.
+- O1 and F2-O reach rung 1 through documentary checks; received F1 integration
+  reaches rung 3 for F1 only. Owner acceptance does not raise an evidence rung.
+- F3 owner acceptance and this publication freeze remain rung 1
+  static/documentary evidence. The freeze received `NARROW_DELTA_PASS` and
+  routing received full static review; W-R1 closed its runtime-validation gap
+  through the native 88-test evidence against unchanged identities. Final
+  package acceptance remains pending. W-O1 remains a rung 1 documentary
+  candidate; review and acceptance do not raise that evidence ceiling.
+- Operational-readiness gate groups remain unexecuted; C1/O1 do not establish
+  product release, provider, hosted, corpus, deployment, pilot or production
+  readiness. Historical transport retains its historical meaning.
 
 ## Risks and Blockers
 
+- Observer scans are nonatomic: ABA changes, malicious concurrent writers,
+  compromised runtime/script identities and tool bypass remain outside the
+  assurance. Exclusive checkout use and trusted bound tools remain assumptions.
+- Conservative v1/v2 exclusions may stop legitimate future work; expansion
+  requires owner disposition. Runtime approval is not predicted by MATCH or
+  documentary publication scenarios; permission denial remains a terminal stop.
+- F3's original application and correction procedural deviations remain
+  recorded failures, not conformant executions. The owner accepted F3 while
+  retaining those incidents. The completed freeze/routing assessments and
+  W-R1 gap closure do not accept the final package, W-O1 or F4. Final package
+  acceptance, W-O1 review/acceptance, F4 and later publication remain
+  separate gates;
+  received O1/F2/F3 acceptance grants no successor authority.
 - Graphify remains secondary and outside this work unit.
 - Test network/provider/corpus isolation is not demonstrated by the static
   inspection; the scope does not classify that absence as a product defect.
@@ -125,8 +224,19 @@
 
 ## Next Owner Decision
 
-After documentary verification, send the exact five-path candidate to the
-already authorized independent documentary review. A review PASS would still
-require owner disposition before any local-gate execution or separately
-authorized external stage. No Git, provider, deployment, pilot, production, or
-external action is authorized by this state update.
+Dispatch fresh independent documentary review of the exact W-O1 four-path
+candidate, then obtain the owner's disposition and the separate final F1–F3
+package acceptance decision. Retain the completed freeze/routing assessments
+and W-R1's closure of the routing validation gap; do not reopen those unchanged
+surfaces solely for closeout. The provisional package intent is 23 inventoried
+paths excluding `tasks/lessons.md`; the historical whole-file publication
+approval for the five staged-preflight documents did not itself accept v3 or
+W01–W10 implementation. That implementation was subsequently separately
+owner-accepted through W-I1 after W-R1 `FULL_PASS`; W-O1 adoption remains
+inactive pending its own independent documentary review and owner acceptance.
+F3 remains accepted with its application and
+correction deviations retained as failures. Do not reapply the consumed
+candidate. F4 and global closure remain pending; external transfer and later
+Git/publication need separately named grants. Pending product
+operational-readiness work still needs its own owner decision before local
+gates or any provider/corpus/external protocol execution.

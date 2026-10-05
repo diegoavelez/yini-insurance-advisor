@@ -1,5 +1,53 @@
 # Executor and Checkout Boundary — Plan
 
+## Prospective v3 coverage-selection adoption candidate (2026-10-03)
+
+`YINI-W3-ADOPTION-1` proposes a minimal addition to the sole canonical
+[executor coverage-selection rule](../../docs/agents/executor-workflow.md#prospective-v3-coverage-selection-adoption-candidate-2026-10-03):
+after separate independent documentary review and owner acceptance, a fresh
+owner-bound grant may select the staged observer's v3 for the proposed
+principal `main`, repository-format-0, absent-only `config.worktree` coverage.
+The exact closed fields, inherited v2 limits, unsupported present/linked
+configuration, and no-probing/no-fallback rule are stated at that canonical
+pointer and in the [W1–W4 requirements](../2026-09-29-staged-preflight-and-publication/requirements.md#w1--candidate-contract-v3-and-compatibility).
+
+This pointer is an inactive adoption candidate. Until its own independent
+review and owner acceptance, accepted v1/v2 selection remains in force. V1 and
+v2 contracts and their historical recipes below retain their exact meaning;
+this addition grants no observer execution, review, acceptance, Git,
+publication, provider or successor authority.
+
+## O1 staged coverage amendment — 2026-09-29
+
+After independent documentary review and owner acceptance of
+`YINI-STAGED-PREFLIGHT-O1`, fresh grants select v1/v2 before invocation through
+the sole canonical
+[executor coverage rule](../../docs/agents/executor-workflow.md#deterministic-preflight-and-bounded-recovery).
+V1 retains its empty-staged coverage and unchanged meaning; supported regular
+staged state requires v2. Both use the named three-call bootstrap, exact
+owner-bound versioned contract and verified tool identities. Missing coverage,
+unavailable mechanism or STOP has no fallback to another observer or F1–F7.
+The [staged-preflight plan](../2026-09-29-staged-preflight-and-publication/plan.md#proposed-publication-transitions)
+owns the publication transition pointer; each action keeps its separate grant.
+This prospective amendment neither accepts O1 nor renews historical authority.
+The 2026-09-25 pointer and all recipes/capture history below are preserved;
+they are not an alternate branch/index/status preflight after accepted adoption.
+
+## O1 prospective preflight pointer — 2026-09-25
+
+After separate owner acceptance of O1, fresh eligible grants use the
+[deterministic observer bootstrap and invocation](../2026-09-17-deterministic-readonly-preflight/plan.md#bootstrap-and-later-adoption)
+under the [executor workflow](../../docs/agents/executor-workflow.md#deterministic-preflight-and-bounded-recovery).
+The three bootstrap calls are the only pre-observer Git exception. The grant
+binds the complete R2 contract and trusted tool identities; the executor
+checks the whole R6 result and process exit. `STOP`, nonzero exit, invalid or
+incomplete result, or unsupported coverage has no fallback to F1–F7 below.
+`MATCH` is local observation only and grants no action, review, acceptance or
+Git mutation. This pointer does not accept O1 or change historical grants.
+The historical recipe and its capture guidance remain below as history and
+for separately authorized read-only source capture, not as an alternate
+branch/index/status preflight after O1 acceptance.
+
 The original plan through **Verification Strategy** is historical. Its grants,
 seven-path allowlist, inspection authority, and next gate are not renewed.
 The S1 supplement below is the sole owner of the new proposed recipe and

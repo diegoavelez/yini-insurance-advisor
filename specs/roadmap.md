@@ -2091,12 +2091,63 @@ Current status:
     sticky first column, preserving readability without shrinking the font;
   - the slice stays UI-only and preserves the current backend response
     contracts.
-- `operational-readiness` is the current documentation-only follow-on
+- `operational-readiness` remains pending product documentation follow-on
   (`YINI-OPERATIONAL-READINESS-001`): it inventories the existing
   `make test-release` gate and declared provider seams, records all local gate
   groups as unexecuted, and proposes a separately authorized external protocol.
   It adds no product feature, does not duplicate `docs/mvp-go-live.md`, and
   does not assert current provider, hosted, corpus, or release health.
+- `staged-preflight-and-publication` is the bounded governance follow-on:
+  C1 observer bytes were owner-accepted after R2 `NARROW_DELTA PASS`, with
+  69 local deterministic tests. O1 canonical adoption has received owner
+  acceptance after independent FULL PASS, as transmitted by the audit pointer
+  in [execution state](../docs/operations/execution-state.md), which
+  owns the semantic status and next gate;
+  [executor workflow](../docs/agents/executor-workflow.md#deterministic-preflight-and-bounded-recovery)
+  owns coverage selection and publication pointers. This adds no product
+  readiness claim or standing Git/publication authority.
+- `execution-fluency-roadmap` records the F1 transport candidate bytes as
+  owner-accepted after independent narrow review, and its controlled
+  read-only integration as separately reviewed and owner-accepted evidence.
+  F2-O's canonical
+  pointer to the eligible v1 transport is owner-accepted on `2026-10-02` in
+  [executor workflow](../docs/agents/executor-workflow.md#objective-preparation-and-continuation--f2-o-adoption-candidate)
+  after independent NARROW_DELTA_PASS with no P0–P3 findings or gaps.
+  Accepted v1/v2 coverage selection remains in force, and the v1 transport
+  does not cover v2 or future v3. F3's exact reviewed candidate is
+  owner-accepted after independent NARROW_DELTA_PASS. The original application
+  and correction procedural deviations remain retained failures, not
+  conformant executions; acceptance does not cure them. The prospective
+  publication intent is 23 inventoried paths excluding `tasks/lessons.md`.
+  The five staged-preflight documents are approved for whole-file publication
+  as historical/proposed documentation only. This does not accept W-O1
+  adoption or authorize Git. W01–W10 implementation was separately
+  owner-accepted through W-I1 after W-R1. The freeze received
+  `NARROW_DELTA_PASS` and routing received full static review; W-R1 subsequently
+  closed the routing runtime-validation gap against unchanged identities.
+  Final owner package acceptance remains pending. F4 remains pending.
+  The owner selected retention of the prior tasks.md LF as a new byte
+  disposition, preserving its known bytes and earlier failed oracle.
+  V3 canonical adoption remains unaccepted, and no Git action is authorized by
+  these decisions.
+  W-I1's exact v3 implementation was subsequently owner-accepted after the
+  separate W-R1 independent `FULL_PASS` with no P0–P3 findings or W-I1 gaps.
+  Its recorded local deterministic checks passed: 94 observer tests and 88
+  routing tests, closing the routing validation gap. These results do not
+  establish live v3 integration or provider readiness. The four-path W-O1
+  coverage-selection adoption is now a separate inactive candidate: v1/v2
+  remain the procedural selection until W-O1 receives its own independent
+  documentary review and owner acceptance. F4 and final F1–F3 package
+  acceptance remain pending; completed freeze/routing assessments need no
+  repeat merely for closeout. Their historical report is
+  `/private/tmp/yini-final-review-20261003.md`; W-R1's gap closure preserves
+  that report's original terminal result. The W-R1 review report is retained at
+  `/private/tmp/yini-w3-independent-review-20261003.md` (SHA-256
+  `fc1fd0ad5e0164fc9d1486952e01a4ea66ab348c81a4df98aa8441d9221cf5de`);
+  this pointer is evidence provenance, not a receipt or authority.
+  This pointer does not close the roadmap or assert product
+  readiness. [F1/F2 evidence and next gate](2026-09-30-execution-fluency-roadmap/validation.md#f3-outside-repository-preparation--2026-10-02)
+  records the evidence ceiling and provenance.
 
 ---
 

@@ -149,8 +149,8 @@ Validated deterministic mechanics use no model when a mechanism exists. Master
 Control uses `gpt-6-astra / medium`; architecture, transversal decisions,
 material contradictions, and high-risk migrations use `gpt-6-astra / high`.
 Bounded implementation, tests, refactors, and ordinary review use
-`gpt-6-sol / medium`; difficult debugging, complex implementation, and
-high-risk review use `gpt-6-sol / high`. Inventory, search, summaries, and
+`gpt-6.1-sol / medium`; difficult debugging, complex implementation, and
+high-risk review use `gpt-6.1-sol / high`. Inventory, search, summaries, and
 verifiable mechanics use `gpt-6-luna / medium`; bounded documentation with
 multiple relationships uses `gpt-6-luna / high`. `gpt-5.6-terra` is an explicit
 alternative, not a mandatory tier; `gpt-6-luna / max` is not a default.
@@ -1186,8 +1186,8 @@ def test_validate_rejects_legacy_adapter_minimum(tmp_path: Path) -> None:
     [
         "gpt-6-astra / medium",
         "gpt-6-astra / high",
-        "gpt-6-sol / medium",
-        "gpt-6-sol / high",
+        "gpt-6.1-sol / medium",
+        "gpt-6.1-sol / high",
         "gpt-6-luna / medium",
         "gpt-6-luna / high",
     ],
@@ -1215,8 +1215,8 @@ def test_validate_rejects_legacy_only_routing_contract(tmp_path: Path) -> None:
     workflow_path = tmp_path / "docs/agents/executor-workflow.md"
     workflow_text = workflow_path.read_text(encoding="utf-8")
     for route in (
-        "gpt-6-sol / medium",
-        "gpt-6-sol / high",
+        "gpt-6.1-sol / medium",
+        "gpt-6.1-sol / high",
         "gpt-6-luna / medium",
         "gpt-6-luna / high",
     ):
@@ -1230,12 +1230,26 @@ def test_validate_rejects_legacy_only_routing_contract(tmp_path: Path) -> None:
 
     errors = _errors_for(tmp_path)
     for route in (
-        "gpt-6-sol / medium",
-        "gpt-6-sol / high",
+        "gpt-6.1-sol / medium",
+        "gpt-6.1-sol / high",
         "gpt-6-luna / medium",
         "gpt-6-luna / high",
     ):
         assert f"missing marker in docs/agents/executor-workflow.md: {route}" in errors
+
+
+def test_validate_rejects_previous_sol_only_routing_contract(tmp_path: Path) -> None:
+    _write_contract_repository(tmp_path)
+    workflow_path = tmp_path / "docs/agents/executor-workflow.md"
+    workflow_path.write_text(
+        workflow_path.read_text(encoding="utf-8").replace("gpt-6.1-sol", "gpt-6-sol"),
+        encoding="utf-8",
+    )
+
+    assert _errors_for(tmp_path) == [
+        "missing marker in docs/agents/executor-workflow.md: gpt-6.1-sol / medium",
+        "missing marker in docs/agents/executor-workflow.md: gpt-6.1-sol / high",
+    ]
 
 
 def test_validate_rejects_universal_v3_requirement(tmp_path: Path) -> None:

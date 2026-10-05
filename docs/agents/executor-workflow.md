@@ -36,7 +36,9 @@ Before any other repository work, observe `pwd -P` and the Git root/common-dir
 with `GIT_OPTIONAL_LOCKS=0`. Resolve relative common-dir output against the
 observed physical directory and compare physical identities with the handoff.
 A mismatch stops without corrective `cd`, task creation, or checkout changes.
-Then verify the granted branch/HEAD, index, inventory, bytes, and modes.
+For a fresh grant after review and owner acceptance of the applicable O1
+adoption, use the coverage-selected deterministic observer below
+to verify the granted branch/HEAD, index, inventory, bytes, and modes.
 Explicitly inventoried owner-permitted foreign changes remain untouched and
 do not require a clean working tree; any undeclared delta still stops.
 
@@ -45,19 +47,95 @@ tool-allowlist schema has been demonstrated for this boundary. Do not claim
 tools were removed or change Codex, plugin, cache, or marketplace configuration
 to implement this documentary rule.
 
-## Closed Recipe and Bounded Recovery
+## Deterministic Preflight and Bounded Recovery
 
-The accepted executor-and-checkout-boundary specification is a historical
-specification decision, not acceptance of any delivery bytes or authority to
-run a later stage. Its
-[`plan.md`](../../specs/2026-09-15-executor-checkout-boundary/plan.md) is the
-sole local owner of the closed read-only recipe, its literal invocation order,
-and its transition graph. A future task may use that recipe only when its fresh
-grant binds the complete inputs, paths, sources, bounds, and selected checks.
-This workflow points to that canonical plan; it does not copy its recipe,
-graph, parser, or universal contract.
+For fresh grants after independent documentary review and owner acceptance
+of `YINI-STAGED-PREFLIGHT-O1`, use the named
+[bootstrap](../../specs/2026-09-17-deterministic-readonly-preflight/plan.md#bootstrap-and-later-adoption)
+as three individual, ordered calls before any other Git observation. Then
+select the mechanism from the grant's declared coverage before invocation:
 
-Before review, a delivery task using that plan updates the applicable canonical
+- v1 `scripts/readonly_preflight.py` for eligible empty staging (`staged=[]`)
+  and only ` M`/`??` worktree rows under its unchanged
+  [R2 contract](../../specs/2026-09-17-deterministic-readonly-preflight/requirements.md#r2--exact-input-schema)
+  and [R6 result](../../specs/2026-09-17-deterministic-readonly-preflight/requirements.md#r6--exact-deterministic-result);
+- v2 `scripts/staged_readonly_preflight.py` for compatible `empty_staged` or
+  `staged_regular` state under the closed
+  [v2 coverage and contract](../../specs/2026-09-29-staged-preflight-and-publication/requirements.md#r2--closed-contract-v2-schema)
+  and [result-v2](../../specs/2026-09-29-staged-preflight-and-publication/requirements.md#r4--closed-result-v2).
+  Under the accepted v1/v2 selection, nonempty ordinary regular-file staging
+  requires v2; partial staged/worktree bytes and mode-only changes retain
+  their separately bound identities. A later accepted v3 selection applies
+  only to its explicitly bound v3 coverage.
+
+### Prospective v3 Coverage-Selection Adoption Candidate (2026-10-03)
+
+Candidate for `YINI-W3-ADOPTION-1`; inactive pending its own independent
+documentary review and owner acceptance of these exact bytes. Until both gates
+pass, the accepted v1/v2 selection above remains in force and v3 is not a
+procedural choice. This candidate records received W-I1 implementation
+acceptance after W-R1 `FULL_PASS`; it does not repeat either decision or accept
+the adoption candidate itself.
+
+After adoption, select v3 only when the owner-bound grant explicitly requires
+the proposed principal, absent-only `config.worktree` coverage and supplies a
+closed
+[`contract-v3`](../../specs/2026-09-29-staged-preflight-and-publication/requirements.md#w1--candidate-contract-v3-and-compatibility)
+contract binding repository format 0, `extension_worktree_config` as null,
+true or false, and `config_worktree: {"state":"absent"}`. The checkout must
+be the attached principal `main` checkout. Every other v2 constraint and
+exclusion remains in force; `.git/config.worktree` must be absent, and any
+present leaf, linked-checkout configuration, other extension, include, or
+unsupported state remains unsupported. V2 continues to reject
+`extensions.worktreeConfig`; v1 retains its empty-staged coverage and exact
+meaning. The grant's declared coverage selects v1, v2 or v3 before invocation;
+there is no schema/version probing, post-STOP switch, fallback, retry or
+rebound contract. Missing or unsupported coverage returns to the owner.
+
+V3 selection does not change the separate publication transitions in the
+[staged-preflight plan](../../specs/2026-09-29-staged-preflight-and-publication/plan.md#proposed-publication-transitions)
+or grant implementation, review, acceptance, staging, commit, push, remote
+readback or provider authority. MATCH remains bounded local observation only.
+
+Invoke the selected trusted observer once, using verified absolute Python
+`-B`, script and Git identities, exact owner-bound contract bytes on stdin and
+their externally bound SHA-256. Remove inherited `GIT_*` names except
+`GIT_OPTIONAL_LOCKS=0` without printing values. Check process exit and the
+complete version-specific result, exact fingerprint and
+`successor_authority=false` together. `STOP`, nonzero exit, incomplete or invalid output, unsupported
+coverage, or mismatch ends the task without retry, repair or ad hoc Git
+substitution. `MATCH` establishes only the bounded local observation; the
+named task action still needs its separate authority and matching fixed point.
+Selection is never version probing: missing coverage or an unavailable
+mechanism stops before invocation, and a failed invocation has no alternate
+observer, ad hoc substitute or rebound expectation. Mandatory use begins only
+after O1 review and owner acceptance; this candidate does not self-accept,
+change v1 meaning or renew an earlier grant.
+
+Publication follows the separately granted
+[R5–R6 contract](../../specs/2026-09-29-staged-preflight-and-publication/requirements.md#r5--publication-authority-and-expected-transitions)
+and [P0–P7 transitions](../../specs/2026-09-29-staged-preflight-and-publication/plan.md#proposed-publication-transitions):
+preflight (P0), authorized stage if needed (P1), expressly authorized
+successor capture (P2), verify-index (P3) with the single version selected by
+the accepted coverage rule at P0, commit (P4), native full OID and
+parent/tree/path verification (P5), then push (P6) under its own grant and
+receipt (P7). For the accepted v1/v2 selection, P3 uses only the selected
+v1 or v2 contract and its complete version-specific result; the prospective
+v3 clause governs P0/P3 only after its own review and owner acceptance. Never
+require a second observer version for the same P0/P3 transition. The installed
+authority contract owns grant forms; these pointers add no publication runner
+or authority. Normal named
+permission escalation remains subject to runtime review; denial ends the
+attempt without automatic retry. Push is transport evidence only and triggers
+no automatic canonical-document reconciliation.
+
+The accepted executor-and-checkout-boundary specification is historical. Its
+[`plan.md`](../../specs/2026-09-15-executor-checkout-boundary/plan.md) retains
+the earlier textual recipe, transition graph and read-only capture guidance;
+it is not an alternate branch/index/status preflight after O1 acceptance.
+Fresh grants still bind complete inputs, sources, bounds and selected checks.
+
+Historically, a delivery task using that plan updated the applicable canonical
 workflow and any narrowly evidenced lesson within its own allowlist. A later
 check or PASS cannot cure a failed physical preflight, fingerprint mismatch,
 or exhausted total read-call/page budget. True drift, unknown mutation, write failure,
@@ -113,8 +191,8 @@ stop fail-closed.
 | validated deterministic mechanics | validated mechanism, with no model when one exists |
 | ordinary Master Control | `gpt-6-astra / medium` |
 | architecture, transversal decisions, material contradictions, or high-risk migrations | `gpt-6-astra / high` |
-| bounded implementation, tests, refactors, or ordinary review | `gpt-6-sol / medium` |
-| difficult debugging, complex implementation, or high-risk review | `gpt-6-sol / high` |
+| bounded implementation, tests, refactors, or ordinary review | `gpt-6.1-sol / medium` |
+| difficult debugging, complex implementation, or high-risk review | `gpt-6.1-sol / high` |
 | inventory, search, summaries, or verifiable mechanics | `gpt-6-luna / medium` |
 | bounded documentation with multiple relationships to reconcile | `gpt-6-luna / high` |
 
@@ -130,6 +208,12 @@ coverage, exclusions, deductibles, and recommendations require source-grounded
 evaluation and human review, not simple summary routing. Use existing receipts
 for observed evidence; this directive is not a benchmark, savings claim,
 action grant, or successor authority. Silent substitution is forbidden.
+
+The owner approved on 2026-09-29 replacing `gpt-6-sol` with `gpt-6.1-sol` for
+the two Sol routes, preserving their Medium/High reasoning tiers and work
+classes. Astra and Luna defaults remain unchanged. This update applies to
+future dispatches; do not reroute active tasks. `gpt-6-sol` remains an
+explicitly selected alternative.
 
 ## Compact Gate Cadence
 
@@ -198,6 +282,71 @@ scope change stops local continuation. Terminal bundles cannot be resumed.
 Independent review, owner acceptance, Git, and external phases stay separate.
 The plugin owns the detailed transition rules; this local pointer creates no
 default or retroactive grant.
+
+### Objective Preparation and Continuation — F2-O Adoption Candidate
+
+CANDIDATE, 2026-10-01. This carries the F2-D guidance into a canonical
+adoption candidate under the
+[execution-fluency requirements R1–R4](../../specs/2026-09-30-execution-fluency-roadmap/requirements.md).
+The owner accepted the F1 candidate after its narrow review and accepted its
+controlled read-only integration after independent F1-LR review. This text
+remains inactive until independent documentary review and owner acceptance of
+these exact bytes. Until then, existing v1/v2 selection and exact dispatch
+remain in force; this v1-only transport does not cover v2 or future v3.
+
+For an eligible v1 request after that adoption gate, the canonical transport
+pointer is [`scripts/execution_contract.py`](../../scripts/execution_contract.py).
+Master supplies the closed owner-bound request, exact source bytes and
+externally bound digests; the executor runs `prepare` first and invokes
+`invoke` only for a valid `PREPARED` result, preserving the same request and
+source identities. The transport delegates observation to the unchanged v1
+observer and does not certify its own bootstrap. Unsupported coverage stops
+before invocation. An invoked observer `STOP`, nonzero exit, invalid result,
+or drift is terminal: no replay, repair, fallback or changed expectation.
+The pointer adds no authority or runtime enforcement; the installed
+`references/authority-grants.md` owns universal grant rules. V2 and future v3
+remain on their separately selected mechanisms and contracts.
+
+Master prepares exact source bytes and externally bound digests, native source
+thread/turn/page/item pointers, complete protected inventory, runtime/tool
+identities, checkout, objective, path scopes, safe validators, route, finite
+counters and expected successors before dispatch. Executor checks these inputs
+without reconstructing sessions, rebinding an oracle to observed state,
+selecting another checkout or using the new mechanism to certify its bootstrap.
+Deterministic preparation validates data; it does not authenticate authority
+or establish runtime permission. Native final messages and complete command
+items are evidence; reasoning is excluded and a selected complete item does
+not establish complete thread history.
+
+Only an expressly selected, still-current local objective bundle permits
+declared edits, affected checks and finite correction in the same visible
+executor task. Expected successor bytes and intended TDD RED-to-GREEN may
+continue under their named grants without another mechanical confirmation.
+Fresh independent review and owner acceptance remain separate; a grouped
+decision names each authority and grants no standing or successor permission.
+The installed `references/authority-grants.md` remains the universal owner.
+
+The following proposed scenarios make the existing limits reviewable; they
+are documentary examples, not a policy engine or runtime enforcement:
+
+| Scenario | Continuation and accounting |
+|---|---|
+| Declared successor edit, intended TDD RED, then affected PASS | Continue within the same exact objective; intended RED uses no semantic correction counter |
+| Eligible transient invocation failure before target mutation, context unchanged | Use only the expressly granted identical-invocation retry balance, ceiling 2; deterministic repeat stops |
+| Invocation/environment construction fault before observer launch, oracle and governed input unchanged | Use only the expressly granted harness repair balance, ceiling 1; record the actual repair |
+| Valid candidate finding after first complete candidate validation | Use only the expressly granted semantic correction balance, ceiling 2; then affected checks |
+| Changed assertion, fixture meaning, expected hash, or authoritative literal | Semantic change requires its applicable authority; never classify it as invocation-only repair |
+| Observer STOP/nonzero or invalid/missing result after launch | Terminal, with native capture retained; no replay, repair, fallback or changed expectation |
+| Drift, unknown mutation, denial, sensitive data, unsafe test, scope conflict, expiry or exhausted balance | Terminal; preserve state and return owner decision, never restart the terminal bundle |
+| Candidate complete under selected checks | Return READY_FOR_INDEPENDENT_REVIEW at the observed rung; no self-review, acceptance, Git or external action |
+
+The 2/1/2 balances are independent and cannot transfer. A focused PASS on an
+unchanged candidate adds no repeated broad suite. Retained read-only capture
+may complete a missing authorized range without replaying its originating
+operation. Literal/transcription correction is not newly eligible here;
+F4's proposed clarification needs its own future disposition. No per-tool
+receipt store, counter registry, automatic gate transition or efficiency claim
+is introduced.
 
 ### Recoverable Read-Only Capture
 
@@ -309,8 +458,8 @@ universal contract.
 
 An executor must:
 
-1. verify the physical checkout first under Checkout Boundary, then run the
-   remaining live Git preflight before editing;
+1. verify the physical checkout first under Checkout Boundary, then use the
+   applicable owner-bound deterministic preflight before editing;
 2. read the active spec, related modules, callers, exports, and tests;
 3. preserve existing and foreign changes;
 4. implement only documented behavior;
