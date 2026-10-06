@@ -129,6 +129,12 @@ permission escalation remains subject to runtime review; denial ends the
 attempt without automatic retry. Push is transport evidence only and triggers
 no automatic canonical-document reconciliation.
 
+The proposed [delegated-publication runbook](../operations/delegated-publication.md)
+is a candidate pending independent documentary review and owner disposition.
+If accepted, it will help prepare provenance, fixed-point, capture, and receipt
+evidence; this workflow and the installed authority contract remain
+authoritative for grants, and runtime approval remains an independent decision.
+
 The accepted executor-and-checkout-boundary specification is historical. Its
 [`plan.md`](../../specs/2026-09-15-executor-checkout-boundary/plan.md) retains
 the earlier textual recipe, transition graph and read-only capture guidance;
@@ -143,6 +149,39 @@ sensitive-data risk, unsafe non-capture failure, truth conflict, or material
 ambiguity remains a terminal stop and needs owner disposition; neither this
 pointer nor capture recovery authorizes a retry, repair, escalation, cleanup,
 or successor action.
+
+### Publication mechanism — adoption candidate
+
+Candidate operational policy, 2026-10-06; inactive pending independent
+documentary review and owner acceptance of these exact bytes. Until both gates
+pass, the existing effective workflow above remains in force.
+
+After adoption, do not add or invoke a separate publication runner, P2/P5
+capture helper, or push-precheck helper. Use the already accepted preflight
+selection above, including the required observer at P3 verify-index, only at
+its specified transition. For authorized post-stage P2 successor capture and
+P5 post-commit identity, use the native read-only command sequence in
+[`staged-preflight-and-publication/plan.md`](../../specs/2026-09-29-staged-preflight-and-publication/plan.md#proposed-publication-transitions)
+and compare its complete results with the grant-bound path/blob map and fixed
+point. P2 may bind the successor raw-index digest only after the exact intended
+full index map, staged/worktree state, and protected foreign bytes match the
+owner-bound expectation derived from accepted bytes before stage. P3 still
+runs the selected observer and its complete result. A mismatch or unknown
+result returns to the owner; never rebind expected bytes or destination from
+observed state. The linked spec retains the trusted Git identities, immutable
+prefix/environment, complete parsing, per-command exits and fixed bounds.
+This pointer adds no action, validation, escalation, retry, publication, or
+successor authority. Stage, commit, push, runtime review, remote readback, and
+provider evidence retain their existing separate grants and evidence limits.
+
+Before dispatch, resolve and record the actual executable identities needed by
+the named task. A pre-target command construction or path error is not evidence
+of target mutation; any repair or retry must still fit an expressly selected
+plugin grant/bundle and its unchanged-input conditions. Denial, Git write
+failure, unknown outcome, or drift remains terminal under its grant.
+Incomplete retained read-only output follows the existing bounded capture
+rule below; unavailable required ranges or exhausted allowance stop. Never use
+another executable, helper, or contract as a post-STOP fallback.
 
 ## Internal Subagents
 
