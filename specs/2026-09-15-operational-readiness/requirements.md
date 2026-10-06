@@ -65,3 +65,33 @@ local documentary evidence, and current external health.
    Git ownership and from provider health.
 5. The candidate makes no readiness, cost, deployment, provider, or production
    claim beyond the documentary evidence it records.
+
+## Authorized Level 1 Extension — Test Isolation (2026-10-06)
+
+`YINI-READINESS-ISOLATION-IMPL-2` separately authorizes test-local implementation
+and local validation. The documentary history above retains its original scope.
+Tests must ignore the default real `.env` and inherited Settings fields before
+collection and during execution, while explicit test environment overrides and
+the cached-settings assertions keep their meaning. Production configuration
+must remain unchanged. A subprocess regression uses only an invented `.env`
+and invented inherited credentials in a temporary directory, observes intended
+RED then GREEN, and checks collection and runtime defaults through `get_settings`.
+The four exact `Makefile` test-release groups may run once only after their
+imports, fixtures and provider/filesystem boundaries are inspected as safe.
+No actual secrets, private corpus, model initialization, network, installation,
+Git mutation, independent review or acceptance is included.
+
+## Authorized Level 1 Extension — Corpus Separation (2026-10-06)
+
+`YINI-READINESS-ISOLATION-IMPL-3` renews the local objective in a fresh task.
+Collection and execution of local tests must not load real evaluation datasets
+or processed chunks. Preserve all dataset/corpus assertions in an explicit
+`--run-corpus-evaluation` route, with deferred reads and a registered
+`corpus_evaluation` marker. A marker alone is insufficient if decorators read
+the dataset during collection. This route remains `NOT_RUN` in this bundle.
+Invented inline cases independently exercise normalization and expected filters.
+A temporary-process regression blocks corpus/dotenv reads before collection
+and proves local collection and execution succeed. Production configuration
+and previous Settings isolation remain unchanged. Separating additional real
+dataset tests through conftest/Makefile is allowed; their files and assertions
+remain intact, and omissions must be explicit rather than counted as PASS.

@@ -280,6 +280,7 @@ def test_hosted_readiness_smoke_payload_is_callable() -> None:
     assert payload["status"] == "ready"
 
 
+@pytest.mark.corpus_evaluation
 def test_hosted_latency_smoke_is_callable() -> None:
     payload = run_hosted_latency_smoke(latency_budget_ms=5000.0)
 
@@ -349,6 +350,7 @@ def test_hosted_latency_smoke_reports_over_budget_deterministically() -> None:
     assert payload["within_budget"] is False
 
 
+@pytest.mark.corpus_evaluation
 def test_hosted_citation_regression_smoke_is_callable() -> None:
     payload = run_hosted_citation_regression_smoke()
 

@@ -79,3 +79,53 @@ unresolved cost terminates its stage without repair, retry, or escalation.
    history or the existing go-live baseline.
 4. Run only documentary integrity checks on the candidate and return it for
    independent review and owner disposition.
+
+## Test-Isolation Extension Plan — 2026-10-06
+
+The renewed local bundle adds `tests/conftest.py` and
+`tests/test_test_isolation.py`; `tests/test_smoke.py` is allowed if needed.
+The three documents in this directory and `execution-state.md` record the
+contract and actual results. No other repository path is editable.
+
+1. Verify the owner-bound v3 contract once and compare proportional runtime
+   metadata before consuming implementation or validation authority.
+2. Run the subprocess regression RED against only invented temporary inputs.
+3. Set the test-process Settings default dotenv source to `None` before test
+   imports, remove inherited Settings environment fields, and clear the cache
+   around each test. Restore process configuration at pytest shutdown.
+4. Observe GREEN and affected smoke checks; inspect each release group's
+   imports and fakes before one final four-group validation.
+5. Record exact commands, counts, omissions and preserved foreign state for
+   independent review. Production `core/config.py` remains untouched.
+
+Assumption: importing `core.config` defines settings but does not instantiate
+them. Risk: test-local configuration isolation is not a general network sandbox;
+safe invocation still requires inspection of reached provider and data seams.
+Use the existing absolute Python runtime, disabled bytecode/plugin autoload and
+pytest cache, with temporary outputs outside the repository. No dependencies
+are installed and no actual `.env` is opened.
+
+## IMPL-3 Corpus-Separation Plan — 2026-10-06
+
+The owner expands the previous seven-path allowlist with `tests/test_retrieval.py`,
+optional `tests/test_corpus_evaluation.py`, marker-only `pyproject.toml`, and
+test-target-only `Makefile`. Objective: four local groups without real dataset
+or corpus reads, preserving their evaluation separately. Assumption: existing
+operator term-equivalence rules are repository configuration, not corpus.
+
+1. Compare owner-bound manifest/fixed points and prepare canonical successor
+   contract outside the repository; invoke the selected v3 observer once.
+2. Add a temporary-process filesystem-boundary regression and observe RED
+   without opening actual data, credentials or dotenv.
+3. Defer corpus evaluation reads until explicit opt-in; retain all assertions,
+   use invented inline normalization cases, and separate real dataset smoke
+   and dataset-contract checks through the allowed test wiring.
+4. Inspect all four groups and reached filesystem/provider seams; run focused
+   GREEN followed by each final local group once and no-cache focal lint.
+5. Record counts, exact commands/exits, separate corpus NOT_RUN, preservation,
+   risks, and finite bundle balances before independent review.
+
+The subprocess boundary blocks protected file reads before they occur; no
+dataset is opened to construct a fixture. Local success cannot prove corpus
+quality, provider health or global release readiness. Independent review,
+acceptance, Git and provider authority remain separate.

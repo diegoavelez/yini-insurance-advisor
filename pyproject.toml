@@ -42,6 +42,7 @@ include = [
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+markers = ["corpus_evaluation: real dataset/corpus checks requiring separate authorization"]
 
 [tool.ruff]
 target-version = "py311"

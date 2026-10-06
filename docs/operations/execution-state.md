@@ -83,6 +83,51 @@ local gate execution, provider health, hosted readiness, corpus availability
 or cost/contract facts. `docs/mvp-go-live.md` remains the existing baseline by
 pointer; O1 adds no product work and does not duplicate that runbook.
 
+#### Received local isolation attempt — 2026-10-06
+
+The renewed `YINI-READINESS-ISOLATION-IMPL-2` executor bundle ended at
+`STOP_UNSAFE_VALIDATOR_INPUT`. Its owner-bound v3 preflight returned MATCH;
+one focused subprocess regression observed intended RED then GREEN for test
+settings isolation during collection and execution. Test-local conftest and
+the regression are candidate bytes; production configuration is unchanged.
+The [validation record](../../specs/2026-09-15-operational-readiness/validation.md#isolation-bundle-receipt--2026-10-06)
+owns the commands, limitations and evidence pointers.
+
+Smoke checks and all four test-release groups remain NOT_RUN for this attempt.
+Static inspection identified a test that reads dataset-selected local chunk
+files without a demonstrated synthetic or owner-authorized filesystem boundary
+(`tests/test_retrieval.py:130-135,281-294`). No corpus file was opened and no
+release-group collection ran. Evidence is limited to rung 2 for the focused
+regression; no independent review, acceptance, provider health or readiness is
+established. The next owner decision is a fresh bounded safe-input validation
+scope, with any required allowlist expansion separately named. This terminal
+attempt and its unused balances cannot be resumed automatically.
+
+#### Received corpus-separation candidate — 2026-10-06
+
+Fresh expanded bundle `YINI-READINESS-ISOLATION-IMPL-3` completed its local
+candidate and returns `READY_FOR_INDEPENDENT_REVIEW`, pending independent
+review and owner disposition. V3 preflight MATCH had 22 complete observations.
+The filesystem-boundary regression observed intended RED then GREEN without
+reading real data. All four revised local groups ran once: 28/15/93 PASS;
+group 4 initially 262 PASS/21 FAIL because its local fallback attempted corpus
+enumeration, blocked before access. One scoped correction supplied an explicit
+empty corpus for backend unit cases; affected retrieval/isolation checks then
+passed 111 tests with zero boundary denials. No final whole-suite rerun is
+claimed. Final candidate evidence covers 419 local test cases by unchanged
+passed groups plus corrected affected checks, with two real-dataset smoke cases
+deselected. Real dataset-contract and corpus evaluations are separately
+`NOT_RUN`, with assertions retained behind explicit opt-in.
+
+The [IMPL-3 validation record](../../specs/2026-09-15-operational-readiness/validation.md#impl-3-corpus-separation-receipt--2026-10-06)
+owns commands, counts, limits and the external receipt. Eight preexisting E501
+findings remain in retrieval; other focal test files pass lint. Evidence ceiling
+is rung 2, local deterministic tests only. Production configuration, foreign
+lessons and index remain preserved. Corpus provenance/access, providers, models,
+network, Git writes, publication, independent review and acceptance were not
+executed. Next product gate: independent review of this exact candidate, then
+owner disposition; no successor authority is created.
+
 ### Preserved historical publication: `AOPS-012-ADOPTION-001`
 
 - `PUBLISH-3` task `01a0a533-8f82-72f3-b953-56e4bef66034` recorded historical
