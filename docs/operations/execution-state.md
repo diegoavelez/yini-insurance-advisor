@@ -3,7 +3,7 @@
 ## State Metadata
 
 - state schema: `yini-governance-v2`
-- recorded date: `2026-10-03`
+- recorded date: `2026-10-07`
 - repository profile: `provider-eval`
 - semantic owner: this document owns current work, accepted evidence, risks,
   blockers, and the next owner decision; live repository and external-system
@@ -128,6 +128,27 @@ network, Git writes, publication, independent review and acceptance were not
 executed. Next product gate: independent review of this exact candidate, then
 owner disposition; no successor authority is created.
 
+#### Received corpus-local evaluation and documentary closeout — 2026-10-07
+
+The separately authorized `YINI-CORPUS-LOCAL-EVAL-001` attempt `RECOVERY-2`
+produced rung-2 local evidence: a sanitized proof passed 12 negative checks;
+collection selected 40 and deselected 24 with zero real-data reads; one
+selected suite passed 40, failed 0, and deselected 24, with 63 permitted reads
+across 13 inventoried inputs and zero boundary denials. The four-command
+`make test-release` gate was not run. These results do not establish answer
+quality, corpus provenance, provider or hosted health, or human citation
+quality.
+
+`RECOVERY-2` ended at `STOP_CAPTURE_BUDGET_CONTROL_DEVIATION`: at least 285,521
+source characters were requested against the conservative 200,000-character
+capture bound, and the exact retained total was unavailable after truncation.
+The task stopped before documentary edits. This failure remains historical and
+uncured. The fresh `DOC-CLOSE-1` documentary candidate records the received
+results and deviation; its separate next gate is independent documentary
+review, then owner disposition. The external provider protocol remains
+unauthorized. Details and sanitized artifact hashes are in the
+[operational-readiness validation record](../../specs/2026-09-15-operational-readiness/validation.md#recovery-2-corpus-evaluation-receipt--2026-10-07).
+
 ### Preserved historical publication: `AOPS-012-ADOPTION-001`
 
 - `PUBLISH-3` task `01a0a533-8f82-72f3-b953-56e4bef66034` recorded historical
@@ -170,10 +191,12 @@ owner disposition; no successor authority is created.
   `msg_0b9887e0920c9938016abf0e666a6887d182b6233d6996c91b`,
   NARROW_DELTA_PASS with no P0–P3 findings or gaps; owner acceptance was
   received for `2026-10-02`. These are provenance pointers, not rerun evidence.
-- Pending `YINI-OPERATIONAL-READINESS-001` evidence is a static inventory of
-  `Makefile`, `pyproject.toml`, `requirements.txt`, configuration/provider
-  seams, and the test paths named by `make test-release`. The four local test
-  groups are `NOT_RUN`; no current gate result is recorded.
+- The original `YINI-OPERATIONAL-READINESS-001` preparation was a static
+  inventory of `Makefile`, `pyproject.toml`, `requirements.txt`,
+  configuration/provider seams, and `make test-release` test paths. Later
+  IMPL-3 group outcomes and the selected RECOVERY-2 local suite are separately
+  recorded below and in its validation record; the `make test-release` target
+  itself remains unrun, with no full release-gate result recorded.
 - The static inspection did not demonstrate network, provider, or corpus
   isolation. That is an evidence gap only, not a product failure or an
   assertion that tests make network calls.
@@ -241,9 +264,12 @@ owner disposition; no successor authority is created.
   through the native 88-test evidence against unchanged identities. Final
   package acceptance remains pending. W-O1 remains a rung 1 documentary
   candidate; review and acceptance do not raise that evidence ceiling.
-- Operational-readiness gate groups remain unexecuted; C1/O1 do not establish
-  product release, provider, hosted, corpus, deployment, pilot or production
-  readiness. Historical transport retains its historical meaning.
+- Historical IMPL-3 group outcomes and selected RECOVERY-2 results are received
+  rung-2 local deterministic evidence. The `make test-release` target itself
+  and one clean, complete four-group release gate remain unobserved; C1/O1 do
+  not establish product release, provider, hosted, corpus, deployment, pilot
+  or production readiness. Historical transport retains its historical
+  meaning.
 
 ## Risks and Blockers
 
@@ -283,5 +309,7 @@ F3 remains accepted with its application and
 correction deviations retained as failures. Do not reapply the consumed
 candidate. F4 and global closure remain pending; external transfer and later
 Git/publication need separately named grants. Pending product
-operational-readiness work still needs its own owner decision before local
-gates or any provider/corpus/external protocol execution.
+operational-readiness work next needs independent review of the exact
+`DOC-CLOSE-1` documentary candidate and owner disposition. The four-command
+release gate remains unrun; provider and external protocol execution remain
+unauthorized.

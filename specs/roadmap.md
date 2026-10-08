@@ -2093,10 +2093,15 @@ Current status:
     contracts.
 - `operational-readiness` remains pending product documentation follow-on
   (`YINI-OPERATIONAL-READINESS-001`): it inventories the existing
-  `make test-release` gate and declared provider seams, records all local gate
-  groups as unexecuted, and proposes a separately authorized external protocol.
-  It adds no product feature, does not duplicate `docs/mvp-go-live.md`, and
-  does not assert current provider, hosted, corpus, or release health.
+  `make test-release` gate and declared provider seams. A separate selected
+  local corpus/evaluation/smoke run recorded on 2026-10-07 passed 40 tests,
+  failed 0, and deselected 24; the full `make test-release` gate remains
+  unrun. Its recovery attempt retained a capture-budget control deviation and
+  stopped before documentary edits; the new documentation candidate awaits
+  independent review and owner disposition. It proposes a separately
+  authorized external protocol, adds no product feature, does not duplicate
+  `docs/mvp-go-live.md`, and does not assert current provider, hosted, corpus,
+  answer-quality, or release health.
 - `staged-preflight-and-publication` is the bounded governance follow-on:
   C1 observer bytes were owner-accepted after R2 `NARROW_DELTA PASS`, with
   69 local deterministic tests. O1 canonical adoption has received owner

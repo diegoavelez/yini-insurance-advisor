@@ -4,7 +4,8 @@
 
 Prepare the Level 1 `YINI-OPERATIONAL-READINESS-001` candidate for documentary
 review. The candidate maps the existing operational baseline to a bounded
-evidence plan; it does not execute that plan.
+evidence plan and records separately authorized local evidence; it does not
+authorize the remaining plan or establish readiness.
 
 ## Affected Files
 
@@ -129,3 +130,20 @@ The subprocess boundary blocks protected file reads before they occur; no
 dataset is opened to construct a fixture. Local success cannot prove corpus
 quality, provider health or global release readiness. Independent review,
 acceptance, Git and provider authority remain separate.
+
+## Received Recovery-2 Closeout Evidence — 2026-10-07
+
+The separately authorized local recovery run recorded in
+[`validation.md`](validation.md#recovery-2-corpus-evaluation-receipt--2026-10-07)
+passed its sanitized harness proof and one selected 40-test local suite
+(40 passed, 0 failed, 24 deselected; 63 permitted reads across 13 inventoried
+inputs; zero boundary denials). It did not run `make test-release` or the
+four declared release groups as a gate, and it did not assess answer quality,
+provider health, hosted readiness, or human citation quality.
+
+The recovery task stopped before documentary edits with
+`STOP_CAPTURE_BUDGET_CONTROL_DEVIATION`; the requested source capture exceeded
+its conservative bound and its exact retained total was unavailable. Preserve
+that terminal deviation as a failure. It is not cured by this later bounded
+documentary closeout, which records the received evidence for independent
+review without repeating the run.

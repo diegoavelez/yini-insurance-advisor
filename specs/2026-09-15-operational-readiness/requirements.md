@@ -4,8 +4,8 @@
 
 - identifier: `YINI-OPERATIONAL-READINESS-001`
 - SDD depth: Level 1 operational-readiness preparation
-- status: documentary candidate only; no provider, release, or production
-  readiness is established
+- status: documentary candidate with received rung-2 local evidence; procedural
+  completion, provider, release, and production readiness are not established
 
 ## Context
 
@@ -20,6 +20,9 @@ The static inventory reviewed `Makefile`, `pyproject.toml`, `requirements.txt`,
 `rag/qdrant_store.py`, `rag/ingestion.py`, and the test files named by
 `make test-release`. That inspection is not execution and does not establish
 provider health, a cached model, a populated corpus, or network isolation.
+This describes the original documentary preparation. Later separately
+authorized local extensions are recorded below and do not rewrite its initial
+scope or evidence boundary.
 
 ## Objective
 
@@ -95,3 +98,24 @@ and proves local collection and execution succeed. Production configuration
 and previous Settings isolation remain unchanged. Separating additional real
 dataset tests through conftest/Makefile is allowed; their files and assertions
 remain intact, and omissions must be explicit rather than counted as PASS.
+
+## Received Local Evidence Addendum — 2026-10-07
+
+The separately authorized `YINI-CORPUS-LOCAL-EVAL-001` recovery run observed a
+bounded local result: the temporary harness proof passed 12 negative checks;
+collection selected 40 tests and deselected 24 with zero real-data reads; one
+selected local suite passed 40 tests, failed 0, and deselected 24, with 63
+permitted reads across 13 inventoried inputs and zero boundary denials. This is
+rung-2 local deterministic evidence only. It does not establish answer quality,
+coverage correctness, corpus provenance, provider or hosted health, human
+citation review, or readiness. The `make test-release` target and its four
+declared command groups were not invoked in `RECOVERY-2`; the earlier IMPL-3
+group outcomes remain separately recorded and are not a single clean final
+suite.
+
+The recovery task ended at
+`STOP_CAPTURE_BUDGET_CONTROL_DEVIATION`: at least 285,521 source characters
+were requested against its conservative 200,000-character capture bound, and
+the exact retained total was unavailable after truncation. No repository
+documents were edited in that attempt. This later evidence does not cure that
+terminal procedural deviation or make the original task conformant.

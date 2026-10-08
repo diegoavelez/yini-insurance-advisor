@@ -2,18 +2,22 @@
 
 ## Evidence Status
 
-This work unit permits documentary inspection only. The status labels below
-describe what was observed in this candidate; they do not report product,
-provider, hosted, release, deployment, pilot, production, or acceptance
-evidence.
+This document preserves the original documentary snapshot and separately
+records later authorized local evidence. In the table, `Original snapshot`
+means the original static preparation, `IMPL-3` means the separately recorded
+grouped runs, and `RECOVERY-2` means the bounded selected run. A group result
+does not imply one clean release-gate run. The results below do not establish
+product, provider, hosted, release, deployment, pilot, production, or acceptance
+readiness.
 
-| Check or group | Static inventory | Execution status | Limit |
-|---|---|---|---|
-| `make test-release` | `Makefile` declares four sequential `PYTHONPATH=. .venv/bin/pytest ... -q` commands | `NOT_RUN` | No `make` or `pytest` authority was granted. |
-| Evaluation and smoke | `tests/test_evaluation_dataset.py`, `tests/test_evaluation_runner.py`, `tests/test_smoke.py` | `NOT_RUN` | No result is available for this work unit. |
-| MCP compatibility | `tests/test_mcp_server.py`, `tests/test_mcp_client.py`, `tests/test_mcp_compatibility.py`, `tests/test_mcp_versioning.py` | `NOT_RUN` | No result is available for this work unit. |
-| UI, workflow, scope, guardrails, observability | `tests/test_app_ui.py`, `tests/test_observability.py`, `tests/test_query_scope.py`, `tests/test_guardrail_abuse_cases.py`, `tests/test_langgraph_workflow.py` | `NOT_RUN` | No result is available for this work unit. |
-| Retrieval and ingestion seams | `tests/test_retrieval.py`, `tests/test_grounded_answer_generation.py`, `tests/test_document_canonicalization.py`, `tests/test_term_equivalences.py`, `tests/test_embedding_generation.py`, `tests/test_qdrant_indexing.py`, `tests/test_cli_runtime.py`, `tests/test_ingestion.py` | `NOT_RUN` | No result is available for this work unit. |
+| Check or group | Static inventory | Original snapshot | IMPL-3 | RECOVERY-2 | Limit |
+|---|---|---|---|---|---|
+| `make test-release` | `Makefile` declares four sequential `PYTHONPATH=. .venv/bin/pytest ... -q` commands | `NOT_RUN` in the original snapshot | Four groups ran separately: 28/15/93 passed; group 4 had 262 passed and 21 failures; affected correction checks later passed 111. No single clean complete suite. | Target not invoked. | Group outcomes are in the IMPL-3 receipt; the target itself remains unrun. |
+| Selected corpus/evaluation/smoke route | `tests/test_corpus_evaluation.py`, `tests/test_evaluation_dataset.py`, `tests/test_smoke.py` | Static inventory only | Group 1 reported 28 passed and 2 deselected; corpus evaluation remained `NOT_RUN`. | 40 selected, 40 passed, 0 failed, 24 deselected. | The Recovery-2 selection is bounded local evidence, not the `make test-release` gate or an answer-quality assessment. |
+| Remaining evaluation/smoke coverage | Other tests in the evaluation/smoke files | `NOT_RUN` in the original snapshot | Two real-dataset smoke tests were deselected; corpus evaluation remained `NOT_RUN`. | 24 smoke cases deselected; deselections are not passes. | See both receipts for each attempt's exact selection and counts. |
+| MCP compatibility | `tests/test_mcp_server.py`, `tests/test_mcp_client.py`, `tests/test_mcp_compatibility.py`, `tests/test_mcp_versioning.py` | `NOT_RUN` in the original snapshot | Grouped outcomes are reported in the IMPL-3 receipt; no row-specific result is projected here. | No row-specific result reported. | The `NOT_RUN` label is scoped to the original category snapshot; consult the grouped receipt for its exact scope. |
+| UI, workflow, scope, guardrails, observability | `tests/test_app_ui.py`, `tests/test_observability.py`, `tests/test_query_scope.py`, `tests/test_guardrail_abuse_cases.py`, `tests/test_langgraph_workflow.py` | `NOT_RUN` in the original snapshot | Grouped outcomes are reported in the IMPL-3 receipt; no row-specific result is projected here. | No row-specific result reported. | The `NOT_RUN` label is scoped to the original category snapshot; consult the grouped receipt for its exact scope. |
+| Retrieval and ingestion seams | `tests/test_retrieval.py`, `tests/test_grounded_answer_generation.py`, `tests/test_document_canonicalization.py`, `tests/test_term_equivalences.py`, `tests/test_embedding_generation.py`, `tests/test_qdrant_indexing.py`, `tests/test_cli_runtime.py`, `tests/test_ingestion.py` | `NOT_RUN` in the original snapshot | Group 4 failed; affected retrieval/isolation correction checks later passed 111 tests. No single clean complete group suite. | No row-specific result reported. | The `NOT_RUN` label is scoped to the original category snapshot; consult the grouped receipt for its exact scope. |
 
 ## Declared Dependency and Side-Effect Inventory
 
@@ -34,7 +38,7 @@ analyze the suite. Therefore network, provider, and corpus isolation are
 **NOT DEMONSTRATED**. This is an evidence gap, not a product failure and not a
 claim that any test makes a network call.
 
-## Documentary Checks for This Candidate
+## Original C1 Documentary Checks — 2026-09-26 Snapshot
 
 - C1 documentary correction, `2026-09-26`: the initial read of all five
   candidate paths completed. UTF-8 decoding, final newline, trailing-whitespace
@@ -59,7 +63,7 @@ claim that any test makes a network call.
   calls, corpus access, and Git mutation: `NOT_RUN` by authority boundary.
   Differential review of the C1 candidate is `PENDING`, not a PASS.
 
-## Evidence Ceiling
+## C1 Evidence Ceiling — 2026-09-26 Snapshot
 
 At most rung 1, static/documentary evidence. The C1 pre-recording checks above
 passed; final readback and fixed-point postflight are reported in its receipt.
@@ -218,3 +222,48 @@ network, installation, Git mutation or remote operation was executed.
 Evidence ceiling: rung 2. Residual limitations: real evaluation, existing lint
 debt, independent review and acceptance. This completed bundle grants no next
 action; remaining balances cannot authorize another work unit.
+
+## Recovery-2 Corpus-Evaluation Receipt — 2026-10-07
+
+Work unit `YINI-CORPUS-LOCAL-EVAL-001`; terminal attempt `RECOVERY-2`;
+dispatch owner `019f71d6-632c-7870-bfa2-89513fdeb85a`. The sanitized receipt
+records a proof result of 12 blocked negative checks, followed by collection
+of 40 selected and 24 deselected tests with zero data reads. One selected local
+suite then reported 40 passed, 0 failed, and 24 deselected, with 63 permitted
+reads across 13 inventoried inputs and zero boundary denials. These are local
+deterministic results only; they do not establish answer quality, coverage
+correctness, corpus provenance, provider/hosted health, or human citation
+quality. `make test-release` was not invoked in Recovery-2; earlier IMPL-3
+group outcomes remain separately recorded above and do not form a single clean
+final suite.
+
+The attempt terminated at
+`STOP_CAPTURE_BUDGET_CONTROL_DEVIATION` after at least 285,521 source characters
+were requested against its conservative 200,000-character capture bound. The
+exact retained total was unavailable after truncations. It stopped before any
+documentary edits; its terminal failure remains in force and is not cured by
+this later documentary candidate.
+
+Sanitized evidence pointers and SHA-256 identities:
+
+- Receipt: `/private/tmp/yini-corpus-local-eval-recovery-2/receipt.md` —
+  `367c77f53fe9a7df0edb88803def27e67784cdc7a70620915178258cd6e65f73`.
+- Capsule: `/private/tmp/yini-corpus-local-eval-recovery-2/capsule.md` —
+  `261926fa1ca32160575b4e6d8bbfb095eb7e1569fc95f550e657924a5c1f2db1`.
+- Proof: `/private/tmp/yini-corpus-local-eval-recovery-2/proof-result.json` —
+  `c5bbf665d33a06a5a990138c87e15876ba13cabf8e9a544b2df1b24a65012d7b`.
+- Collection: `/private/tmp/yini-corpus-local-eval-recovery-2/collection-result.json` —
+  `7d019863d2b2ace712aa37cdabbf5bcee2b2e5b5d49ad56ae881ca9084c20a7f`.
+- Suite: `/private/tmp/yini-corpus-local-eval-recovery-2/suite-result.json` —
+  `c206faf03713fa99e8a2826fb67d2ddfbfae806c04c538ad0864ba183e0ae90c`.
+- Preservation: `/private/tmp/yini-corpus-local-eval-recovery-2/preservation.json` —
+  `591b8954c53b659d638fdb03d1706b43a4732a421a6c6c05971945f4418ba552`.
+
+The current `DOC-CLOSE-1` task re-read these artifacts and used the selected v3
+observer once against the unchanged supplied contract
+(`/private/tmp/yini-corpus-local-eval-001/contract.json`, SHA-256
+`62ef5a16a835bf25af417a81b4386cdb7ee5f280d5517838295028840dfcd569`). It
+returned `MATCH`, exit 0, 22 complete observations, and
+`successor_authority=false`. No corpus suite was repeated. This observation
+establishes only the bound local fixed point; the new documentary candidate
+still requires independent review and owner disposition.
